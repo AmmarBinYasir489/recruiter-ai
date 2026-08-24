@@ -1,0 +1,46 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
+
+export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const notification = await prisma.notification.findFirst({
+    where: { userId: user.id },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { id: true, read: true, createdAt: true },
+  });
+  let candidateState: unknown = null;
+  let staffState: unknown = null;
+  if (user.role === "candidate") {
+    candidateState = await prisma.application.findFirst({
+      where: { candidateId: user.id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        status: true,
+        currentStage: true,
+        phaseReleased: true,
+        cvResult: true,
+        cvScore: true,
+        results: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { id: true, type: true, status: true, normalized: true } },
+        cvJobs: { orderBy: { updatedAt: "desc" }, take: 1, select: { id: true, status: true, updatedAt: true } },
+      },
+    });
+  }
+  if (user.role === "recruiter" || user.role === "admin") {
+    const applicationScope = user.role === "admin" ? {} : { application: { drive: { ownerId: user.id } } };
+    const driveScope = user.role === "admin" ? {} : { application: { drive: { ownerId: user.id } } };
+    const [result, cvJob, attempt] = await Promise.all([
+      prisma.assessmentResult.findFirst({ where: applicationScope, orderBy: { createdAt: "desc" }, select: { id: true, status: true, normalized: true, createdAt: true } }),
+      prisma.cvJob.findFirst({ where: driveScope, orderBy: { updatedAt: "desc" }, select: { id: true, status: true, updatedAt: true } }),
+      prisma.assessmentAttempt.findFirst({ where: applicationScope, orderBy: { createdAt: "desc" }, select: { id: true, status: true, submittedAt: true, createdAt: true } }),
+    ]);
+    staffState = { result, cvJob, attempt };
+  }
+  const watermark = JSON.stringify({ notification, candidateState, staffState });
+  return NextResponse.json({ watermark }, { headers: { "Cache-Control": "no-store" } });
+}

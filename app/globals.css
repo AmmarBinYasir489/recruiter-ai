@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f6f8fb;
+}
+
+body {
+  background: var(--bg);
+  color: #0b1020;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+button, a, input, select, textarea {
+  touch-action: manipulation;
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid rgb(99 102 241 / 0.45);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-slate-100 p-5;
+  }
+  .card-hover {
+    @apply transition hover:shadow-cardhover hover:-translate-y-0.5;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition disabled:opacity-50 whitespace-nowrap h-10;
+  }
+  .btn-primary {
+    @apply btn bg-brand-600 text-white hover:bg-brand-700;
+  }
+  .btn-ghost {
+    @apply btn bg-slate-100 text-ink-800 hover:bg-slate-200;
+  }
+  .btn-danger {
+    @apply btn bg-rose-600 text-white hover:bg-rose-700;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition whitespace-nowrap h-10 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50;
+  }
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  .badge-pass { @apply badge bg-emerald-100 text-emerald-700; }
+  .badge-fail { @apply badge bg-rose-100 text-rose-700; }
+  .badge-pending { @apply badge bg-amber-100 text-amber-700; }
+  .badge-info { @apply badge bg-brand-100 text-brand-700; }
+  .badge-muted { @apply badge bg-slate-100 text-slate-600; }
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus-visible:border-brand-500 focus-visible:ring-2 focus-visible:ring-brand-100;
+  }
+  .label {
+    @apply block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1;
+  }
+  .stat {
+    @apply card flex flex-col gap-1;
+  }
+  .nav-link {
+    @apply block rounded-xl px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-ink-900;
+  }
+  .nav-link-active {
+    @apply bg-brand-600 text-white hover:bg-brand-700 hover:text-white;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

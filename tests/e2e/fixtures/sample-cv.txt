@@ -1,0 +1,2 @@
+LUMS — BSc Computer Science, CGPA 3.6/4.0. Skills: Python, SQL, Machine Learning, Data Analysis.
+Internship: data analyst, 1 year. Projects: recommendation system, NLP chatbot.

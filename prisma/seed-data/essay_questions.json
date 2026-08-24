@@ -1,0 +1,56 @@
+[
+  {
+    "section": "SHORT",
+    "number": 1,
+    "prompt": "You're relaxing on a Friday night. Suddenly, your favorite song pops into your head. What is it?",
+    "minWords": 50
+  },
+  {
+    "section": "SHORT",
+    "number": 2,
+    "prompt": "What inspires you?",
+    "minWords": 50
+  },
+  {
+    "section": "SHORT",
+    "number": 3,
+    "prompt": "What historical moment or event do you wish you could have been a part of?",
+    "minWords": 50
+  },
+  {
+    "section": "SHORT",
+    "number": 4,
+    "prompt": "What's your favorite way to eat a potato?",
+    "minWords": 50
+  },
+  {
+    "section": "SHORT",
+    "number": 5,
+    "prompt": "If you could redesign a banana, how would you change it?",
+    "minWords": 50
+  },
+  {
+    "section": "DESCRIPTIVE",
+    "number": 6,
+    "prompt": "Elon Musk once said, \"When something is important enough, you do it even if the odds are not in your favor.\" What is something that is important enough to you that would have you excited to work 100-hour weeks, despite the odds?",
+    "minWords": 250
+  },
+  {
+    "section": "DESCRIPTIVE",
+    "number": 7,
+    "prompt": "In Greek mythology, Theseus, the mythical king of Athens, rescued the children of the city after slaying the Minotaur and escaped on a ship bound for Delos. Each year, the Athenians commemorated this journey. Over time, parts of the ship were replaced as they decayed. If none of the original materials remained, was it still the same ship? If not, when did it stop being the original?",
+    "minWords": 250
+  },
+  {
+    "section": "DESCRIPTIVE",
+    "number": 8,
+    "prompt": "Is it theoretically possible for someone to live forever? Why or why not?",
+    "minWords": 250
+  },
+  {
+    "section": "DESCRIPTIVE",
+    "number": 9,
+    "prompt": "If we couldn’t see your resume, name, or anything about you and had to base our hiring decision on just one piece of information, what would you want that information to be?",
+    "minWords": 250
+  }
+]

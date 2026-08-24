@@ -1,0 +1,12 @@
+node_modules
+.next
+.env
+.env.backup-before-v2
+.supabase-question-bank-backup.json
+*.db
+*.db-journal
+prisma/dev.db
+prisma/migrations
+uploads/
+test-results/
+*.tsbuildinfo

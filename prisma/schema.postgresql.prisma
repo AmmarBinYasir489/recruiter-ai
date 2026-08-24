@@ -1,0 +1,291 @@
+// Production schema for Supabase Postgres. Keep models aligned with schema.prisma.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("SUPABASE_DATABASE_URL")
+  directUrl = env("SUPABASE_DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String // admin | recruiter | reviewer | candidate
+  createdAt    DateTime @default(now())
+
+  sessions      Session[]
+  ownedDrives   Drive[]            @relation("DriveOwner")
+  applications  Application[]      @relation("CandidateApplications")
+  notifications Notification[]
+  audits        AuditLog[]         @relation("AuditActor")
+  reviews       AssessmentResult[] @relation("GradedBy")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UniversityTier {
+  id    String @id @default(cuid())
+  name  String @unique
+  tier  Int // 1 | 2 | 3
+  score Int // 85 | 100 | 70
+}
+
+model Drive {
+  id               String   @id @default(cuid())
+  name             String
+  jobDescription   String
+  location         String
+  deadline         DateTime
+  publicLink       String
+  status           String   @default("OPEN") // OPEN | CLOSED
+  cvPassThreshold  Int      @default(60)
+  tciWeights       String // JSON: { STAGE_TYPE: weight }
+  rubricConfig     String // JSON: rubric config
+  thresholdHistory String // JSON: [{threshold,...}]
+  ownerId          String
+  createdAt        DateTime @default(now())
+
+  owner        User          @relation("DriveOwner", fields: [ownerId], references: [id])
+  funnels      Funnel[]
+  applications Application[]
+  ratBatches   RatBatch[]
+}
+
+model Funnel {
+  id        String   @id @default(cuid())
+  driveId   String
+  name      String   @default("Funnel")
+  version   Int      @default(1)
+  published Boolean  @default(false)
+  stages    String // JSON: FunnelStage[]
+  createdAt DateTime @default(now())
+
+  drive        Drive         @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@index([driveId, published])
+}
+
+model Application {
+  id            String    @id @default(cuid())
+  candidateId   String
+  driveId       String
+  funnelId      String?
+  funnelVersion Int       @default(1)
+  phaseReleased Boolean   @default(false) // current stage is available; automatic phases can release it after scoring
+  status        String    @default("DRAFT") // DRAFT | SUBMITTED | IN_PROGRESS | REJECTED | ARCHIVED | OFFERED | HIRED | HOLD
+  cvScore       Int?
+  cvResult      String? // PASS | FAIL | PENDING
+  extractedCv   String? // JSON: parsed CV
+  stageHistory  String    @default("[]") // JSON: [{stage,status,at,note}]
+  currentStage  String?
+  scores        String    @default("{}") // JSON: per-assessment scores
+  appliedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  candidate          User                @relation("CandidateApplications", fields: [candidateId], references: [id])
+  drive              Drive               @relation(fields: [driveId], references: [id])
+  funnel             Funnel?             @relation(fields: [funnelId], references: [id])
+  results            AssessmentResult[]
+  assessmentAttempts AssessmentAttempt[]
+  cvJobs             CvJob[]
+  onsiteInvites      OnsiteInvite[]
+  ratSubmissions     RatSubmission[]
+
+  @@unique([candidateId, driveId])
+  @@index([funnelId, currentStage, phaseReleased])
+  @@index([driveId, status])
+  @@index([candidateId, createdAt])
+}
+
+model AssessmentResult {
+  id               String    @id @default(cuid())
+  applicationId    String
+  attemptId        String?
+  type             String // CCAT | MTT | ESSAY | CODING | PROMPT | RAT | ENGLISH_SPEAKING | GAMES
+  mode             String    @default("ONLINE") // ONLINE | ONSITE (retest comparison)
+  rawScore         Float     @default(0)
+  maxScore         Float     @default(0)
+  normalized       Int       @default(0) // 0-100
+  status           String    @default("PENDING") // PASS | FAIL | PENDING | MANUAL_REVIEW
+  gradedBy         String?
+  gradedAt         DateTime?
+  notes            String?
+  answers          String? // JSON: answers
+  integrityEvents  String? // JSON: AssessmentIntegrityEvent[]
+  integrityLevel   String? // HONEST | SUSPICIOUS | PLAGIARIST (server-derived)
+  integrityReasons String? // JSON: string[]
+  createdAt        DateTime  @default(now())
+
+  application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  attempt     AssessmentAttempt? @relation(fields: [attemptId], references: [id])
+  grader      User?              @relation("GradedBy", fields: [gradedBy], references: [id])
+
+  @@unique([attemptId])
+  @@index([applicationId, type, createdAt])
+  @@index([gradedBy])
+}
+
+model AssessmentAttempt {
+  id             String    @id @default(cuid())
+  applicationId  String
+  type           String // CCAT | MTT | ESSAY | CODING | PROMPT | GAMES
+  mode           String    @default("ONLINE") // ONLINE | ONSITE
+  attemptNumber  Int       @default(1)
+  startedAt      DateTime?
+  deadlineAt     DateTime? // null = no server deadline
+  submittedAt    DateTime?
+  status         String    @default("ACTIVE") // ACTIVE | SUBMITTED | EXPIRED | CANCELLED
+  idempotencyKey String?
+  createdAt      DateTime  @default(now())
+
+  application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  results     AssessmentResult[]
+
+  @@unique([applicationId, type, attemptNumber])
+  @@index([applicationId, type, status])
+}
+
+model Notification {
+  id           String   @id @default(cuid())
+  userId       String
+  type         String
+  message      String
+  read         Boolean  @default(false)
+  relatedAppId String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+  @@index([relatedAppId, createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  meta      String
+  createdAt DateTime @default(now())
+
+  actor User @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt])
+}
+
+// Onsite RSVP invitation sent to a candidate. The candidate accepts/declines.
+model OnsiteInvite {
+  id            String      @id @default(cuid())
+  applicationId String
+  scheduledAt   DateTime
+  location      String?
+  locationUrl   String?
+  status        String      @default("SENT") // SENT | ACCEPTED | DECLINED | EXPIRED | CANCELLED
+  rsvpTokenHash String?     @unique
+  expiresAt     DateTime?
+  respondedAt   DateTime?
+  declineReason String?
+  declineOther  String?
+  notes         String?
+  createdAt     DateTime    @default(now())
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+// RAT (Research Amplitude Test) source-file batch uploaded by a recruiter/admin.
+model RatBatch {
+  id          String          @id @default(cuid())
+  driveId     String
+  name        String
+  file1Path   String
+  file1Name   String
+  file2Path   String?
+  file2Name   String?
+  createdAt   DateTime        @default(now())
+  drive       Drive           @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  submissions RatSubmission[]
+}
+
+// A candidate's RAT assignment + uploaded response files (manually graded).
+model RatSubmission {
+  id            String      @id @default(cuid())
+  batchId       String
+  applicationId String
+  responsePaths String      @default("[]") // JSON: string[]
+  responseNames String      @default("[]") // JSON: string[]
+  submittedAt   DateTime?
+  score         Int?
+  maxScore      Int         @default(100)
+  gradedAt      DateTime?
+  gradedBy      String?
+  gradingNotes  String?
+  createdAt     DateTime    @default(now())
+  batch         RatBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+}
+
+// History of every threshold (per funnel phase) change. Scoped to
+// drive + funnel + phase so one funnel's change never affects another.
+model ThresholdChange {
+  id           String   @id @default(cuid())
+  driveId      String
+  funnelId     String
+  phaseType    String
+  oldThreshold Int
+  newThreshold Int
+  actorId      String
+  passToFail   Int      @default(0)
+  failToPass   Int      @default(0)
+  affected     Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+// Async CV processing job (private storage + text extraction + scoring).
+model CvJob {
+  id            String   @id @default(cuid())
+  applicationId String
+  fileName      String
+  fileType      String
+  storagePath   String
+  status        String   @default("QUEUED") // QUEUED | PROCESSING | COMPLETED | FAILED
+  retryCount    Int      @default(0)
+  attempts      Int      @default(0)
+  error         String?
+  extractedText String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([applicationId, createdAt])
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  bank      String // CCAT | MTT | ESSAY | CODING | PROMPT
+  number    Int
+  content   String
+  createdAt DateTime @default(now())
+
+  @@unique([bank, number])
+}
+
+model AiSetting {
+  id        String   @id @default("singleton")
+  provider  String   @default("gemini")
+  apiKey    String   @default("")
+  updatedAt DateTime @default(now())
+}
