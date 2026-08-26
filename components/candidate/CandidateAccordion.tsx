@@ -6,7 +6,7 @@ import { CandidateWorkspace } from "@/components/candidate/CandidateWorkspace";
 import { ActionFeedbackDialog } from "@/components/ActionFeedbackDialog";
 import { decisionBadge, statusBadge } from "@/components/ui";
 import {
-  issueNextPhaseAction,
+  passSelectedAction,
   rejectSelectedAction,
   offerSelectedAction,
   requestRetestsAction,
@@ -28,34 +28,14 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const toggleAll = () => setSelected((s) => (s.length === allIds.length ? [] : allIds));
 
-  // Issue the next phase for each selected candidate, grouped by (funnel, stage)
-  // so the right "next" stage is released for each application.
   async function runIssue() {
     setBusy(true);
     setFeedback(null);
     try {
-      const groups = new Map<string, string[]>();
-      for (const id of selected) {
-        const v = views.find((x) => x.application.id === id);
-        if (!v) continue;
-        const funnelId = v.application.funnelId;
-        const stage = v.application.currentStage;
-        if (!funnelId || !stage || stage === "FINAL") continue;
-        const key = `${funnelId}__${stage}`;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(id);
-      }
-      let issued = 0;
-      const errors: string[] = [];
-      for (const [key, ids] of groups) {
-        const [funnelId, stage] = key.split("__");
-        const result = await issueNextPhaseAction(funnelId, stage, ids, "selected");
-        if ("error" in result) errors.push(String(result.error || "Could not issue the next phase."));
-        else issued += result.count;
-      }
-      if (errors.length) setFeedback({ kind: "error", message: `${issued} issued. ${errors.join(" ")}` });
-      else setFeedback({ kind: "success", message: `${issued} candidate${issued === 1 ? "" : "s"} moved to the next phase.` });
-      if (!errors.length) setSelected([]);
+      const result = await passSelectedAction(selected);
+      if ("error" in result) throw new Error(result.error);
+      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} passed and moved to the next phase.` });
+      setSelected([]);
       router.refresh();
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not issue the next phase." });
@@ -212,7 +192,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
       {selected.length > 0 && (
         <div className="sticky bottom-4 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-lg" aria-label="Bulk candidate actions">
           <span className="text-sm font-semibold text-ink-900">{selected.length} selected</span>
-          <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Issue next phase</button>
+          <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Pass &amp; move next</button>
           <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runOffer}>Offer</button>
           <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Reissue current test</button>
           <button className="btn-danger whitespace-nowrap" disabled={busy} onClick={runReject}>Reject</button>

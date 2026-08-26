@@ -46,5 +46,11 @@ export async function getAiRuntimeConfig(providerOverride?: string) {
   const model = provider === "gemini"
     ? process.env.GEMINI_MODEL || "gemini-1.5-flash"
     : process.env.GROQ_MODEL || "llama-3.1-8b-instant";
-  return { provider, apiKey: storedKey || envKey || "", model };
+  return {
+    provider,
+    apiKey: storedKey || envKey || "",
+    model,
+    // A stale database key must not mask a valid deployment key forever.
+    fallbackApiKey: storedKey && envKey && storedKey !== envKey ? envKey : "",
+  };
 }

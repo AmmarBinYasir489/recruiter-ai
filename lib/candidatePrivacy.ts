@@ -1,13 +1,13 @@
-const PUBLIC_SCORE_STAGES = new Set(["CV_SCREENING", "CCAT", "MTT"]);
-const RESTRICTED_SCORE_PATTERN = /\b(GAMES?|CODING|ESSAY|PROMPT(?: ENGINEERING)?|ENGLISH(?: SPEAKING)?)\b/i;
-
 export function candidateCanSeeScore(stage: string): boolean {
-  return PUBLIC_SCORE_STAGES.has(stage);
+  void stage;
+  return false;
 }
 
 export function candidateSafeNotification(message: string): string {
-  if (RESTRICTED_SCORE_PATTERN.test(message) && /(?:\d+\s*\/\s*100|\bPASS\b|\bFAIL\b|AI-assisted score)/i.test(message)) {
-    return "Your assessment has been reviewed. The recruitment team will notify you when the next action is available.";
-  }
-  return message;
+  return message
+    .replace(/\s*\(\s*\d+(?:\.\d+)?\s*\/\s*100\s*\)/gi, "")
+    .replace(/\b(?:current\s+)?score\s*(?:is|:)\s*\d+(?:\.\d+)?\s*\/\s*100[.,]?/gi, "")
+    .replace(/\b\d+(?:\.\d+)?\s*\/\s*100\b/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
 }

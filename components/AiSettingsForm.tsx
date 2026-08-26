@@ -16,10 +16,18 @@ export function AiSettingsForm({ provider, hasApiKey }: { provider: string; hasA
     setBusy(false);
   }
 
+  async function onSave(formData: FormData) {
+    setBusy(true);
+    setTest(null);
+    const result = await updateAiSettingsAction(formData);
+    setTest("error" in result ? { ok: false, message: result.error || "Settings were not saved." } : { ok: true, message: "Settings saved and the new key was verified." });
+    setBusy(false);
+  }
+
   return (
     <div className="space-y-4">
       <Card>
-        <form action={updateAiSettingsAction} className="space-y-3">
+        <form action={onSave} className="space-y-3">
           <div>
             <label className="label">Provider</label>
             <select name="provider" defaultValue={provider} className="input">
@@ -31,7 +39,9 @@ export function AiSettingsForm({ provider, hasApiKey }: { provider: string; hasA
             <label className="label">API key</label>
             <input name="apiKey" type="password" autoComplete="new-password" className="input" placeholder={hasApiKey ? "Saved securely — enter only to replace" : "Paste provider key"} />
           </div>
-          <button className="btn-primary">Save settings</button>
+          {hasApiKey && <label className="flex items-center gap-2 text-sm text-slate-600"><input type="checkbox" name="clearApiKey" value="1" /> Clear the saved key and use the server environment key</label>}
+          <button className="btn-primary" disabled={busy}>Save settings</button>
+          {test && <p role="status" className={`text-sm ${test.ok ? "text-emerald-600" : "text-rose-600"}`}>{test.message}</p>}
         </form>
       </Card>
 

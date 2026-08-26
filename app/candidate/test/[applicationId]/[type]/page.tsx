@@ -198,9 +198,8 @@ function GameForm({ applicationId, attemptId }: { applicationId: string; attempt
   return (
     <form action={submitGameAction.bind(null, applicationId)}>
       <ProctorMonitor stage="GAMES" applicationId={applicationId} attemptId={attemptId} />
-      <input type="hidden" name="total" value="12" />
       <Card className="space-y-3">
-        <p className="text-sm text-slate-600">Complete all three cognitive games. Accuracy is scored together.</p>
+        <p className="text-sm text-slate-600">Complete all three Neodým cognitive games. Accuracy and completion time are scored securely.</p>
         <GamesAssessment />
         <button className="btn-primary">Submit game</button>
       </Card>

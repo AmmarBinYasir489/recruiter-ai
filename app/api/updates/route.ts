@@ -37,9 +37,9 @@ export async function GET() {
     const applicationScope = user.role === "admin" ? {} : { application: { drive: { ownerId: user.id } } };
     const driveScope = user.role === "admin" ? {} : { application: { drive: { ownerId: user.id } } };
     const [result, cvJob, attempt] = await Promise.all([
-      prisma.assessmentResult.findFirst({ where: applicationScope, orderBy: { createdAt: "desc" }, select: { id: true, status: true, normalized: true, createdAt: true } }),
+      prisma.assessmentResult.findFirst({ where: applicationScope, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, status: true, normalized: true, gradedAt: true, createdAt: true } }),
       prisma.cvJob.findFirst({ where: driveScope, orderBy: { updatedAt: "desc" }, select: { id: true, status: true, updatedAt: true } }),
-      prisma.assessmentAttempt.findFirst({ where: applicationScope, orderBy: { createdAt: "desc" }, select: { id: true, status: true, submittedAt: true, createdAt: true } }),
+      prisma.assessmentAttempt.findFirst({ where: applicationScope, orderBy: [{ createdAt: "desc" }, { id: "desc" }], select: { id: true, status: true, submittedAt: true, createdAt: true } }),
     ]);
     staffState = { result, cvJob, attempt };
   }

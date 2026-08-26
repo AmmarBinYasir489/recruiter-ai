@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-export function AutoRefresh({ intervalMs = 8000 }: { intervalMs?: number }) {
+export function AutoRefresh({ intervalMs = 3000 }: { intervalMs?: number }) {
   const router = useRouter();
   const watermark = useRef<string | null>(null);
 

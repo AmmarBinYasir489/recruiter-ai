@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { decisionBadge } from "@/components/ui";
-import { issueNextPhaseAction, rejectSelectedAction, offerSelectedAction } from "@/app/recruiter/actions";
+import { issueNextPhaseAction, passSelectedAction, rejectSelectedAction, offerSelectedAction } from "@/app/recruiter/actions";
 import { ActionFeedbackDialog, type ActionFeedback } from "@/components/ActionFeedbackDialog";
 
 export interface CohortRow {
@@ -36,6 +36,7 @@ export function CohortView({
   function toggle(id: string) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
+  const allSelected = rows.length > 0 && selected.length === rows.length;
 
   async function run(fn: () => Promise<any>, label: string) {
     setBusy(true);
@@ -65,6 +66,13 @@ export function CohortView({
           Issue next phase → passing only
         </button>}
         {!automaticDecision && <button
+          className="btn-primary"
+          disabled={busy || selected.length === 0}
+          onClick={() => run(() => passSelectedAction(selected), "Passed and moved")}
+        >
+          Pass &amp; move selected ({selected.length})
+        </button>}
+        {!automaticDecision && <button
           className="btn-ghost"
           disabled={busy || selected.length === 0}
           onClick={() => run(() => issueNextPhaseAction(funnelId, phaseType, selected, "selected"), "Issued next phase to selected")}
@@ -83,7 +91,7 @@ export function CohortView({
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-100">
-              <th className="p-2"></th>
+              <th className="p-2"><input type="checkbox" aria-label={`Select all ${phaseLabel} candidates`} checked={allSelected} onChange={() => setSelected(allSelected ? [] : rows.map((row) => row.id))} /></th>
               <th className="p-2">Candidate</th>
               <th className="p-2">Score</th>
               <th className="p-2">Result</th>

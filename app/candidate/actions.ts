@@ -362,7 +362,10 @@ export async function submitSubjectiveAction(applicationId: string, type: string
       }
     }
   } catch (error) {
-    aiNotes = `AI reviewer aid failed: ${error instanceof Error ? error.message.slice(0, 300) : "unknown error"}. Human review is required.`;
+    const detail = error instanceof Error ? error.message.slice(0, 300) : "unknown error";
+    aiNotes = /api key not valid|invalid api key|unauthorized/i.test(detail)
+      ? "AI grading is paused because the configured provider key is invalid. An admin must replace or clear it in AI Settings; human review is required for this submission."
+      : `AI reviewer aid failed: ${detail}. Human review is required.`;
   }
 
   const scores = uj<Record<string, number>>(app.scores) || {};
@@ -463,19 +466,47 @@ export async function submitGameAction(applicationId: string, formData: FormData
   if (!funnel) return { error: "Funnel missing." };
   const threshold = phaseThreshold(funnel, "GAMES");
   const integrity = readIntegrity(formData, chk.attempt);
-  const total = 12;
-  let found = 0;
-  for (let i = 1; i <= 5; i++) if (formData.get(`w${i}`) === "1") found++;
-  const sudokuAnswers = [2, 1, 3, 4];
-  sudokuAnswers.forEach((answer, index) => { if (Number(formData.get(`sudoku_${index + 1}`)) === answer) found++; });
-  const crosswordAnswers = ["CODE", "DATA", "AI"];
-  crosswordAnswers.forEach((answer, index) => { if (String(formData.get(`crossword_${index + 1}`) || "").trim().toUpperCase() === answer) found++; });
-  const accuracy = total ? (found / total) * 100 : 0;
-  const result0to10 = scoreGame(accuracy, accuracy, "MEDIUM");
+  const sudokuSolution = [
+    [5,3,4,6,7,8,9,1,2], [6,7,2,1,9,5,3,4,8], [1,9,8,3,4,2,5,6,7],
+    [8,5,9,7,6,1,4,2,3], [4,2,6,8,5,3,7,9,1], [7,1,3,9,2,4,8,5,6],
+    [9,6,1,5,3,7,2,8,4], [2,8,7,4,1,9,6,3,5], [3,4,5,2,8,6,1,7,9],
+  ];
+  const sudokuPuzzle = [
+    [5,3,0,0,7,0,0,0,0], [6,0,0,1,9,5,0,0,0], [0,9,8,0,0,0,0,6,0],
+    [8,0,0,0,6,0,0,0,3], [4,0,0,8,0,3,0,0,1], [7,0,0,0,2,0,0,0,6],
+    [0,6,0,0,0,0,2,8,0], [0,0,0,4,1,9,0,0,5], [0,0,0,0,8,0,0,7,9],
+  ];
+  let wordCorrect = 0;
+  for (let i = 1; i <= 5; i++) if (formData.get(`w${i}`) === "1") wordCorrect++;
+  let sudokuCorrect = 0, sudokuTotal = 0;
+  sudokuPuzzle.forEach((row, r) => row.forEach((given, c) => {
+    if (given) return;
+    sudokuTotal++;
+    if (Number(formData.get(`sudoku_${r}_${c}`)) === sudokuSolution[r][c]) sudokuCorrect++;
+  }));
+  const crosswordSolution: Record<string, string> = {
+    "2,1": "C", "2,2": "O", "2,3": "D", "2,4": "E",
+    "3,3": "A", "4,3": "T", "5,3": "A", "5,4": "I",
+  };
+  let crosswordCorrect = 0;
+  for (const [cell, answer] of Object.entries(crosswordSolution)) {
+    const [r, c] = cell.split(",");
+    if (String(formData.get(`crossword_${r}_${c}`) || "").trim().toUpperCase() === answer) crosswordCorrect++;
+  }
+  const elapsedSeconds = Math.max(0, Number(formData.get("games_elapsed_seconds") || 0));
+  const speed = Math.max(0, Math.min(100, (1 - elapsedSeconds / 1020) * 100));
+  const gameScores = [
+    scoreGame((wordCorrect / 5) * 100, speed, "MEDIUM"),
+    scoreGame(sudokuTotal ? (sudokuCorrect / sudokuTotal) * 100 : 0, speed, "MEDIUM"),
+    scoreGame((crosswordCorrect / Object.keys(crosswordSolution).length) * 100, speed, "MEDIUM"),
+  ];
+  const result0to10 = Math.round((gameScores.reduce((sum, score) => sum + score, 0) / gameScores.length) * 10) / 10;
   const normalized = gameAverageToTci(result0to10);
   // Games pass when above the funnel threshold.
   const result = normalized >= threshold ? "PASS" : "FAIL";
-  await storeResult(app, app.candidateId, "GAMES", found, total, normalized, result, { found, total, result0to10 }, funnel, integrity);
+  const raw = wordCorrect + sudokuCorrect + crosswordCorrect;
+  const total = 5 + sudokuTotal + Object.keys(crosswordSolution).length;
+  await storeResult(app, app.candidateId, "GAMES", raw, total, normalized, result, { wordCorrect, sudokuCorrect, sudokuTotal, crosswordCorrect, elapsedSeconds, gameScores, result0to10 }, funnel, integrity);
   redirect(`/candidate/application/${applicationId}`);
 }
 

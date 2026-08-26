@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { signCvToken } from "@/lib/cv/access";
 import { resultForCurrentStage } from "@/lib/candidateStage";
-import { candidateCanSeeScore, candidateSafeNotification } from "@/lib/candidatePrivacy";
+import { candidateSafeNotification } from "@/lib/candidatePrivacy";
 import { Card, SectionTitle, decisionBadge, statusBadge, LinkButton } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -32,9 +32,6 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   const currentResult = resultForCurrentStage(app.results, currentStage);
   const cvToken = signCvToken(app.id, user.id);
   const processing = app.cvResult === "PROCESSING";
-  const currentScore = candidateCanSeeScore(currentStage)
-    ? (currentStage === "CV_SCREENING" ? app.cvScore : currentResult?.normalized)
-    : null;
   const currentDecision = currentStage === "CV_SCREENING" ? app.cvResult : currentResult?.status;
 
   return (
@@ -52,12 +49,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <p className="text-xs font-bold uppercase tracking-wider text-brand-600">Current step</p>
         <h2 id="current-step" className="mt-1 text-2xl font-bold text-ink-900">{STAGE_LABEL[currentStage] || currentStage}</h2>
 
-        {currentScore != null && !processing && (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="text-3xl font-black text-ink-900">{Math.round(currentScore)}<span className="text-base text-slate-400">/100</span></span>
-            {decisionBadge(currentDecision || "PENDING")}
-          </div>
-        )}
+        {!processing && currentDecision && <div className="mt-4">{decisionBadge(currentDecision)}</div>}
 
         <div className="mt-4">
           {processing ? (
@@ -70,7 +62,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
               </LinkButton>
             </>
           ) : currentDecision === "PENDING" || app.cvResult === "PENDING" ? (
-            <p className="text-sm font-medium text-amber-700">Your score is ready. The recruitment team is reviewing the threshold decision; no action is needed from you.</p>
+            <p className="text-sm font-medium text-amber-700">Your submission is under review. No action is needed from you.</p>
           ) : app.status === "REJECTED" ? (
             <p className="text-sm font-medium text-rose-700">Your application was not selected. Please see the latest update below.</p>
           ) : app.status === "OFFERED" || app.status === "HIRED" ? (
@@ -83,12 +75,12 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         </div>
       </section>
 
-      <SectionTitle>CV score</SectionTitle>
+      <SectionTitle>CV screening</SectionTitle>
       <Card className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-slate-500">CV score</p>
-            <p className="text-2xl font-black text-ink-900">{processing ? "Processing" : `${app.cvScore ?? "—"}/100`}</p>
+            <p className="text-sm text-slate-500">Result</p>
+            <div className="mt-1">{processing ? <span className="badge-info">Processing</span> : decisionBadge(app.cvResult || "PENDING")}</div>
           </div>
           <a href={`/api/cv/${app.id}?token=${cvToken}`} className="btn-outline text-sm">Download your CV</a>
         </div>
@@ -101,7 +93,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         ) : notes.map((note) => (
           <Card key={note.id} className={`text-sm ${note.read ? "text-slate-600" : "border-brand-200 bg-brand-50 text-ink-900"}`}>
             <div className="flex items-start justify-between gap-3">
-              <p>{note.type === "CV_SCORED" || note.type === "CV_THRESHOLD" ? `Your CV screening is complete. Your current score is ${app.cvScore}/100.` : candidateSafeNotification(note.message)}</p>
+              <p>{candidateSafeNotification(note.message)}</p>
               {!note.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-label="Unread" />}
             </div>
             <p className="mt-1 text-xs text-slate-400">{note.createdAt.toLocaleString()}</p>

@@ -260,9 +260,8 @@ export async function advanceApplicationAction(applicationId: string) {
   return { ok: true };
 }
 
-// Recruiter/admin override: pass a failed (or any) stage and move the candidate
-// forward. Records a manual PASS result so the score/scores reflect it and the
-// funnel advances past the gating check that would otherwise hold them.
+// Recruiter/admin approval: preserve the submitted score, mark the latest
+// current-stage result PASS, and release the next stage.
 export async function manualPassAction(applicationId: string) {
   const user = await requireRole("recruiter", "admin");
   const app = await prisma.application.findUnique({ where: { id: applicationId }, include: { drive: true, funnel: true } });
@@ -276,17 +275,17 @@ export async function manualPassAction(applicationId: string) {
   if (!next) return { error: "No next enabled stage is configured." };
   const nextName = next.name || next.type;
   const reachingFinal = next.type === "FINAL";
-
+  const latest = await prisma.assessmentResult.findFirst({
+    where: { applicationId, type },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+  });
+  if (!latest) return { error: "The candidate has not submitted the current stage." };
   const scores = uj<Record<string, number>>(app.scores) || {};
-  scores[type] = 100;
+  scores[type] = latest.normalized;
   await prisma.$transaction(async (tx) => {
-    await tx.assessmentResult.create({
-      data: {
-        applicationId, type, mode: "ONLINE", rawScore: 100, maxScore: 100,
-        normalized: 100, status: "PASS",
-        answers: j({ manualPass: true, by: user.id, at: new Date().toISOString() }),
-        integrityLevel: "HONEST", integrityReasons: j([]),
-      },
+    await tx.assessmentResult.update({
+      where: { id: latest.id },
+      data: { status: "PASS", gradedAt: latest.gradedAt || new Date(), notes: `${latest.notes ? `${latest.notes}\n` : ""}Approved by ${user.role} ${user.id} on ${new Date().toISOString()}.` },
     });
     await tx.application.update({
       where: { id: applicationId },
@@ -298,13 +297,26 @@ export async function manualPassAction(applicationId: string) {
         ]),
       },
     });
-    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? "Your assessments are complete. The final decision is pending." : `Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
+    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? `Your ${type} result is PASS. Your assessments are complete and the final decision is pending.` : `Your ${type} result is PASS. Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
     await tx.auditLog.create({
       data: { actorId: user.id, action: "MANUAL_PASS", meta: j({ applicationId, stage: type, next: next.type }) },
     });
   });
   revalidateCandidateRoutes();
   return { ok: true };
+}
+
+export async function passSelectedAction(applicationIds: string[]) {
+  const user = await requireRole("recruiter", "admin");
+  const ids = await managedApplicationIds(user, applicationIds);
+  let count = 0;
+  const errors: string[] = [];
+  for (const id of ids) {
+    const result = await manualPassAction(id);
+    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
+    else count += 1;
+  }
+  return errors.length ? { error: `${count} passed. ${errors.join(" ")}`, count } : { ok: true, count };
 }
 
 // Recruiter/admin adjusts a (manual-graded) score without losing the original.

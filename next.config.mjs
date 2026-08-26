@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Keep output tracing inside this app when a parent directory also contains
+  // a lockfile (common on local Windows development machines).
+  outputFileTracingRoot: process.cwd(),
   async headers() {
     const productionHeaders = process.env.NODE_ENV === "production"
       ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" }]

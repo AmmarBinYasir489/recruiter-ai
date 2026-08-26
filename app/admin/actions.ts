@@ -31,7 +31,12 @@ export async function updateAiSettingsAction(formData: FormData) {
   const provider = String(formData.get("provider") || "gemini") === "groq" ? "groq" : "gemini";
   const apiKey = String(formData.get("apiKey") || "").trim();
   const existing = await prisma.aiSetting.findUnique({ where: { id: "singleton" } });
-  const storedKey = apiKey ? encryptAiKey(apiKey) : existing?.apiKey || "";
+  const clearApiKey = formData.get("clearApiKey") === "1";
+  if (apiKey) {
+    const test = await testProvider(provider, apiKey);
+    if (!test.ok) return { error: `Key was not saved: ${test.message}` };
+  }
+  const storedKey = clearApiKey ? "" : apiKey ? encryptAiKey(apiKey) : existing?.apiKey || "";
   await prisma.aiSetting.upsert({
     where: { id: "singleton" },
     update: { provider, apiKey: storedKey },

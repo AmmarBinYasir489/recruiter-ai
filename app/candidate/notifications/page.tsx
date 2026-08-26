@@ -13,10 +13,6 @@ export default async function CandidateNotifications() {
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
   });
-  const appIds = [...new Set(notes.flatMap((note) => note.relatedAppId ? [note.relatedAppId] : []))];
-  const applications = appIds.length ? await prisma.application.findMany({ where: { id: { in: appIds }, candidateId: user.id }, select: { id: true, cvScore: true } }) : [];
-  const cvScores = new Map(applications.map((application) => [application.id, application.cvScore]));
-
   return (
     <div className="max-w-2xl mx-auto">
       <SectionTitle action={
@@ -30,7 +26,7 @@ export default async function CandidateNotifications() {
         <div className="space-y-2">
           {notes.map((n) => (
             <Card key={n.id} className={`text-sm flex items-start justify-between gap-3 ${n.read ? "opacity-60" : ""}`}>
-              <span>{n.type === "CV_SCORED" || n.type === "CV_THRESHOLD" ? `Your CV screening is complete. Your current score is ${cvScores.get(n.relatedAppId || "") ?? "—"}/100.` : candidateSafeNotification(n.message)}</span>
+              <span>{candidateSafeNotification(n.message)}</span>
               <span className="text-xs text-slate-400 whitespace-nowrap">{new Date(n.createdAt).toLocaleDateString()}</span>
             </Card>
           ))}
