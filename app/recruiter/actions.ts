@@ -37,10 +37,10 @@ const MANUAL_GRADING_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLI
 function revalidateCandidateRoutes() {
   try {
     revalidatePath("/recruiter/candidates");
-    revalidatePath("/recruiter/candidates/[id]");
-    revalidatePath("/recruiter/drives/[id]");
-    revalidatePath("/recruiter/funnel/[id]");
-    revalidatePath("/candidate/application/[id]");
+    revalidatePath("/recruiter/candidates/[id]", "page");
+    revalidatePath("/recruiter/drives/[id]", "page");
+    revalidatePath("/recruiter/funnel/[id]", "page");
+    revalidatePath("/candidate/application/[id]", "page");
   } catch (error) {
     // Server actions have a static-generation store; direct unit calls do not.
     if (!(error instanceof Error) || !error.message.includes("static generation store missing")) throw error;

@@ -7,6 +7,16 @@ import { createNotification } from "@/lib/notifications";
 import { scoreCodingByRubric } from "@/lib/engine/coding";
 import { scoreEssayByRubric } from "@/lib/engine/essay";
 import { scorePromptByRubric } from "@/lib/engine/prompt";
+import { revalidatePath } from "next/cache";
+
+function revalidateReviewerRoutes(resultId: string) {
+  try {
+    revalidatePath("/reviewer");
+    revalidatePath(`/reviewer/grade/${resultId}`);
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("static generation store missing")) throw error;
+  }
+}
 
 export async function gradeAssessmentAction(resultId: string, formData: FormData) {
   const user = await requireRole("reviewer", "admin");
@@ -16,6 +26,9 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
   });
   if (!result) return { error: "Not found." };
   if (!reviewerCanGrade(user, result.type, result.application.funnel)) return { error: "Not assigned to this assessment." };
+  if (result.gradedAt && result.status !== "MANUAL_REVIEW") {
+    return { ok: true, normalized: result.normalized, status: result.status, alreadyGraded: true };
+  }
 
   const notes = String(formData.get("notes") || "");
   const num = (k: string) => Number(formData.get(k) || 0);
@@ -86,5 +99,6 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
     await tx.auditLog.create({ data: { actorId: user.id, action: "GRADE", meta: j({ resultId, type: result.type, rawScore, maxScore, normalized, status }) } });
   });
 
+  revalidateReviewerRoutes(resultId);
   return { ok: true, normalized, status };
 }

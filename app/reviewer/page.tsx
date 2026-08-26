@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { prisma, uj } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, SectionTitle, decisionBadge, LinkButton, EmptyState } from "@/components/ui";
 import { computeApplicationTotal } from "@/lib/engine/leaderboard";
+import { reviewerCanGrade } from "@/lib/reviewerAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -10,17 +11,12 @@ export default async function ReviewerSubmissions() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  // Drives where this reviewer is assigned in the funnel.
-  const drives = await prisma.drive.findMany({ include: { funnels: true } });
-  const assignedDriveIds = drives
-    .filter((d) => (d.funnels[0] ? uj<any[]>(d.funnels[0].stages) : []).some((s) => (s.assignedReviewers || []).includes(user.id)))
-    .map((d) => d.id);
-
-  const results = await prisma.assessmentResult.findMany({
-    where: { status: "MANUAL_REVIEW", application: { driveId: { in: assignedDriveIds } } },
-    include: { application: { include: { candidate: true, drive: true } } },
+  const pendingResults = await prisma.assessmentResult.findMany({
+    where: { status: "MANUAL_REVIEW" },
+    include: { application: { include: { candidate: true, drive: true, funnel: true } } },
     orderBy: { createdAt: "desc" },
   });
+  const results = pendingResults.filter((result) => reviewerCanGrade(user, result.type, result.application.funnel));
 
   return (
     <div>

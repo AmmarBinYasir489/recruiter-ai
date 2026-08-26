@@ -403,9 +403,17 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
                 ) : (
                   // Objective assessments: no per-question Q&A (CCAT/MTT/GAMES).
                   stage.type === "GAMES" && (
-                    <p className="mt-2 text-xs text-slate-600">
-                      Found {parse(r.answers)?.found ?? "—"} / {parse(r.answers)?.total ?? "—"} correct tiles. TCI: {r.normalized}.
-                    </p>
+                    (() => {
+                      const game = parse(r.answers) || {};
+                      return (
+                        <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-3">
+                          <span>Word search: {game.wordCorrect ?? "—"}/5</span>
+                          <span>Sudoku: {game.sudokuCorrect ?? "—"}/{game.sudokuTotal ?? 51}</span>
+                          <span>Crossword: {game.crosswordCorrect ?? "—"}/8</span>
+                          <span className="sm:col-span-3">Completion: {game.elapsedSeconds ?? "—"} seconds · TCI: {r.normalized}</span>
+                        </div>
+                      );
+                    })()
                   )
                 )}
               </div>

@@ -44,6 +44,20 @@ export default async function GradePage({ params: paramsPromise }: { params: Pro
   const rubric = RUBRICS[result.type] || [];
   const overall = computeApplicationTotal(result.application.scores, result.application.drive.tciWeights);
 
+  if (result.gradedAt && result.status !== "MANUAL_REVIEW") {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <Card>
+          <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700">Grade approved</p>
+          <h1 className="mt-2 text-2xl font-bold text-ink-900">{result.application.candidate.name} · {result.type}</h1>
+          <p className="mt-3 text-slate-600">The approved score is {result.normalized}/100. The candidate remains at this stage until a recruiter releases the next action.</p>
+          {result.notes ? <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm text-slate-600">{result.notes}</p> : null}
+          <div className="mt-5"><LinkButton href="/reviewer" className="btn-primary">Back to submissions</LinkButton></div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-ink-900 mb-1">Grade {result.type}</h1>
