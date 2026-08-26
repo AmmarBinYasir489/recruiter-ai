@@ -16,7 +16,7 @@ const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE
 const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
 try {
-  const [banks, publicTables, archiveTables, rlsTables, browserGrants, users, drives, funnels] = await Promise.all([
+  const [banks, publicTables, archiveTables, rlsTables, browserGrants, performanceIndexes, users, drives, funnels] = await Promise.all([
     prisma.question.groupBy({ by: ["bank"], _count: { _all: true }, orderBy: { bank: "asc" } }),
     prisma.$queryRawUnsafe(`select count(*)::int as count from pg_tables where schemaname = 'public'`),
     prisma.$queryRawUnsafe(`select count(*)::int as count from pg_tables where schemaname = 'recruitment_portal_v2_archive'`),
@@ -24,6 +24,19 @@ try {
     prisma.$queryRawUnsafe(`
       select count(*)::int as count from information_schema.role_table_grants
       where table_schema = 'public' and grantee in ('anon', 'authenticated')
+    `),
+    prisma.$queryRawUnsafe(`
+      select count(*)::int as count from pg_indexes
+      where schemaname = 'public' and indexname in (
+        'Drive_ownerId_status_idx',
+        'OnsiteInvite_applicationId_createdAt_idx',
+        'OnsiteInvite_scheduledAt_status_idx',
+        'RatBatch_driveId_createdAt_idx',
+        'RatSubmission_applicationId_createdAt_idx',
+        'RatSubmission_batchId_idx',
+        'ThresholdChange_funnelId_createdAt_idx',
+        'ThresholdChange_driveId_phaseType_idx'
+      )
     `),
     prisma.user.count(),
     prisma.drive.count(),
@@ -44,6 +57,7 @@ try {
     archiveTables: archiveTables[0]?.count ?? 0,
     rlsTables: rlsTables[0]?.count ?? 0,
     browserRoleTableGrants: browserGrants[0]?.count ?? 0,
+    performanceIndexes: performanceIndexes[0]?.count ?? 0,
     portalUsers: users,
     drives,
     funnels,

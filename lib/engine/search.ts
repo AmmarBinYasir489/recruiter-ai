@@ -12,6 +12,10 @@ export interface CandidateRecord {
   driveId: string;
   driveName: string;
   status: string;
+  funnelId?: string;
+  phaseReleased?: boolean;
+  scores?: Record<string, number>;
+  latestResultId?: string;
   currentStage?: string;
   previousStage?: string;
   university?: string;

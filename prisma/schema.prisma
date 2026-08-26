@@ -61,6 +61,8 @@ model Drive {
   funnels      Funnel[]
   applications Application[]
   ratBatches   RatBatch[]
+
+  @@index([ownerId, status])
 }
 
 model Funnel {
@@ -201,6 +203,9 @@ model OnsiteInvite {
   notes         String?
   createdAt     DateTime    @default(now())
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+  @@index([scheduledAt, status])
 }
 
 // RAT (Research Amplitude Test) source-file batch uploaded by a recruiter/admin.
@@ -215,6 +220,8 @@ model RatBatch {
   createdAt   DateTime        @default(now())
   drive       Drive           @relation(fields: [driveId], references: [id], onDelete: Cascade)
   submissions RatSubmission[]
+
+  @@index([driveId, createdAt])
 }
 
 // A candidate's RAT assignment + uploaded response files (manually graded).
@@ -233,6 +240,9 @@ model RatSubmission {
   createdAt     DateTime    @default(now())
   batch         RatBatch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId, createdAt])
+  @@index([batchId])
 }
 
 // History of every threshold (per funnel phase) change. Scoped to
@@ -249,6 +259,9 @@ model ThresholdChange {
   failToPass   Int      @default(0)
   affected     Int      @default(0)
   createdAt    DateTime @default(now())
+
+  @@index([funnelId, createdAt])
+  @@index([driveId, phaseType])
 }
 
 // Async CV processing job (private storage + text extraction + scoring).

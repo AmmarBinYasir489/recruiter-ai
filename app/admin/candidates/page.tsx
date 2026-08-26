@@ -9,7 +9,7 @@ import {
 } from "@/lib/engine/search";
 import { Card } from "@/components/ui";
 import { CandidateAccordion } from "@/components/candidate/CandidateAccordion";
-import { getCandidateView } from "@/lib/candidateView";
+import { buildCandidateListViews } from "@/lib/candidateView";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -52,9 +52,17 @@ function parseFilters(sp: SP): CandidateFilter {
 export default async function AdminCandidatesPage({ searchParams: searchParamsPromise }: { searchParams: Promise<SP> }) {
   const searchParams = await searchParamsPromise;
   const user = await requireRole("admin");
-  const drives = await prisma.drive.findMany({ select: { id: true, name: true } });
   const filter = parseFilters(searchParams);
-  const records = await getCandidateRecords(filter.driveId);
+  const [drives, records] = await Promise.all([
+    prisma.drive.findMany({
+      select: {
+        id: true,
+        name: true,
+        funnels: { where: { published: true }, orderBy: { version: "desc" }, select: { id: true, name: true, version: true } },
+      },
+    }),
+    getCandidateRecords(filter.driveId),
+  ]);
   const filtered = filterCandidates(records, filter);
   const sorted = sortCandidates(filtered, (str(searchParams.sortBy) as any) || "appliedAt", (str(searchParams.dir) as any) || "desc");
   const page = paginate(sorted, Number(str(searchParams.page) || 1), 25);
@@ -65,11 +73,8 @@ export default async function AdminCandidatesPage({ searchParams: searchParamsPr
     if (s) qs.set(k, s);
   });
 
-  const views: any[] = [];
-  for (const c of page.items) {
-    const v = await getCandidateView(c.id, user);
-    if (v) views.push(v);
-  }
+  const funnelMap = new Map(drives.map((drive) => [drive.id, drive.funnels]));
+  const views = buildCandidateListViews(page.items, funnelMap);
 
   return (
     <div>

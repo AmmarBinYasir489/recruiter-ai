@@ -1,10 +1,38 @@
 import { prisma, uj } from "./db";
 import type { CandidateRecord } from "./engine/search";
 
-export async function getCandidateRecords(driveId?: string): Promise<CandidateRecord[]> {
+export async function getCandidateRecords(driveId?: string, ownerId?: string): Promise<CandidateRecord[]> {
   const apps = await prisma.application.findMany({
-    where: driveId ? { driveId } : {},
-    include: { candidate: true, drive: true, results: { orderBy: { createdAt: "desc" } }, onsiteInvites: { orderBy: { createdAt: "desc" } } },
+    where: {
+      ...(driveId ? { driveId } : {}),
+      ...(ownerId ? { drive: { ownerId } } : {}),
+    },
+    select: {
+      id: true,
+      driveId: true,
+      status: true,
+      funnelId: true,
+      phaseReleased: true,
+      currentStage: true,
+      cvScore: true,
+      cvResult: true,
+      extractedCv: true,
+      stageHistory: true,
+      scores: true,
+      appliedAt: true,
+      createdAt: true,
+      candidate: { select: { name: true, email: true } },
+      drive: { select: { name: true } },
+      results: {
+        orderBy: { createdAt: "desc" },
+        select: { id: true, type: true, status: true, integrityLevel: true },
+      },
+      onsiteInvites: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { status: true },
+      },
+    },
     orderBy: { appliedAt: "desc" },
   });
 
@@ -26,6 +54,10 @@ export async function getCandidateRecords(driveId?: string): Promise<CandidateRe
       driveId: a.driveId,
       driveName: a.drive.name,
       status: a.status,
+      funnelId: a.funnelId ?? undefined,
+      phaseReleased: a.phaseReleased,
+      scores,
+      latestResultId: a.results[0]?.id,
       currentStage: a.currentStage || undefined,
       previousStage: history.length >= 2 ? history[history.length - 2].stage : undefined,
       university: extracted.university || undefined,

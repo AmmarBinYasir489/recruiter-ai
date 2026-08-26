@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { getCandidateRecords } from "@/lib/data";
 import {
   filterCandidates,
@@ -9,7 +9,7 @@ import {
 } from "@/lib/engine/search";
 import { Card } from "@/components/ui";
 import { CandidateAccordion } from "@/components/candidate/CandidateAccordion";
-import { getCandidateView } from "@/lib/candidateView";
+import { buildCandidateListViews } from "@/lib/candidateView";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -51,19 +51,21 @@ function parseFilters(sp: SP): CandidateFilter {
 
 export default async function CandidatesPage({ searchParams: searchParamsPromise }: { searchParams: Promise<SP> }) {
   const searchParams = await searchParamsPromise;
-  const user = await getCurrentUser();
+  const user = await requireRole("recruiter", "admin");
   // Recruiters only see drives they own; admins see everything.
   const isRecruiter = user?.role === "recruiter";
-  const ownedDriveIds = isRecruiter
-    ? (await prisma.drive.findMany({ where: { ownerId: user!.id }, select: { id: true } })).map((d) => d.id)
-    : null;
-  const drives = await prisma.drive.findMany({
-    where: ownedDriveIds ? { id: { in: ownedDriveIds } } : undefined,
-    select: { id: true, name: true },
-  });
   const filter = parseFilters(searchParams);
-  const records = await getCandidateRecords(filter.driveId);
-  const scoped = ownedDriveIds ? records.filter((r) => ownedDriveIds.includes(r.driveId)) : records;
+  const [drives, scoped] = await Promise.all([
+    prisma.drive.findMany({
+      where: isRecruiter ? { ownerId: user.id } : undefined,
+      select: {
+        id: true,
+        name: true,
+        funnels: { where: { published: true }, orderBy: { version: "desc" }, select: { id: true, name: true, version: true } },
+      },
+    }),
+    getCandidateRecords(filter.driveId, isRecruiter ? user.id : undefined),
+  ]);
   const filtered = filterCandidates(scoped, filter);
   const sorted = sortCandidates(filtered, (str(searchParams.sortBy) as any) || "appliedAt", (str(searchParams.dir) as any) || "desc");
   const page = paginate(sorted, Number(str(searchParams.page) || 1), 25);
@@ -75,11 +77,8 @@ export default async function CandidatesPage({ searchParams: searchParamsPromise
   });
 
   // Build full interactive workspaces for the current page's candidates.
-  const views: any[] = [];
-  for (const c of page.items) {
-    const v = await getCandidateView(c.id, user);
-    if (v) views.push(v);
-  }
+  const funnelMap = new Map(drives.map((drive) => [drive.id, drive.funnels]));
+  const views = buildCandidateListViews(page.items, funnelMap);
 
   return (
     <div>

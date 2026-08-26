@@ -1,8 +1,32 @@
 import { prisma, uj } from "@/lib/db";
 import { authorizeCvAccess, signCvToken } from "@/lib/cv/access";
 import { computeApplicationTotal } from "@/lib/engine/leaderboard";
+import type { CandidateRecord } from "@/lib/engine/search";
 
 type AnyObj = Record<string, any>;
+
+export function buildCandidateListViews(
+  records: CandidateRecord[],
+  funnelsByDrive: Map<string, Array<{ id: string; name: string; version: number }>>,
+) {
+  return records.map((record) => ({
+    candidate: { name: record.name, email: record.email },
+    application: {
+      id: record.id,
+      driveId: record.driveId,
+      driveName: record.driveName,
+      status: record.status,
+      funnelId: record.funnelId ?? null,
+      currentStage: record.currentStage ?? null,
+      phaseReleased: record.phaseReleased ?? false,
+      cvScore: record.cvScore ?? null,
+      cvResult: record.cvResult ?? null,
+      scores: record.scores ?? {},
+      refreshKey: record.latestResultId ?? "",
+    },
+    funnelOptions: funnelsByDrive.get(record.driveId) ?? [],
+  }));
+}
 
 // Builds the serializable view consumed by <CandidateWorkspace />.
 // `app` must already be loaded with: candidate, drive, results(include attempt),
@@ -105,18 +129,23 @@ export async function getCandidateView(applicationId: string, user: any) {
   const view = await buildCandidateView(app as AnyObj, user);
 
   // Populate question banks (needs the async prisma call).
-  const funnelStages = app.funnel ? (uj<any[]>(app.funnel.stages) ?? []) : [];
-  const banks = Array.from(
-    new Set([...funnelStages.map((s: AnyObj) => s.type), ...app.results.map((r: AnyObj) => r.type)]),
-  ).filter((b) => ["CCAT", "MTT", "CODING", "ESSAY", "PROMPT"].includes(b));
-  if (banks.length) {
-    const qRows = await prisma.question.findMany({ where: { bank: { in: banks } } });
+  const banks = Array.from(new Set(app.results.map((result: AnyObj) => result.type)))
+    .filter((bank) => ["CODING", "ESSAY", "PROMPT"].includes(bank));
+  const [qRows, cvJob] = await Promise.all([
+    banks.length
+      ? prisma.question.findMany({ where: { bank: { in: banks } }, select: { bank: true, number: true, content: true } })
+      : Promise.resolve([]),
+    prisma.cvJob.findFirst({
+      where: { applicationId: app.id },
+      orderBy: { createdAt: "desc" },
+      select: { status: true },
+    }),
+  ]);
+  if (qRows.length) {
     for (const q of qRows) {
       (view.questionsByBank[q.bank] ||= []).push({ number: q.number, content: uj(q.content) });
     }
   }
-  // cvJob status for the badge.
-  const cvJob = await prisma.cvJob.findFirst({ where: { applicationId: app.id }, orderBy: { createdAt: "desc" } });
   view.application.cvJobStatus = cvJob?.status ?? null;
   return view;
 }

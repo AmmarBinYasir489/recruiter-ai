@@ -1,7 +1,12 @@
 import crypto from "crypto";
 import { prisma, getFunnel } from "@/lib/db";
 
-const SECRET = process.env.CV_TOKEN_SECRET || "dev-cv-token-secret-change-me";
+function signingSecret(): string {
+  const secret = process.env.CV_TOKEN_SECRET || process.env.AI_SETTINGS_ENCRYPTION_KEY;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production") throw new Error("CV_TOKEN_SECRET must be configured in production.");
+  return "dev-cv-token-secret-change-me";
+}
 
 // Short-lived, user-scoped token proving a CV download link was issued by the
 // server. Binds applicationId + userId + expiry so a URL cannot be shared or
@@ -9,7 +14,7 @@ const SECRET = process.env.CV_TOKEN_SECRET || "dev-cv-token-secret-change-me";
 export function signCvToken(applicationId: string, userId: string, ttlSeconds = 60): string {
   const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
   const payload = `${applicationId}:${userId}:${exp}`;
-  const sig = crypto.createHmac("sha256", SECRET).update(payload).digest("hex");
+  const sig = crypto.createHmac("sha256", signingSecret()).update(payload).digest("hex");
   return Buffer.from(`${payload}.${sig}`).toString("base64url");
 }
 
@@ -22,7 +27,7 @@ export function verifyCvToken(token: string, applicationId: string, userId: stri
     const [appId, uid, exp] = body.split(":");
     if (!appId || !uid || !exp || !sig) return false;
     const payload = `${appId}:${uid}:${exp}`;
-    const expected = crypto.createHmac("sha256", SECRET).update(payload).digest("hex");
+    const expected = crypto.createHmac("sha256", signingSecret()).update(payload).digest("hex");
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
     if (appId !== applicationId || uid !== userId) return false;
     if (Number(exp) < Math.floor(Date.now() / 1000)) return false;

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CandidateWorkspace } from "@/components/candidate/CandidateWorkspace";
 import { ActionFeedbackDialog } from "@/components/ActionFeedbackDialog";
@@ -28,6 +28,33 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const [onsiteDate, setOnsiteDate] = useState("");
   const [onsiteLocation, setOnsiteLocation] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
+  const [detailViews, setDetailViews] = useState<Record<string, AnyObj>>({});
+  const [detailLoading, setDetailLoading] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<Record<string, string>>({});
+
+  const summaryVersion = useMemo(
+    () => views.map((view) => [view.application.id, view.application.status, view.application.currentStage, view.application.cvScore, view.application.refreshKey, JSON.stringify(view.application.scores)].join(":" )).join("|"),
+    [views],
+  );
+  const loadDetail = useCallback(async (id: string) => {
+    setDetailLoading(id);
+    setDetailError((current) => ({ ...current, [id]: "" }));
+    try {
+      const response = await fetch(`/api/recruiter/candidates/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(response.status === 404 ? "Candidate is no longer available." : "Could not load candidate details.");
+      const data = await response.json();
+      setDetailViews((current) => ({ ...current, [id]: data.view }));
+    } catch (error) {
+      setDetailError((current) => ({ ...current, [id]: error instanceof Error ? error.message : "Could not load candidate details." }));
+    } finally {
+      setDetailLoading((current) => current === id ? null : current);
+    }
+  }, []);
+
+  useEffect(() => {
+    setDetailViews({});
+    if (openId) void loadDetail(openId);
+  }, [summaryVersion, openId, loadDetail]);
 
   const allIds = views.map((v) => v.application.id);
   const toggle = (id: string) =>
@@ -228,7 +255,11 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
                     <tr>
                       <td colSpan={8} className="p-0 w-full min-w-0 max-w-0 overflow-hidden">
                         <div className="p-4 bg-slate-50/60 min-w-0">
-                          <CandidateWorkspace view={v} expanded onToggleExpand={() => setOpenId(null)} />
+                          {detailViews[id]
+                            ? <CandidateWorkspace view={detailViews[id]} expanded onToggleExpand={() => setOpenId(null)} />
+                            : detailError[id]
+                              ? <div className="card text-sm text-rose-700">{detailError[id]} <button type="button" className="ml-2 font-semibold underline" onClick={() => void loadDetail(id)}>Retry</button></div>
+                              : <div className="card text-sm text-slate-500" aria-live="polite">{detailLoading === id ? "Loading secure candidate workspace…" : "Loading candidate workspace…"}</div>}
                         </div>
                       </td>
                     </tr>

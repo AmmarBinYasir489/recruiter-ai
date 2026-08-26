@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   // Keep output tracing inside this app when a parent directory also contains
   // a lockfile (common on local Windows development machines).
   outputFileTracingRoot: process.cwd(),
