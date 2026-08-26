@@ -20,7 +20,23 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
   const notes = String(formData.get("notes") || "");
   const num = (k: string) => Number(formData.get(k) || 0);
   let normalized = 0;
-  if (result.type === "CODING") {
+  let rawScore = 0;
+  let maxScore = 100;
+  const submitted = uj<{ items?: { number: number; maxScore?: number }[] }>(result.answers) || {};
+  const usesPerQuestionScoring = ["CODING", "ESSAY", "PROMPT"].includes(result.type) && Boolean(submitted.items?.length);
+
+  if (usesPerQuestionScoring && submitted.items) {
+    maxScore = submitted.items.reduce((sum, item) => sum + Math.max(1, Number(item.maxScore || 10)), 0);
+    for (const item of submitted.items) {
+      const questionMax = Math.max(1, Number(item.maxScore || 10));
+      const score = Number(formData.get(`questionScore_${item.number}`));
+      if (!Number.isFinite(score) || score < 0 || score > questionMax) {
+        return { error: `Question ${item.number} score must be between 0 and ${questionMax}.` };
+      }
+      rawScore += score;
+    }
+    normalized = Math.round((rawScore / maxScore) * 100);
+  } else if (result.type === "CODING") {
     normalized = scoreCodingByRubric({
       correctness: num("correctness"), codeQuality: num("codeQuality"),
       logic: num("logic"), efficiency: num("efficiency"), bestPractices: num("bestPractices"),
@@ -40,6 +56,8 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
     normalized = num("score");
   }
 
+  if (!usesPerQuestionScoring) rawScore = normalized;
+
   const status = "PENDING";
 
   const app = result.application;
@@ -50,7 +68,7 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
   await prisma.$transaction(async (tx) => {
     await tx.assessmentResult.update({
       where: { id: resultId },
-      data: { normalized, status, notes, gradedBy: user.id, gradedAt: new Date() },
+      data: { rawScore, maxScore, normalized, status, notes, gradedBy: user.id, gradedAt: new Date() },
     });
     await tx.application.update({
       where: { id: app.id },
@@ -65,7 +83,7 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
       message: `Your ${result.type} assessment review is complete. The recruitment team will notify you about the next step.`,
       relatedAppId: app.id,
     }, tx);
-    await tx.auditLog.create({ data: { actorId: user.id, action: "GRADE", meta: j({ resultId, type: result.type, normalized, status }) } });
+    await tx.auditLog.create({ data: { actorId: user.id, action: "GRADE", meta: j({ resultId, type: result.type, rawScore, maxScore, normalized, status }) } });
   });
 
   return { ok: true, normalized, status };

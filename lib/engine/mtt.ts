@@ -16,16 +16,20 @@ function pointsForQuestion(index1Based: number): number {
   return 5;
 }
 
-export function scoreMtt(answers: MttAnswer[]): { raw: number; percentage: number } {
+export function scoreMtt(answers: MttAnswer[], pointValues?: number[]): { raw: number; percentage: number; max: number } {
   let raw = 0;
+  const usesQuestionPoints = Array.isArray(pointValues);
+  let max = usesQuestionPoints ? 0 : MTT_TOTAL;
   answers.forEach((a, i) => {
-    const pts = pointsForQuestion(i + 1);
+    const supplied = pointValues?.[i];
+    const pts = supplied === 3 || supplied === 4 || supplied === 5 ? supplied : pointsForQuestion(i + 1);
+    if (usesQuestionPoints) max += pts;
     if (a === "correct") raw += pts;
     else if (a === "wrong") raw -= 1;
     // unanswered contributes 0
   });
-  raw = Math.max(-MTT_TOTAL, raw); // allow negative-marked raw score
-  return { raw, percentage: Math.round((Math.max(0, raw) / MTT_TOTAL) * 100) };
+  raw = Math.max(-max, raw); // allow negative-marked raw score
+  return { raw, max, percentage: Math.round((Math.max(0, raw) / Math.max(1, max)) * 100) };
 }
 
 export function decideMtt(percentage: number, threshold = MTT_DEFAULT_THRESHOLD): Decision {

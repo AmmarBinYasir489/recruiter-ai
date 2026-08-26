@@ -3,6 +3,7 @@
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CandidateWorkspace } from "@/components/candidate/CandidateWorkspace";
+import { ActionFeedbackDialog } from "@/components/ActionFeedbackDialog";
 import { decisionBadge, statusBadge } from "@/components/ui";
 import {
   issueNextPhaseAction,
@@ -134,11 +135,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
 
   return (
     <>
-      {feedback && (
-        <div className={`mb-3 rounded-xl border px-4 py-3 text-sm ${feedback.kind === "error" ? "border-rose-200 bg-rose-50 text-rose-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}`} role={feedback.kind === "error" ? "alert" : "status"}>
-          {feedback.message}
-        </div>
-      )}
+      {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
       <Card2>
         <table className="w-full min-w-0 max-w-full table-fixed text-sm">
           <thead>

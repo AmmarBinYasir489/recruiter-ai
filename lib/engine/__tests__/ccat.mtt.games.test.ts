@@ -46,6 +46,11 @@ describe("MTT (negative marking)", () => {
     expect(scoreMtt(all).percentage).toBe(100);
   });
 
+  it("uses the assigned question point values instead of relying on shuffled positions", () => {
+    const answers: MttAnswer[] = ["correct", "correct", "wrong"];
+    expect(scoreMtt(answers, [5, 3, 4])).toEqual({ raw: 7, max: 12, percentage: 58 });
+  });
+
   it("wrong answers subtract 1 even on high-value questions", () => {
     const all: MttAnswer[] = Array(30).fill("wrong");
     expect(scoreMtt(all).raw).toBe(-30); // floored to 0 in percentage reporting

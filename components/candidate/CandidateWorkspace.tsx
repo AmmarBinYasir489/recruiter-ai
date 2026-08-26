@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ActionFeedbackDialog, type ActionFeedback } from "@/components/ActionFeedbackDialog";
 import {
   advanceApplicationAction,
   rejectApplicationAction,
@@ -307,12 +309,35 @@ function ProfileSection({ view, onClose }: { view: AnyObj; onClose: () => void }
 }
 
 function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; onClose: () => void }) {
+  const router = useRouter();
+  const [actionBusy, setActionBusy] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+  async function runRecruiterAction(action: () => Promise<any>, successMessage: string) {
+    setActionBusy(true);
+    setActionFeedback(null);
+    try {
+      const result = await action();
+      if (result && "error" in result) throw new Error(String(result.error || "Action failed."));
+      setActionFeedback({ kind: "success", message: successMessage });
+      router.refresh();
+    } catch (error) {
+      setActionFeedback({ kind: "error", message: error instanceof Error ? error.message : "Action failed." });
+    } finally {
+      setActionBusy(false);
+    }
+  }
   if (stage.isCv) return <CvScreeningSection view={view} onClose={onClose} />;
   if (stage.isFinal) return <FinalDecisionSection view={view} onClose={onClose} />;
 
   const results = stage.resultsForType || [];
   const attempts = stage.attemptsForType || [];
   const finalResult = results[results.length - 1] || null;
+  const finalAnswers = parse(finalResult?.answers);
+  const assignedQuestionCount = Array.isArray(finalAnswers?.items)
+    ? finalAnswers.items.length
+    : Array.isArray(finalAnswers?.questions)
+      ? finalAnswers.questions.length
+      : null;
   const online = results.filter((r: AnyObj) => r.mode === "ONLINE");
   const onsite = results.filter((r: AnyObj) => r.mode === "ONSITE");
   const onlineScore = online.length ? online[online.length - 1].normalized : null;
@@ -321,6 +346,7 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
 
   return (
     <div className="card p-5">
+      {actionFeedback && <ActionFeedbackDialog feedback={actionFeedback} onClose={() => setActionFeedback(null)} />}
       <SectionHeader title={`${stage.name} — Details`} onClose={onClose} />
 
       {/* Assessment Overview */}
@@ -329,6 +355,8 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
           <Field label="Assessment" value={stage.name} />
           <Field label="Type" value={stage.type} />
           <Field label="Final score" value={finalResult ? `${finalResult.normalized}%` : "—"} />
+          <Field label="Raw score" value={finalResult ? `${finalResult.rawScore}/${finalResult.maxScore}` : "—"} />
+          <Field label="Questions assigned" value={assignedQuestionCount ?? (stage.type === "GAMES" ? "3 games" : "—")} />
           <Field label="Pass threshold" value={stage.passScore != null ? `${stage.passScore}%` : "—"} />
           <Field
             label="Result"
@@ -447,22 +475,18 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
           <hr className="my-4 border-slate-100" />
           <Section title="Recruiter Actions">
             <div className="flex flex-wrap items-center gap-2">
-              <form action={requestRetestAction.bind(null, view.application.id)} className="flex items-center gap-2">
+              <form action={(formData) => runRecruiterAction(() => requestRetestAction(view.application.id, formData), `${stage.name} was reissued. The candidate has been notified.`)} className="flex items-center gap-2">
                 <input type="hidden" name="type" value={stage.type} />
                 <select name="mode" className="input h-10">
                   <option value="ONLINE">Retest: Online</option>
                   <option value="ONSITE">Retest: Onsite</option>
                 </select>
-                <button className="btn-primary whitespace-nowrap">Request Retest</button>
+                <button disabled={actionBusy} className="btn-primary whitespace-nowrap">Request Retest</button>
               </form>
               {stage.type === view.application.currentStage && (
                 <>
-                  <form action={manualPassAction.bind(null, view.application.id)}>
-                    <button className="btn-primary whitespace-nowrap">Manual Pass</button>
-                  </form>
-                  <form action={advanceApplicationAction.bind(null, view.application.id)}>
-                    <button className="btn-outline whitespace-nowrap">Move to Next Stage</button>
-                  </form>
+                  <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => manualPassAction(view.application.id), "Candidate passed manually and was moved to the next stage. The candidate has been notified.")} className="btn-primary whitespace-nowrap">Manual Pass</button>
+                  <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => advanceApplicationAction(view.application.id), "Candidate was moved to the next stage and notified.")} className="btn-outline whitespace-nowrap">Move to Next Stage</button>
                   <form action={rejectApplicationAction.bind(null, view.application.id)}>
                     <button className="btn-danger whitespace-nowrap">Reject</button>
                   </form>

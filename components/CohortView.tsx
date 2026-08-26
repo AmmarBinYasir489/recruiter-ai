@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { decisionBadge } from "@/components/ui";
 import { issueNextPhaseAction, rejectSelectedAction, offerSelectedAction } from "@/app/recruiter/actions";
+import { ActionFeedbackDialog, type ActionFeedback } from "@/components/ActionFeedbackDialog";
 
 export interface CohortRow {
   id: string;
@@ -30,7 +31,7 @@ export function CohortView({
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
 
   function toggle(id: string) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
@@ -38,14 +39,15 @@ export function CohortView({
 
   async function run(fn: () => Promise<any>, label: string) {
     setBusy(true);
-    setMsg(null);
+    setFeedback(null);
     try {
       const r = await fn();
-      setMsg(`${label}: ${r?.count ?? "ok"}`);
+      if (r && "error" in r) throw new Error(String(r.error || "Action failed."));
+      setFeedback({ kind: "success", message: `${label}: ${r?.count ?? "completed"}.` });
       setSelected([]);
       router.refresh();
     } catch (e: any) {
-      setMsg(e?.message || "Error");
+      setFeedback({ kind: "error", message: e?.message || "Action failed." });
     } finally {
       setBusy(false);
     }
@@ -53,6 +55,7 @@ export function CohortView({
 
   return (
     <div className="mt-3">
+      {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
       <div className="flex flex-wrap items-center gap-2 mb-2">
         {!automaticDecision && <button
           className="btn-ghost"
@@ -76,8 +79,6 @@ export function CohortView({
           Offer selected
         </button>
       </div>
-      {msg && <p className="text-xs text-slate-500 mb-2">{msg}</p>}
-
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -94,7 +95,7 @@ export function CohortView({
             )}
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-slate-50">
-                <td className="p-2"><input type="checkbox" checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>
+                <td className="p-2"><input type="checkbox" aria-label={`Select ${r.candidateName}`} checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>
                 <td className="p-2 font-semibold">{r.candidateName}</td>
                 <td className="p-2">{r.score}</td>
                 <td className="p-2">{decisionBadge(r.result)}</td>

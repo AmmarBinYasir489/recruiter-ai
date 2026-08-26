@@ -286,8 +286,9 @@ export async function submitAutoTestAction(applicationId: string, type: "CCAT" |
   }
   const items: any[] = [];
   const answers: MttAnswer[] = [];
+  const pointValues: number[] = [];
   for (const q of questions) {
-    const content = uj<{ answer?: number; correctAnswerIndex?: number; options?: string[] }>(q.content);
+    const content = uj<{ answer?: number; correctAnswerIndex?: number; options?: string[]; points?: number }>(q.content);
     const valRaw = formData.get(`a${q.number}`);
     let status: "correct" | "wrong" | "unanswered";
     let value: number | null;
@@ -300,11 +301,12 @@ export async function submitAutoTestAction(applicationId: string, type: "CCAT" |
       status = value === expected ? "correct" : "wrong";
     }
     answers.push(status);
-    items.push({ number: q.number, value, correctAnswer: content.answer, correctAnswerIndex: content.correctAnswerIndex, status });
+    pointValues.push(Number(content.points));
+    items.push({ number: q.number, value, correctAnswer: content.answer, correctAnswerIndex: content.correctAnswerIndex, points: content.points, status });
   }
-  const { raw, percentage } = scoreMtt(answers);
+  const { raw, max, percentage } = scoreMtt(answers, pointValues);
   const result = decideMtt(percentage, threshold);
-  await storeResult(app, app.candidateId, "MTT", raw, 120, percentage, result, { raw, answers, items }, funnel, integrity);
+  await storeResult(app, app.candidateId, "MTT", raw, max, percentage, result, { raw, max, answers, items }, funnel, integrity);
   redirect(`/candidate/application/${applicationId}`);
 }
 
@@ -334,6 +336,8 @@ export async function submitSubjectiveAction(applicationId: string, type: string
   // An AI suggestion never changes the result state or advances a candidate.
   let aiScored = false;
   let aiScore: number | null = null;
+  let aiRaw = 0;
+  let aiMax = 100;
   let aiNotes = "AI reviewer aid was unavailable; human review is required.";
   let storedPayload = payload;
   try {
@@ -353,6 +357,8 @@ export async function submitSubjectiveAction(applicationId: string, type: string
         aiNotes = `AI grading (${type}) — reviewer aid only; per-question:\n${perQ}`;
         aiScored = true;
         aiScore = graded.normalized;
+        aiRaw = graded.questions.reduce((sum, question) => sum + question.score, 0);
+        aiMax = graded.questions.reduce((sum, question) => sum + question.maxScore, 0);
       }
     }
   } catch (error) {
@@ -365,7 +371,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await tx.assessmentResult.create({
       data: {
         applicationId, type, attemptId: chk.attempt.id, mode: chk.attempt.mode,
-        rawScore: 0, maxScore: 100, normalized: aiScore ?? 0, status: "MANUAL_REVIEW",
+        rawScore: aiScored ? aiRaw : 0, maxScore: aiScored ? aiMax : 100, normalized: aiScore ?? 0, status: "MANUAL_REVIEW",
         answers: j(storedPayload), notes: aiNotes, gradedAt: aiScored ? new Date() : null,
         integrityEvents: integrity.integrityEvents, integrityLevel: integrity.integrityLevel,
         integrityReasons: integrity.integrityReasons,

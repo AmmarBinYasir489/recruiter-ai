@@ -44,6 +44,8 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       type: r.type,
       mode: r.mode,
       normalized: r.normalized,
+      rawScore: r.rawScore,
+      maxScore: r.maxScore,
       status: r.status,
       attemptId: r.attemptId,
       answers: r.answers,
