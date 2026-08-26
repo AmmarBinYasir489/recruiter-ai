@@ -108,7 +108,7 @@ export default async function CandidatesPage({ searchParams: searchParamsPromise
               <label className="label">Status</label>
               <select name="status" className="input" defaultValue={str(searchParams.status) || ""}>
                 <option value="">Any</option>
-                {["SUBMITTED", "IN_PROGRESS", "REJECTED", "ARCHIVED", "OFFERED", "HIRED"].map((s) => <option key={s} value={s}>{s}</option>)}
+                {["HOLD", "SUBMITTED", "IN_PROGRESS", "REJECTED", "ARCHIVED", "OFFERED", "HIRED"].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>

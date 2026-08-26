@@ -11,6 +11,7 @@ import {
   offerSelectedAction,
   requestRetestsAction,
   sendBulkNotificationAction,
+  assignSelectedFunnelAction,
 } from "@/app/recruiter/actions";
 
 type AnyObj = Record<string, any>;
@@ -21,12 +22,21 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [bulkFunnelId, setBulkFunnelId] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const allIds = views.map((v) => v.application.id);
   const toggle = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const toggleAll = () => setSelected((s) => (s.length === allIds.length ? [] : allIds));
+  const selectedViews = views.filter((view) => selected.includes(view.application.id));
+  const selectedDriveIds = new Set(selectedViews.map((view) => view.application.driveId));
+  const canBulkAssign = selectedViews.length > 0 && selectedDriveIds.size === 1 && selectedViews.every((view) =>
+    !view.application.funnelId && view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult),
+  );
+  const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
+  const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
+  const canMoveNext = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && view.application.currentStage !== "FINAL");
 
   async function runIssue() {
     setBusy(true);
@@ -113,6 +123,24 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     }
   }
 
+  async function runAssignFunnel() {
+    if (!validBulkFunnel) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const result = await assignSelectedFunnelAction(selected, bulkFunnelId);
+      if ("error" in result) throw new Error(result.error);
+      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} assigned. Their first assessment is now available and notifications were sent.` });
+      setSelected([]);
+      setBulkFunnelId("");
+      router.refresh();
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not assign the selected candidates." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <>
       {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
@@ -192,9 +220,18 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
       {selected.length > 0 && (
         <div className="sticky bottom-4 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-lg" aria-label="Bulk candidate actions">
           <span className="text-sm font-semibold text-ink-900">{selected.length} selected</span>
-          <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Pass &amp; move next</button>
+          {canBulkAssign && <>
+            <select className="input min-w-52" aria-label="Funnel for selected applicants" value={bulkFunnelId} onChange={(event) => setBulkFunnelId(event.target.value)}>
+              <option value="">Choose funnel</option>
+              {funnelOptions.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
+            </select>
+            <button className="btn-primary whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={runAssignFunnel}>Assign funnel &amp; release test</button>
+          </>}
+          {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
+          {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened, unassigned applicants from one drive.</span>}
+          {canMoveNext && <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Pass &amp; move next</button>}
           <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runOffer}>Offer</button>
-          <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Reissue current test</button>
+          {canMoveNext && <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Reissue current test</button>}
           <button className="btn-danger whitespace-nowrap" disabled={busy} onClick={runReject}>Reject</button>
           <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" />
           <button className="btn-outline whitespace-nowrap" disabled={busy || !message.trim()} onClick={runNotify}>Send notification</button>

@@ -1,9 +1,8 @@
-import { prisma, j, uj, getFunnel } from "@/lib/db";
+import { prisma, j, uj } from "@/lib/db";
 import { parseCv, scoreParsedCv, extractRequiredFromJd } from "@/lib/ai/parseCv";
 import { extractTextFromBuffer } from "@/lib/cv/extract";
 import { readCvFile } from "@/lib/cv/storage";
 import { createNotification } from "@/lib/notifications";
-import { automaticStageTransition, findStage } from "@/lib/engine/funnel";
 
 const MAX_RETRIES = 3;
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -54,13 +53,10 @@ export async function processCvJob(jobId: string) {
       preferredSkills: [],
       universityScoreOverride: configuredTier?.score,
     });
-    const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
-    const cvStage = funnel ? findStage(funnel, "CV_SCREENING") : null;
-    const threshold = cvStage?.passScore ?? app.drive.cvPassThreshold;
+    // CV screening belongs to the drive intake pool, not to a funnel. A PASS
+    // makes the candidate eligible for staff selection; it never advances them.
+    const threshold = app.drive.cvPassThreshold;
     const cvResult = cvScore >= threshold ? "PASS" : "FAIL";
-    const transition = funnel
-      ? automaticStageTransition(funnel, "CV_SCREENING", cvResult)
-      : { applicationStatus: "HOLD" as const, currentStage: "CV_SCREENING" as const, phaseReleased: false };
     const extracted = {
       ...submitted,
       ...hydrated,
@@ -81,16 +77,16 @@ export async function processCvJob(jobId: string) {
           cvScore,
           cvResult,
           extractedCv: j(extracted),
-          currentStage: transition.currentStage,
-          phaseReleased: transition.phaseReleased,
-          status: transition.applicationStatus,
+          currentStage: "CV_SCREENING",
+          phaseReleased: false,
+          status: "HOLD",
           stageHistory: j([
             ...(uj<any[]>(app.stageHistory || "[]")),
             {
               stage: "CV_SCREENING",
               status: cvResult,
               at: new Date().toISOString(),
-              note: `CV scored ${cvScore}/100 — automatic threshold ${threshold}: ${cvResult}${transition.nextStageName ? `; ${transition.nextStageName} released` : ""}`,
+              note: `CV scored ${cvScore}/100 against drive threshold ${threshold}: ${cvResult}; held in the drive applicant pool for staff selection`,
             },
           ]),
           scores: j({ ...(uj<Record<string, number>>(app.scores || "{}")), CV_SCREENING: cvScore }),
@@ -101,7 +97,7 @@ export async function processCvJob(jobId: string) {
         {
           userId: app.candidateId,
           type: "CV_SCORED",
-          message: `Your CV result is ${cvResult} (${cvScore}/100).${transition.nextStageName ? ` ${transition.nextStageName} is now available.` : ""}`,
+          message: `Your CV screening result is ${cvResult}. The recruitment team will contact you if you are selected for an assessment path.`,
           relatedAppId: app.id,
         },
         tx,

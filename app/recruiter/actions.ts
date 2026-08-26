@@ -25,7 +25,7 @@ import {
   type Funnel,
   type FunnelStage,
   type StageType,
-  automaticStageTransition,
+  firstAssessmentStage,
 } from "@/lib/engine/funnel";
 
 const AUTOMATIC_THRESHOLD_TYPES = new Set(["CV_SCREENING", "CCAT", "MTT"]);
@@ -46,40 +46,55 @@ function revalidateCandidateRoutes() {
   }
 }
 
-const DEFAULT_STAGES = (reviewerId?: string) => [
-  { id: "st-cv", type: "CV_SCREENING", name: "CV Screening", order: 1, passAction: "NEXT", failAction: "REJECT" },
-  { id: "st-ccat", type: "CCAT", name: "CCAT / IQ", order: 2, gradingMode: "AUTO", passScore: 55, durationMin: 15, passAction: "NEXT", failAction: "REJECT" },
-  { id: "st-mtt", type: "MTT", name: "Math Thinking Test", order: 3, gradingMode: "AUTO", passScore: 55, durationMin: 20, passAction: "NEXT", failAction: "REJECT" },
-  { id: "st-coding", type: "CODING", name: "Coding", order: 4, gradingMode: "MANUAL", passScore: 60, durationMin: 45, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
-  { id: "st-essay", type: "ESSAY", name: "Essay", order: 5, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
-  { id: "st-prompt", type: "PROMPT", name: "Prompt Engineering", order: 6, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
-  { id: "st-english", type: "ENGLISH_SPEAKING", name: "English Speaking", order: 7, gradingMode: "MANUAL", passScore: 60, durationMin: 5, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
-  { id: "st-games", type: "GAMES", name: "Games", order: 8, gradingMode: "AUTO", passAction: "NEXT", failAction: "NEXT" },
-  { id: "st-rat", type: "RAT", name: "Research Amplitude Test", order: 9, gradingMode: "MANUAL", passScore: 60, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
-  { id: "st-onsite", type: "ONSITE", name: "Onsite", order: 10, passAction: "NEXT", failAction: "REJECT" },
-  { id: "st-final", type: "FINAL", name: "Final Decision", order: 11 },
-];
-
-export async function assignCandidateFunnelAction(applicationId: string, formData: FormData) {
-  const user = await requireRole("recruiter", "admin");
+async function assignApplicationToFunnel(user: any, applicationId: string, funnelId: string) {
   const app = await requireManagedApplication(user, applicationId);
-  const funnelId = String(formData.get("funnelId") || "");
   const funnelRow = await prisma.funnel.findFirst({ where: { id: funnelId, driveId: app.driveId, published: true } });
   if (!funnelRow) return { error: "Select a published funnel for this drive." };
+  if (app.cvResult !== "PASS" && app.cvResult !== "FAIL") return { error: "Wait for CV screening to finish before assigning a funnel." };
   const nonCvResult = await prisma.assessmentResult.findFirst({ where: { applicationId, type: { not: "CV_SCREENING" } }, select: { id: true } });
   if (nonCvResult) return { error: "The funnel cannot be changed after assessments have started." };
   const funnel = await getFunnel(funnelId);
   if (!funnel) return { error: "Funnel not found." };
-  const transition = app.cvResult === "PASS" || app.cvResult === "FAIL"
-    ? automaticStageTransition(funnel, "CV_SCREENING", app.cvResult)
-    : { applicationStatus: "IN_PROGRESS" as const, currentStage: "CV_SCREENING" as StageType, phaseReleased: false, nextStageName: undefined };
+  const firstAssessment = firstAssessmentStage(funnel);
+  if (!firstAssessment) return { error: "This funnel has no assessment after CV screening." };
+  const reachingFinal = firstAssessment.type === "FINAL";
   await prisma.$transaction(async (tx) => {
-    await tx.application.update({ where: { id: applicationId }, data: { funnelId, funnelVersion: funnelRow.version, status: transition.applicationStatus, currentStage: transition.currentStage, phaseReleased: transition.phaseReleased } });
-    await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_ASSIGNED", meta: j({ applicationId, funnelId, version: funnelRow.version }) } });
-    await createNotification({ userId: app.candidateId, type: "APPLICATION_UPDATED", message: transition.nextStageName ? `${transition.nextStageName} is now available.` : "Your application setup has been updated.", relatedAppId: applicationId }, tx);
+    await tx.application.update({
+      where: { id: applicationId },
+      data: {
+        funnelId,
+        funnelVersion: funnelRow.version,
+        status: reachingFinal ? "HOLD" : "IN_PROGRESS",
+        currentStage: firstAssessment.type,
+        phaseReleased: !reachingFinal,
+        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${firstAssessment.name} ${reachingFinal ? "is pending" : "released"}` }]),
+      },
+    });
+    await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_ASSIGNED", meta: j({ applicationId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }) } });
+    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : `You were selected for ${funnelRow.name}. ${firstAssessment.name} is now available.`, relatedAppId: applicationId }, tx);
   });
-  revalidateCandidateRoutes();
   return { ok: true };
+}
+
+export async function assignCandidateFunnelAction(applicationId: string, formData: FormData) {
+  const user = await requireRole("recruiter", "admin");
+  const result = await assignApplicationToFunnel(user, applicationId, String(formData.get("funnelId") || ""));
+  revalidateCandidateRoutes();
+  return result;
+}
+
+export async function assignSelectedFunnelAction(applicationIds: string[], funnelId: string) {
+  const user = await requireRole("recruiter", "admin");
+  const ids = await managedApplicationIds(user, applicationIds);
+  let count = 0;
+  const errors: string[] = [];
+  for (const id of ids) {
+    const result = await assignApplicationToFunnel(user, id, funnelId);
+    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
+    else count += 1;
+  }
+  revalidateCandidateRoutes();
+  return errors.length ? { error: `${count} assigned. ${errors.join(" ")}`, count } : { ok: true, count };
 }
 
 export async function createDriveAction(formData: FormData) {
@@ -96,8 +111,6 @@ export async function createDriveAction(formData: FormData) {
   startOfToday.setHours(0, 0, 0, 0);
   if (deadline < startOfToday) return { error: "Deadline must be today or a future date." };
 
-  const reviewer = await prisma.user.findFirst({ where: { role: "reviewer" } });
-
   const drive = await prisma.drive.create({
     data: {
       name,
@@ -112,10 +125,6 @@ export async function createDriveAction(formData: FormData) {
       thresholdHistory: j([]),
       ownerId: user.id,
     },
-  });
-
-  await prisma.funnel.create({
-    data: { driveId: drive.id, version: 1, published: true, stages: j(DEFAULT_STAGES(reviewer?.id)) },
   });
 
   await prisma.auditLog.create({
@@ -189,7 +198,7 @@ export async function applyThresholdAction(driveId: string, proposed: number, cu
       if (!c.changed) continue;
       await tx.application.update({
         where: { id: c.id },
-        data: { cvResult: c.newResult, status: c.newResult === "PASS" ? "IN_PROGRESS" : "HOLD", phaseReleased: false },
+        data: { cvResult: c.newResult, status: "HOLD", phaseReleased: false },
       });
       const app = apps.find((a) => a.id === c.id)!;
       // Notification only when the candidate's actual result changed.
@@ -616,7 +625,7 @@ export async function applyPhaseThresholdAction(
     for (const c of changes) {
       if (!c.changed) continue;
       if (phaseType === "CV_SCREENING") {
-        await tx.application.update({ where: { id: c.id }, data: { cvResult: c.newResult, status: c.newResult === "PASS" ? "IN_PROGRESS" : "HOLD", phaseReleased: false } });
+        await tx.application.update({ where: { id: c.id }, data: { cvResult: c.newResult, status: "HOLD", phaseReleased: false } });
       } else {
         const ar = await tx.assessmentResult.findFirst({ where: { applicationId: c.id, type: phaseType }, orderBy: { createdAt: "desc" } });
         if (ar) await tx.assessmentResult.update({ where: { id: ar.id }, data: { status: c.newResult } });

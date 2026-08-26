@@ -34,6 +34,7 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       stageHistory: uj(app.stageHistory),
       extractedCv: uj(app.extractedCv),
       driveName: app.drive.name,
+      driveId: app.driveId,
       overallScore: overall.total,
       overallComplete: overall.complete,
     },

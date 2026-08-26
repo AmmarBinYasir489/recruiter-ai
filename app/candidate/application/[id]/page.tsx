@@ -67,6 +67,8 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
             <p className="text-sm font-medium text-rose-700">Your application was not selected. Please see the latest update below.</p>
           ) : app.status === "OFFERED" || app.status === "HIRED" ? (
             <p className="text-sm font-medium text-emerald-700">Congratulations — you have been selected. The recruitment team will contact you with the next details.</p>
+          ) : !app.funnelId && currentStage === "CV_SCREENING" ? (
+            <p className="text-sm font-medium text-slate-700">Your application review is complete. The recruitment team will contact you if you are selected for an assessment.</p>
           ) : currentStage === "FINAL" ? (
             <p className="text-sm font-medium text-amber-700">Your assessments are complete and your final decision is pending.</p>
           ) : (

@@ -108,14 +108,8 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
     expect(queued!.status).toBe("QUEUED");
     expect(queued!.storagePath).toContain(app!.id);
 
-    // Funnel selection is staff-only; candidates never receive the funnel
-    // list or control their own application path.
-    authState.user = { id: "qa-rec", role: "recruiter" };
-    const assigned = await assignCandidateFunnelAction(app!.id, fd({ funnelId: ctx.funnelA.id }));
-    expect((assigned as any).ok).toBe(true);
-
-    // Drain the queue; worker extracts, scores, applies the CV threshold, and
-    // releases the next enabled stage when the candidate passes.
+    // Drain the queue; worker extracts, scores, applies the DRIVE threshold,
+    // and leaves every applicant on hold until staff selects a funnel.
     await processDueCvJobs();
     let job = queued!;
     for (let i = 0; i < 30 && job.status === "QUEUED"; i++) {
@@ -126,8 +120,18 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
     expect((job.extractedText ?? "").length).toBeGreaterThan(0);
     const scored = await prisma.application.findUnique({ where: { id: app!.id } })!;
     expect(scored!.cvResult).toBe("PASS");
-    expect(scored!.currentStage).toBe("CCAT");
-    expect(scored!.phaseReleased).toBe(true);
+    expect(scored!.currentStage).toBe("CV_SCREENING");
+    expect(scored!.phaseReleased).toBe(false);
+    expect(scored!.status).toBe("HOLD");
+
+    // Funnel selection is staff-only and happens after CV screening. This
+    // deliberate action releases the funnel's first real assessment.
+    authState.user = { id: "qa-rec", role: "recruiter" };
+    const assigned = await assignCandidateFunnelAction(app!.id, fd({ funnelId: ctx.funnelA.id }));
+    expect((assigned as any).ok).toBe(true);
+    const released = await prisma.application.findUnique({ where: { id: app!.id } });
+    expect(released!.currentStage).toBe("CCAT");
+    expect(released!.phaseReleased).toBe(true);
   });
 
   it("unsupported file type does not crash (heuristic fallback)", async () => {

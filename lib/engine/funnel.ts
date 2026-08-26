@@ -108,6 +108,15 @@ export function nextEnabledStage(
   return stages[idx + 1];
 }
 
+// CV screening happens in the drive intake pool before funnel assignment.
+// When staff selects a funnel, release the first enabled post-CV stage (or the
+// first non-CV stage for a custom funnel that omits CV).
+export function firstAssessmentStage(funnel: Funnel): FunnelStage | undefined {
+  const stages = enabledStages(funnel);
+  const cvIndex = stages.findIndex((stage) => stage.type === "CV_SCREENING");
+  return (cvIndex >= 0 ? stages.slice(cvIndex + 1) : stages).find((stage) => stage.type !== "CV_SCREENING");
+}
+
 export interface AutomaticStageTransition {
   applicationStatus: "IN_PROGRESS" | "REJECTED" | "OFFERED" | "HOLD";
   currentStage: StageType;

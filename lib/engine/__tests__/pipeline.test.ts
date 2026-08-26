@@ -5,6 +5,7 @@ import {
   phaseThreshold,
   findStage,
   automaticStageTransition,
+  firstAssessmentStage,
   type Funnel,
   type FunnelStage,
 } from "../funnel";
@@ -42,6 +43,21 @@ describe("funnel configuration", () => {
     ]);
     const nx = nextEnabledStage(f, { type: "CV_SCREENING" });
     expect(nx?.type).toBe("CCAT");
+  });
+
+  it("releases the first post-CV assessment only after staff assigns a funnel", () => {
+    const f = funnel([
+      stage({ type: "CV_SCREENING", order: 1 }),
+      stage({ type: "CODING", order: 2, enabled: false }),
+      stage({ type: "CCAT", order: 3 }),
+      stage({ type: "FINAL", order: 4 }),
+    ]);
+    expect(firstAssessmentStage(f)?.type).toBe("CCAT");
+  });
+
+  it("supports custom funnels that omit the already-completed CV stage", () => {
+    const f = funnel([stage({ type: "MTT", order: 1 }), stage({ type: "FINAL", order: 2 })]);
+    expect(firstAssessmentStage(f)?.type).toBe("MTT");
   });
 
   it("per-phase thresholds are independent", () => {
