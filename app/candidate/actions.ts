@@ -13,6 +13,7 @@ import { summarizeAssessmentIntegrity, type AssessmentIntegrityEvent } from "@/l
 import { gradeSubjective } from "@/lib/ai/gradeSubjective";
 import { createNotification } from "@/lib/notifications";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
 import {
   ENGLISH_SPEAKING_MAX_BYTES,
   ENGLISH_SPEAKING_MAX_SECONDS,
@@ -50,17 +51,11 @@ async function readCvInput(formData: FormData): Promise<{ file?: { buf: Buffer; 
 
 export async function applyAction(driveId: string, formData: FormData) {
   const user = await requireRole("candidate");
-  const drive = await prisma.drive.findUnique({ where: { id: driveId }, include: { funnels: true } });
+  const drive = await prisma.drive.findUnique({ where: { id: driveId } });
   if (!drive || drive.status !== "OPEN") return { error: "Drive is not open for applications." };
 
   const dup = await prisma.application.findUnique({ where: { candidateId_driveId: { candidateId: user.id, driveId } } });
   if (dup) return { error: "You have already applied to this drive." };
-
-  const funnelId = String(formData.get("funnelId") || "");
-  const funnelRow = drive.funnels.find((f) => f.id === funnelId && f.published);
-  if (!funnelRow) return { error: "Select a valid application funnel." };
-  const funnel = await getFunnel(funnelRow.id);
-  if (!funnel) return { error: "Funnel not found." };
 
   const input = await readCvInput(formData);
   if (input.error || !input.file) return { error: input.error || "Provide a CV." };
@@ -92,8 +87,8 @@ export async function applyAction(driveId: string, formData: FormData) {
           id: applicationId,
           candidateId: user.id,
           driveId,
-          funnelId: funnelRow.id,
-          funnelVersion: funnel.version,
+          funnelId: null,
+          funnelVersion: 1,
           status: "IN_PROGRESS",
           cvScore: 0,
           cvResult: "PROCESSING",
@@ -115,7 +110,7 @@ export async function applyAction(driveId: string, formData: FormData) {
           attempts: 0,
         },
       });
-      await tx.auditLog.create({ data: { actorId: user.id, action: "APPLY", meta: j({ applicationId, driveId, funnelId: funnelRow.id }) } });
+      await tx.auditLog.create({ data: { actorId: user.id, action: "APPLY", meta: j({ applicationId, driveId, funnelId: null }) } });
       await createNotification({ userId: user.id, type: "APPLICATION_RECEIVED", message: "Your application was received and your CV is queued for screening.", relatedAppId: applicationId }, tx);
     });
   } catch (error) {
@@ -271,7 +266,8 @@ export async function submitAutoTestAction(applicationId: string, type: "CCAT" |
   const threshold = phaseThreshold(funnel, type);
   const integrity = readIntegrity(formData, chk.attempt);
 
-  const questions = await prisma.question.findMany({ where: { bank: type } });
+  const bankQuestions = await prisma.question.findMany({ where: { bank: type }, orderBy: { number: "asc" } });
+  const questions = selectAttemptQuestions(bankQuestions, chk.attempt.id, type);
   if (type === "CCAT") {
     const items: any[] = [];
     let correct = 0;
@@ -319,7 +315,8 @@ export async function submitSubjectiveAction(applicationId: string, type: string
   if (app.currentStage !== type || !app.phaseReleased) return { error: "This phase is not available yet." };
   const chk = await requireActiveAttempt(applicationId, type);
   if ("error" in chk) return { error: chk.error };
-  const questions = await prisma.question.findMany({ where: { bank: type }, orderBy: { number: "asc" } });
+  const bankQuestions = await prisma.question.findMany({ where: { bank: type }, orderBy: { number: "asc" } });
+  const questions = selectAttemptQuestions(bankQuestions, chk.attempt.id, type);
   let payload: any;
   if (questions.length > 0) {
     const items = questions.map((q) => {
@@ -385,9 +382,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await createNotification({
       userId: app.candidateId,
       type: "SUBMISSION_RECEIVED",
-      message: aiScored
-        ? `Your ${type} submission is awaiting human review. An AI-assisted score (${aiScore ?? 0}/100) is available to the reviewer.`
-        : `Your ${type} submission was received and is awaiting review.`,
+      message: `Your ${type} submission was received and is awaiting review.`,
       relatedAppId: app.id,
     }, tx);
     await tx.auditLog.create({ data: { actorId: user.id, action: "AI_REVIEW_AID", meta: j({ applicationId, type, outcome: aiScored ? "SCORED" : "FALLBACK_TO_HUMAN", normalized: aiScore }) } });
@@ -539,7 +534,7 @@ async function storeResult(
       type: "SCORE_READY",
       message: isAutomatic
         ? `Your ${type} result is ${decision} (${normalized}/100).${transition?.nextStageName ? ` ${transition.nextStageName} is now available.` : ""}`
-        : `Your ${type} result is ready (${normalized}/100). The recruitment team will review it and notify you about the next step.`,
+        : `Your ${type} assessment was submitted. The recruitment team will review it and notify you about the next step.`,
       relatedAppId: app.id,
     }, tx);
   });

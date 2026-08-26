@@ -27,6 +27,7 @@ import {
   issueNextPhaseAction,
   requestRetestAction,
   manualPassAction,
+  assignCandidateFunnelAction,
 } from "@/app/recruiter/actions";
 import { gradeAssessmentAction } from "@/app/reviewer/actions";
 import { summarizeAssessmentIntegrity } from "@/lib/integrity";
@@ -95,17 +96,23 @@ afterAll(async () => {
 describe("1. Apply + async CV processing + gating + duplicate", () => {
   it("uploads CV, enqueues CvJob, then worker scores it (async pipeline)", async () => {
     authState.user = { id: "c1", role: "candidate" };
-    const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", "LUMS computer science python machine learning data structures"), fullName: "C1", email: "c1@portal.com" })));
+    const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", "LUMS university computer science GPA: 4.0/4.0 python machine learning data structures 3 years experience 3 projects"), fullName: "C1", email: "c1@portal.com" })));
     expect(res).toEqual({ __redirected: true } as any);
     const app = await prisma.application.findFirst({ where: { candidateId: "c1", driveId: ctx.driveA.id } });
     expect(app).toBeTruthy();
-    expect(app!.funnelId).toBe(ctx.funnelA.id);
+    expect(app!.funnelId).toBeNull();
     // Immediately after apply the CV is queued, not yet scored.
     expect(app!.cvResult).toBe("PROCESSING");
     expect(app!.phaseReleased).toBe(false);
     const queued = await prisma.cvJob.findFirst({ where: { applicationId: app!.id } });
     expect(queued!.status).toBe("QUEUED");
     expect(queued!.storagePath).toContain(app!.id);
+
+    // Funnel selection is staff-only; candidates never receive the funnel
+    // list or control their own application path.
+    authState.user = { id: "qa-rec", role: "recruiter" };
+    const assigned = await assignCandidateFunnelAction(app!.id, fd({ funnelId: ctx.funnelA.id }));
+    expect((assigned as any).ok).toBe(true);
 
     // Drain the queue; worker extracts, scores, applies the CV threshold, and
     // releases the next enabled stage when the candidate passes.

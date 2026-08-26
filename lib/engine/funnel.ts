@@ -85,7 +85,7 @@ export function findStage(funnel: Funnel, type?: string | null, id?: string): Fu
 // Only stages that are enabled (default true) are part of the journey.
 export function enabledStages(funnel: Funnel): FunnelStage[] {
   return funnel.stages
-    .filter((s) => s.enabled !== false)
+    .filter((s) => s.enabled !== false && s.type !== "MANUAL_REVIEW")
     .slice()
     .sort((a, b) => a.order - b.order);
 }
@@ -150,6 +150,9 @@ export function automaticStageTransition(
   }
   const next = nextEnabledStage(funnel, { id: stage.id });
   if (next) {
+    if (next.type === "FINAL") {
+      return { applicationStatus: "HOLD", currentStage: "FINAL", phaseReleased: false, nextStageName: next.name };
+    }
     return { applicationStatus: "IN_PROGRESS", currentStage: next.type, phaseReleased: true, nextStageName: next.name };
   }
   return { applicationStatus: "HOLD", currentStage: stageType, phaseReleased: false };

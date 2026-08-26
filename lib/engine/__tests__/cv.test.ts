@@ -72,8 +72,18 @@ describe("CV score + threshold", () => {
       other: 60,
     };
     const score = computeCvScore(comp);
-    expect(score).toBeGreaterThan(0);
-    expect(score).toBeLessThanOrEqual(100);
+    expect(score).toBe(83);
+  });
+
+  it("does not clamp a low weighted result to 100", () => {
+    expect(computeCvScore({
+      academics: 40,
+      universityDegree: 0,
+      skills: 30,
+      projects: 0,
+      experience: 0,
+      other: 50,
+    })).toBe(18);
   });
 
   it("single threshold: >= threshold => PASS", () => {

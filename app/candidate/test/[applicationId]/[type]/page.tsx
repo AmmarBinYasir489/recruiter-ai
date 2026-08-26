@@ -14,6 +14,8 @@ import { WordCountTextarea } from "@/components/WordCountTextarea";
 import { GamesAssessment } from "@/components/games/GamesAssessment";
 import { EnglishSpeakingAssessment } from "@/components/EnglishSpeakingAssessment";
 import { ENGLISH_SPEAKING_MAX_SECONDS, ENGLISH_SPEAKING_MIN_SECONDS, ENGLISH_SPEAKING_QUESTIONS } from "@/lib/englishSpeaking";
+import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
+import { CcatAssessment } from "@/components/assessment/CcatAssessment";
 
 export const dynamic = "force-dynamic";
 
@@ -23,9 +25,9 @@ const STAGE_LABEL: Record<string, string> = {
   ENGLISH_SPEAKING: "English Speaking",
 };
 
-async function getBank(bank: string) {
+async function getBank(bank: string, attemptId: string) {
   const qs = await prisma.question.findMany({ where: { bank }, orderBy: { number: "asc" } });
-  return qs.map((q) => ({ number: q.number, ...uj<any>(q.content) }));
+  return selectAttemptQuestions(qs, attemptId, bank).map((q) => ({ number: q.number, ...uj<any>(q.content) }));
 }
 
 export default async function TestPage({ params: paramsPromise }: { params: Promise<{ applicationId: string; type: string }> }) {
@@ -103,10 +105,10 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
       ) : (
         <>
           <Countdown deadlineAt={attempt.deadlineAt ? new Date(attempt.deadlineAt).toISOString() : null} applicationId={applicationId} />
-          {type === "CCAT" && <CcatForm applicationId={applicationId} attemptId={attempt.id} questions={await getBank("CCAT")} />}
-          {type === "MTT" && <MttForm applicationId={applicationId} attemptId={attempt.id} questions={await getBank("MTT")} />}
+          {type === "CCAT" && <CcatAssessment applicationId={applicationId} attemptId={attempt.id} questions={(await getBank("CCAT", attempt.id)).map((q) => ({ number: q.number, text: q.text, options: q.options, imageUrl: q.imageUrl, localImagePath: q.localImagePath }))} />}
+          {type === "MTT" && <MttForm applicationId={applicationId} attemptId={attempt.id} questions={await getBank("MTT", attempt.id)} />}
           {(type === "ESSAY" || type === "CODING" || type === "PROMPT") && (
-            <SubjectiveForm applicationId={applicationId} attemptId={attempt.id} type={type} questions={await getBank(type)} />
+            <SubjectiveForm applicationId={applicationId} attemptId={attempt.id} type={type} questions={await getBank(type, attempt.id)} />
           )}
           {type === "GAMES" && <GameForm applicationId={applicationId} attemptId={attempt.id} />}
           {type === "ENGLISH_SPEAKING" && (
@@ -121,32 +123,6 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
         </>
       )}
     </div>
-  );
-}
-
-function CcatForm({ applicationId, attemptId, questions }: { applicationId: string; attemptId: string; questions: any[] }) {
-  return (
-    <form action={submitAutoTestAction.bind(null, applicationId, "CCAT")}>
-      <ProctorMonitor stage="CCAT" applicationId={applicationId} attemptId={attemptId} />
-      <Card className="space-y-4">
-        {questions.map((q, i) => (
-          <div key={q.number} className="border-b border-slate-100 pb-3 last:border-0">
-            <p className="text-sm font-medium mb-2">{i + 1}. {q.text}</p>
-            {(q.localImagePath || q.imageUrl) && (
-              <img src={q.localImagePath || q.imageUrl} alt={`Question ${i + 1} diagram`} className="mb-3 max-h-72 w-auto rounded-lg border border-slate-200 object-contain" />
-            )}
-            <div className="space-y-1">
-              {q.options.map((opt: string, oi: number) => (
-                <label key={oi} className="flex items-center gap-2 text-sm">
-                  <input type="radio" name={`a${q.number}`} value={oi} required /> {opt}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
-        <button className="btn-primary">Submit CCAT</button>
-      </Card>
-    </form>
   );
 }
 

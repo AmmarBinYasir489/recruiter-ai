@@ -3,7 +3,7 @@ import { join } from "path";
 import { prisma } from "../../lib/db";
 
 const CV = join(__dirname, "fixtures", "sample-cv.txt");
-const PW = "password123";
+const PW = "password1234";
 
 async function login(page: Page, email: string) {
   await page.goto("/login");

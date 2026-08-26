@@ -7,9 +7,14 @@ export async function extractTextFromBuffer(buf: Buffer, fileName: string, mime:
   const lower = fileName.toLowerCase();
   try {
     if (lower.endsWith(".pdf") || mime === "application/pdf") {
-      const pdf = (await import("pdf-parse")).default as any;
-      const out = await pdf(buf);
-      return (out?.text as string) || "";
+      const { PDFParse } = await import("pdf-parse");
+      const parser = new PDFParse({ data: buf });
+      try {
+        const out = await parser.getText();
+        return out.text || "";
+      } finally {
+        await parser.destroy();
+      }
     }
     if (lower.endsWith(".docx") || mime.includes("officedocument.wordprocessingml")) {
       const mammoth = (await import("mammoth")).default as any;

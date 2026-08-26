@@ -14,13 +14,12 @@ const AVAILABLE = [
   { type: "ESSAY", name: "Essay", def: 60 },
   { type: "PROMPT", name: "Prompt Engineering", def: 65 },
   { type: "ENGLISH_SPEAKING", name: "English Speaking", def: 60 },
-  { type: "MANUAL_REVIEW", name: "Manual Review", def: 0 },
   { type: "ONSITE", name: "Onsite", def: 70 },
   { type: "FINAL", name: "Final Decision", def: 0 },
 ] as const;
 
 const AUTOMATIC_TYPES = new Set(["CV_SCREENING", "CCAT", "MTT"]);
-const MANUAL_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLISH_SPEAKING", "MANUAL_REVIEW"]);
+const MANUAL_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLISH_SPEAKING"]);
 
 interface Row {
   type: string;
@@ -40,7 +39,7 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
     AVAILABLE.map((a) => ({
       type: a.type,
       name: a.name,
-      enabled: a.type === "CV_SCREENING",
+      enabled: a.type === "CV_SCREENING" || a.type === "FINAL",
       passScore: a.def,
       durationMin: a.type === "CV_SCREENING" ? 0 : 20,
       gradingMode: AUTOMATIC_TYPES.has(a.type) ? "AUTO" : MANUAL_TYPES.has(a.type) ? "MANUAL" : "AUTO",
@@ -103,10 +102,10 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
         <Card key={r.type} className={r.enabled ? "" : "opacity-60"}>
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 font-semibold text-ink-900">
-              <input type="checkbox" checked={r.enabled} onChange={(e) => update(i, { enabled: e.target.checked })} />
+              <input type="checkbox" checked={r.enabled} disabled={r.type === "CV_SCREENING" || r.type === "FINAL"} onChange={(e) => update(i, { enabled: e.target.checked })} />
               {r.name} <span className="text-xs text-slate-400">{r.type}</span>
             </label>
-            {r.type !== "CV_SCREENING" && r.type !== "FINAL" && r.type !== "MANUAL_REVIEW" && (
+            {r.type !== "CV_SCREENING" && r.type !== "FINAL" && (
               <div className="flex items-center gap-2 text-xs">
                 <span>Pass ≥</span>
                 <input type="number" className="input w-20" value={r.passScore} onChange={(e) => update(i, { passScore: Number(e.target.value) })} />

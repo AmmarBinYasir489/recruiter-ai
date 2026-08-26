@@ -1,4 +1,4 @@
-import { prisma, uj } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, LinkButton } from "@/components/ui";
 import { applyAction } from "@/app/candidate/actions";
@@ -9,7 +9,7 @@ export default async function ApplyPage({ params: paramsPromise }: { params: Pro
   const params = await paramsPromise;
   const user = await getCurrentUser();
   if (!user || user.role !== "candidate") return null;
-  const drive = await prisma.drive.findUnique({ where: { id: params.driveId }, include: { funnels: true } });
+  const drive = await prisma.drive.findUnique({ where: { id: params.driveId } });
   if (!drive) return <Card>Drive not found.</Card>;
 
   const existing = await prisma.application.findFirst({ where: { candidateId: user.id, driveId: drive.id } });
@@ -22,8 +22,6 @@ export default async function ApplyPage({ params: paramsPromise }: { params: Pro
     );
   }
 
-  const funnels = drive.funnels.filter((f) => f.published);
-
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-ink-900">{drive.name}</h1>
@@ -31,20 +29,6 @@ export default async function ApplyPage({ params: paramsPromise }: { params: Pro
 
       <Card>
         <form action={applyAction.bind(null, drive.id)} className="space-y-4">
-          {funnels.length > 0 && (
-            <div>
-              <label className="label">Choose application path</label>
-              <div className="space-y-2 mt-1">
-                {funnels.map((f, i) => (
-                  <label key={f.id} className="flex items-center gap-3 border border-slate-200 rounded-lg px-3 py-2 cursor-pointer">
-                    <input type="radio" name="funnelId" value={f.id} defaultChecked={i === 0} required />
-                    <span className="font-semibold text-ink-900">Funnel v{f.version}</span>
-                    <span className="text-xs text-slate-400">{(uj<any[]>(f.stages) || []).filter((stage) => stage.enabled !== false).length} stages</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
               <label className="label" htmlFor="application-name">Full name</label>
@@ -80,11 +64,9 @@ export default async function ApplyPage({ params: paramsPromise }: { params: Pro
             <textarea id="application-screening" name="screening" autoComplete="off" className="input" rows={3} />
           </div>
           <div>
-            <label className="label" htmlFor="application-cv">CV — upload PDF / DOC / DOCX, or paste text</label>
-            <input id="application-cv" type="file" name="cvFile" accept=".pdf,.doc,.docx,.txt" aria-describedby="application-cv-help" className="input" />
+            <label className="label" htmlFor="application-cv">CV — upload PDF / DOC / DOCX</label>
+            <input id="application-cv" type="file" name="cvFile" accept=".pdf,.doc,.docx" aria-describedby="application-cv-help" className="input" required />
             <p id="application-cv-help" className="text-xs text-slate-400 mt-1">Maximum 10 MB. Files are stored privately and parsed server-side.</p>
-            <label className="sr-only" htmlFor="application-cv-text">Paste CV text</label>
-            <textarea id="application-cv-text" name="cvText" autoComplete="off" className="input font-mono text-xs mt-2" rows={8} placeholder="…or paste your CV text here as a fallback." />
           </div>
           <button type="submit" className="btn-primary w-full">Submit application</button>
         </form>

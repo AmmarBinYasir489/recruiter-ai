@@ -15,6 +15,27 @@ export interface LeaderboardRow {
   hasScores: boolean;
 }
 
+export function computeApplicationTotal(scoresValue: unknown, weightsValue: unknown): { total: number; complete: boolean } {
+  const readMap = (value: unknown): Record<string, number> => {
+    if (value && typeof value === "object") return value as Record<string, number>;
+    return uj<Record<string, number>>(typeof value === "string" ? value : null) || {};
+  };
+  const weights = { ...TCI_DEFAULT_WEIGHTS, ...readMap(weightsValue) };
+  const scores = readMap(scoresValue);
+  const stageTypes = Object.keys(weights).filter((type) => Number(weights[type]) > 0);
+  const components = stageTypes.map((type) => ({
+    type: type as TciComponent["type"],
+    label: type,
+    score: Number.isFinite(Number(scores[type])) ? Number(scores[type]) : 0,
+    weight: Number(weights[type]),
+    enabled: true,
+  }));
+  return {
+    total: computeTci(components),
+    complete: stageTypes.length > 0 && stageTypes.every((type) => Number.isFinite(Number(scores[type]))),
+  };
+}
+
 // Weighted final score (TCI) for every application in a drive.
 // Components come from each application's score map keyed by stage type,
 // using the drive's tciWeights (falling back to TCI_DEFAULT_WEIGHTS).
@@ -32,6 +53,7 @@ export function buildLeaderboard(
   return applications
     .map((app) => {
       const scores = uj<Record<string, number>>(app.scores) || {};
+      const overall = computeApplicationTotal(app.scores, drive.tciWeights);
       let hasScores = false;
       const components = stageTypes.map((type) => {
         const raw = Number(scores[type] ?? 0);
@@ -47,7 +69,7 @@ export function buildLeaderboard(
         currentStage: app.currentStage,
         scores: stageTypes.reduce<Record<string, number>>((m, t) => ((m[t] = scores[t] ?? 0), m), {}),
         weights,
-        total: computeTci(components),
+        total: overall.total,
         hasScores: hasScores && app.status !== "DRAFT",
       } as LeaderboardRow;
     })

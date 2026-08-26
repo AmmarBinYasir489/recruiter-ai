@@ -27,35 +27,49 @@ export async function processCvJob(jobId: string) {
     const buf = await readCvFile(job.storagePath);
     const text = await extractTextFromBuffer(buf, job.fileName, job.fileType);
     const app = job.application;
+    const submitted = uj<Record<string, any>>(app.extractedCv) || {};
     const required = extractRequiredFromJd(app.drive.jobDescription);
-    const parsed = await parseCv(text, required, []);
+    const fallbackText = [submitted.name, submitted.email, submitted.phone, submitted.university, submitted.degree, submitted.screening]
+      .filter(Boolean)
+      .join("\n");
+    const parsed = await parseCv(text.trim() || fallbackText, required, []);
+    const hydrated = {
+      ...parsed,
+      name: parsed.name || submitted.name,
+      email: parsed.email || submitted.email,
+      phone: parsed.phone || submitted.phone,
+      university: parsed.university || submitted.university,
+      degree: parsed.degree || submitted.degree,
+      gradYear: parsed.gradYear || submitted.gradYear,
+      gpa: parsed.gpa ?? submitted.gpa,
+    };
     const configuredTiers = await prisma.universityTier.findMany();
-    const university = (parsed.university || "").toLowerCase();
+    const university = (hydrated.university || "").toLowerCase();
     const configuredTier = university ? configuredTiers.find((tier) => {
       const name = tier.name.toLowerCase();
       return university === name || university.includes(name) || name.includes(university);
     }) : undefined;
-    const { components, cvScore } = scoreParsedCv(parsed, {
+    const { components, cvScore } = scoreParsedCv(hydrated, {
       requiredSkills: required,
       preferredSkills: [],
       universityScoreOverride: configuredTier?.score,
     });
-    const submitted = uj<Record<string, unknown>>(app.extractedCv) || {};
     const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
     const cvStage = funnel ? findStage(funnel, "CV_SCREENING") : null;
     const threshold = cvStage?.passScore ?? app.drive.cvPassThreshold;
     const cvResult = cvScore >= threshold ? "PASS" : "FAIL";
     const transition = funnel
       ? automaticStageTransition(funnel, "CV_SCREENING", cvResult)
-      : { applicationStatus: cvResult === "PASS" ? "HOLD" as const : "REJECTED" as const, currentStage: "CV_SCREENING" as const, phaseReleased: false };
+      : { applicationStatus: "HOLD" as const, currentStage: "CV_SCREENING" as const, phaseReleased: false };
     const extracted = {
       ...submitted,
-      ...parsed,
+      ...hydrated,
       components,
       cvScore,
       requiredSkills: required,
-      matched: parsed.matchedSkills,
-      missing: parsed.missingSkills,
+      matched: hydrated.matchedSkills,
+      missing: hydrated.missingSkills,
+      extractionState: text.trim() ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK",
       scoringState: "AUTOMATIC_THRESHOLD_APPLIED",
       threshold,
     };

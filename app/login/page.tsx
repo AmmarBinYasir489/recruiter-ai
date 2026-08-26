@@ -26,7 +26,7 @@ export default function LoginPage() {
           </form>
           {process.env.NODE_ENV !== "production" && (
             <div className="mt-4 text-xs text-slate-400 leading-relaxed">
-              Local demo accounts (password: <code>password123</code>):
+              Local demo accounts (password: <code>password1234</code>):
               <br />
               admin@portal.com · recruiter@portal.com · reviewer@portal.com · candidate1@portal.com
             </div>

@@ -15,7 +15,7 @@ export async function getCandidateRecords(driveId?: string): Promise<CandidateRe
     const ccat = scores.CCAT;
     const mtt = scores.MTT;
     const latestGame = a.results.find((result) => result.type === "GAMES");
-    const latestManual = a.results.find((result) => ["CODING", "ESSAY", "PROMPT", "RAT", "MANUAL_REVIEW"].includes(result.type));
+    const latestManual = a.results.find((result) => ["CODING", "ESSAY", "PROMPT", "RAT", "ENGLISH_SPEAKING"].includes(result.type));
     const onsite = a.onsiteInvites[0];
     return {
       id: a.id,

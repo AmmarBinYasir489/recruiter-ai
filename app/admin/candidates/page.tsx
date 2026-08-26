@@ -104,7 +104,7 @@ export default async function AdminCandidatesPage({ searchParams: searchParamsPr
               <label className="label">Current stage</label>
               <select name="stage" className="input" defaultValue={str(searchParams.stage) || ""}>
                 <option value="">Any</option>
-                {["CV_SCREENING", "CCAT", "MTT", "CODING", "ESSAY", "PROMPT", "GAMES", "MANUAL_REVIEW", "ONSITE", "FINAL"].map((s) => <option key={s} value={s}>{s}</option>)}
+                {["CV_SCREENING", "CCAT", "MTT", "CODING", "ESSAY", "PROMPT", "GAMES", "ONSITE", "FINAL"].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div><label className="label">University contains</label><input name="university" aria-label="University contains" className="input" defaultValue={str(searchParams.university) || ""} placeholder="e.g. NUST" /></div>

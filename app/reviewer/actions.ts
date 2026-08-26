@@ -62,7 +62,7 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
     await createNotification({
       userId: app.candidateId,
       type: "GRADE",
-      message: `Your ${result.type} was graded: ${normalized}/100. The recruitment team will apply the threshold and notify you about the next step.`,
+      message: `Your ${result.type} assessment review is complete. The recruitment team will notify you about the next step.`,
       relatedAppId: app.id,
     }, tx);
     await tx.auditLog.create({ data: { actorId: user.id, action: "GRADE", meta: j({ resultId, type: result.type, normalized, status }) } });

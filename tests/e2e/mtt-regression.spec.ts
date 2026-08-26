@@ -1,7 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { prisma } from "../../lib/db";
 
-const PW = "password123";
+const PW = "password1234";
 let appId: string;
 
 async function login(page: Page, email: string) {

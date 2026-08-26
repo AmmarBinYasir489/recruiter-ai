@@ -3,8 +3,8 @@
 // per-question score (0..maxPoints) and brief feedback, and the final 0-100
 // normalized score is the sum of question scores divided by the sum of maxes.
 // Reuses the same provider configuration as parseCv.ts (Gemini -> Groq).
-// Returns null when no API key is configured or the call fails, so callers can
-// fall back to manual reviewer grading.
+// Errors are surfaced to the caller so the reviewer sees a useful diagnostic;
+// the caller still falls back to manual grading and never auto-advances.
 
 import { getAiRuntimeConfig } from "@/lib/ai/config";
 
@@ -58,9 +58,9 @@ Return ONLY a JSON object of this exact shape:
 { "scores": { ${keys} } }`;
 }
 
-async function callAiText(prompt: string, timeoutMs = 25000): Promise<string | null> {
+async function callAiText(prompt: string, timeoutMs = 25000): Promise<string> {
   const { provider, apiKey, model } = await getAiRuntimeConfig();
-  if (!apiKey) return null;
+  if (!apiKey) throw new Error("No AI provider key is configured");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -75,7 +75,10 @@ async function callAiText(prompt: string, timeoutMs = 25000): Promise<string | n
         },
       );
       const data = await res.json();
-      return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+      if (!res.ok) throw new Error(`Gemini grading failed (${res.status}): ${String(data?.error?.message || "provider error").slice(0, 180)}`);
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error("Gemini returned no grading content");
+      return text;
     }
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -88,9 +91,10 @@ async function callAiText(prompt: string, timeoutMs = 25000): Promise<string | n
       signal: controller.signal,
     });
     const data = await res.json();
-    return data?.choices?.[0]?.message?.content || null;
-  } catch {
-    return null;
+    if (!res.ok) throw new Error(`Groq grading failed (${res.status}): ${String(data?.error?.message || "provider error").slice(0, 180)}`);
+    const text = data?.choices?.[0]?.message?.content;
+    if (!text) throw new Error("Groq returned no grading content");
+    return text;
   } finally {
     clearTimeout(timer);
   }
@@ -99,10 +103,9 @@ async function callAiText(prompt: string, timeoutMs = 25000): Promise<string | n
 export async function gradeSubjective(type: string, items: GradingItem[]): Promise<SubjectiveGrade | null> {
   if (!items.length) return null;
   const text = await callAiText(buildPrompt(type, items));
-  if (!text) return null;
   try {
     const json = text.match(/\{[\s\S]*\}/)?.[0];
-    if (!json) return null;
+    if (!json) throw new Error("AI grader returned invalid JSON");
     const parsed = JSON.parse(json);
     const scoresObj = parsed?.scores || {};
     const questions: QuestionGrade[] = [];
@@ -118,7 +121,7 @@ export async function gradeSubjective(type: string, items: GradingItem[]): Promi
     }
     const normalized = maxTotal ? Math.round((total / maxTotal) * 100) : 0;
     return { questions, normalized };
-  } catch {
-    return null;
+  } catch (error) {
+    throw new Error(error instanceof Error ? `AI grading response could not be parsed: ${error.message}` : "AI grading response could not be parsed");
   }
 }

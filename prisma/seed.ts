@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { TIER1, TIER2, TIER3, TIER_SCORE } from "../lib/engine/tiers";
 import { j } from "../lib/db";
+import { computeCvScore, cvComponents } from "../lib/engine/cv";
 import fs from "fs";
 import path from "path";
 
@@ -17,7 +18,7 @@ async function main() {
   console.log("Seeding clean recruitment-portal...");
 
   // ---- Users ----
-  const seedPassword = process.env.PORTAL_SEED_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "password123");
+  const seedPassword = process.env.PORTAL_SEED_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "password1234");
   if (seedPassword.length < 12) throw new Error("Set PORTAL_SEED_PASSWORD to at least 12 characters before production seeding.");
   const pw = await bcrypt.hash(seedPassword, 10);
   const admin = await prisma.user.upsert({
@@ -174,14 +175,13 @@ async function main() {
     { id: "st-cv", type: "CV_SCREENING", name: "CV Screening", order: 1, passAction: "NEXT", failAction: "REJECT" },
     { id: "st-ccat", type: "CCAT", name: "CCAT / IQ", order: 2, gradingMode: "AUTO", passScore: 55, durationMin: 15, passAction: "NEXT", failAction: "REJECT" },
     { id: "st-mtt", type: "MTT", name: "Math Thinking Test", order: 3, gradingMode: "AUTO", passScore: 55, durationMin: 20, passAction: "NEXT", failAction: "REJECT" },
-    { id: "st-coding", type: "CODING", name: "Coding", order: 4, gradingMode: "MANUAL", passScore: 60, durationMin: 45, assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-    { id: "st-essay", type: "ESSAY", name: "Essay", order: 5, gradingMode: "MANUAL", assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-    { id: "st-prompt", type: "PROMPT", name: "Prompt Engineering", order: 6, gradingMode: "MANUAL", assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-    { id: "st-english", type: "ENGLISH_SPEAKING", name: "English Speaking", order: 7, gradingMode: "MANUAL", passScore: 60, durationMin: 5, assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
+    { id: "st-coding", type: "CODING", name: "Coding", order: 4, gradingMode: "MANUAL", passScore: 60, durationMin: 45, assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "HOLD" },
+    { id: "st-essay", type: "ESSAY", name: "Essay", order: 5, gradingMode: "MANUAL", assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "HOLD" },
+    { id: "st-prompt", type: "PROMPT", name: "Prompt Engineering", order: 6, gradingMode: "MANUAL", assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "HOLD" },
+    { id: "st-english", type: "ENGLISH_SPEAKING", name: "English Speaking", order: 7, gradingMode: "MANUAL", passScore: 60, durationMin: 5, assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "HOLD" },
     { id: "st-games", type: "GAMES", name: "Games", order: 8, gradingMode: "AUTO", passAction: "NEXT", failAction: "NEXT" },
-    { id: "st-review", type: "MANUAL_REVIEW", name: "Manual Review", order: 9, gradingMode: "MANUAL", assignedReviewers: [reviewerId], passAction: "NEXT", failAction: "HOLD" },
-    { id: "st-onsite", type: "ONSITE", name: "Onsite", order: 10, passAction: "OFFER", failAction: "REJECT" },
-    { id: "st-final", type: "FINAL", name: "Final Decision", order: 11 },
+    { id: "st-onsite", type: "ONSITE", name: "Onsite", order: 9, passAction: "NEXT", failAction: "REJECT" },
+    { id: "st-final", type: "FINAL", name: "Final Decision", order: 10 },
   ];
 
   if (!(await prisma.funnel.findFirst({ where: { driveId: drive1.id } }))) {
@@ -195,13 +195,26 @@ async function main() {
   const drive1Funnel = await prisma.funnel.findFirst({ where: { driveId: drive1.id }, orderBy: { version: "desc" } });
   const existingApp = await prisma.application.findFirst({ where: { candidateId: c1.id, driveId: drive1.id } });
   if (!existingApp) {
+    const components = cvComponents({
+      cgpa: 3.6,
+      university: "LUMS",
+      degree: "Computer Science",
+      requiredSkills: ["python", "pytorch", "nlp"],
+      preferredSkills: ["machine learning"],
+      candidateSkills: ["python", "pytorch", "nlp", "machine learning"],
+      projects: 80,
+      experience: 40,
+      other: 50,
+    });
+    const cvScore = computeCvScore(components);
     const parsed = {
       name: "Carol Candidate", email: "candidate1@portal.com", phone: "+92 300 1112222",
       university: "LUMS", degree: "Computer Science", gradYear: 2026, gpa: 3.6, gpaScale: 4,
       skills: ["python", "pytorch", "nlp", "machine learning"], experienceYears: 2, projects: 4,
       summary: "AI Engineer candidate with ML and Python experience.",
+      components,
+      cvScore,
     };
-    const cvScore = 78;
     const app = await prisma.application.create({
       data: {
         candidateId: c1.id,

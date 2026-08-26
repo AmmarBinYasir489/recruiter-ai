@@ -2,6 +2,7 @@ import Link from "next/link";
 import { prisma, uj } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, SectionTitle, decisionBadge, LinkButton, EmptyState } from "@/components/ui";
+import { computeApplicationTotal } from "@/lib/engine/leaderboard";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function ReviewerSubmissions() {
                 <div>
                   <h3 className="font-bold text-ink-900">{r.application.candidate.name}</h3>
                   <p className="text-sm text-slate-500">{r.type} · {r.application.drive.name}</p>
+                  <p className="mt-1 text-xs font-semibold text-brand-700">Overall: {computeApplicationTotal(r.application.scores, r.application.drive.tciWeights).total}/100</p>
                 </div>
                 {decisionBadge(r.status)}
               </Link>

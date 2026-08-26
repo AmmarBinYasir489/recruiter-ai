@@ -52,9 +52,9 @@ export function ProctorMonitor({
 
   useEffect(() => {
     const onVisibility = () => { if (document.hidden) logEvent("TAB_SWITCH"); };
-    const onCopy = () => { logEvent("COPY"); };
-    const onPaste = () => { logEvent("PASTE"); };
-    const onContextMenu = () => { logEvent("RIGHT_CLICK"); };
+    const onCopy = (event: ClipboardEvent) => { event.preventDefault(); logEvent("COPY"); };
+    const onPaste = (event: ClipboardEvent) => { event.preventDefault(); logEvent("PASTE"); };
+    const onContextMenu = (event: MouseEvent) => { event.preventDefault(); logEvent("RIGHT_CLICK"); };
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("copy", onCopy);
     document.addEventListener("paste", onPaste);
@@ -156,7 +156,7 @@ export function ProctorMonitor({
             <p className="text-xs font-semibold uppercase tracking-wider text-brand-600">Secure assessment</p>
             <h2 id="fullscreen-title" className="mt-1 text-2xl font-bold text-ink-900">Continue in fullscreen</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              Fullscreen keeps the assessment focused. Leaving fullscreen, changing tabs, copying, pasting, and right-clicking are recorded for the reviewer.
+              Fullscreen keeps the assessment focused. Leaving fullscreen and changing tabs are recorded. Copy, paste, and right-click are disabled during the assessment.
             </p>
             <button type="button" onClick={enterFullscreen} className="btn-primary mt-6 w-full">
               Enter fullscreen

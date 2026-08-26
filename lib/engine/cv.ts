@@ -126,8 +126,9 @@ export function computeCvScore(components: CvComponentScores): number {
     components.projects * CV_RUBRIC.projects +
     components.experience * CV_RUBRIC.experience +
     components.other * CV_RUBRIC.other;
-  // weights sum to 100, so total is already the 0-100 score.
-  return Math.round(clamp(total));
+  // Components and weights are both percentages, so divide weighted points by
+  // 100 before clamping to the public 0-100 scale.
+  return Math.round(clamp(total / 100));
 }
 
 // Single-threshold decision: score >= cvPassThreshold => PASS else FAIL.

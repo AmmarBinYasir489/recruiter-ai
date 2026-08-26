@@ -3,6 +3,7 @@ import { Card, SectionTitle, LinkButton } from "@/components/ui";
 import { gradeAssessmentAction } from "@/app/reviewer/actions";
 import { requireRole } from "@/lib/auth";
 import { reviewerCanGrade } from "@/lib/reviewerAccess";
+import { computeApplicationTotal } from "@/lib/engine/leaderboard";
 
 export const dynamic = "force-dynamic";
 
@@ -35,17 +36,19 @@ export default async function GradePage({ params: paramsPromise }: { params: Pro
   const user = await requireRole("reviewer", "admin");
   const result = await prisma.assessmentResult.findUnique({
     where: { id: params.resultId },
-    include: { application: { include: { candidate: true, funnel: true } } },
+    include: { application: { include: { candidate: true, funnel: true, drive: true } } },
   });
   if (!result) return <Card>Result not found.</Card>;
   if (!reviewerCanGrade(user, result.type, result.application.funnel)) return <Card>You are not assigned to this assessment.</Card>;
   const answers = uj<{ text?: string; items?: { number: number; prompt?: string; answer?: string; score?: number; feedback?: string }[] }>(result.answers) || {};
   const rubric = RUBRICS[result.type] || [];
+  const overall = computeApplicationTotal(result.application.scores, result.application.drive.tciWeights);
 
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-ink-900 mb-1">Grade {result.type}</h1>
-      <p className="text-slate-500 mb-6">{result.application.candidate.name}</p>
+      <p className="text-slate-500 mb-2">{result.application.candidate.name}</p>
+      <p className="mb-6 text-sm font-semibold text-brand-700">Overall candidate score: {overall.total}/100{overall.complete ? "" : " (provisional)"}</p>
 
       <Card className="mb-4">
         <SectionTitle>Submission</SectionTitle>

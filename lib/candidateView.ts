@@ -1,5 +1,6 @@
 import { prisma, uj } from "@/lib/db";
 import { authorizeCvAccess, signCvToken } from "@/lib/cv/access";
+import { computeApplicationTotal } from "@/lib/engine/leaderboard";
 
 type AnyObj = Record<string, any>;
 
@@ -13,12 +14,14 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
   const cvToken = canViewCv && user ? signCvToken(app.id, user.id) : null;
 
   const funnelStages = app.funnel ? (uj<any[]>(app.funnel.stages) ?? []) : [];
+  const overall = computeApplicationTotal(app.scores, app.drive.tciWeights);
   const questionsByBank: Record<string, any[]> = {};
   return {
     candidate: { id: app.candidate.id, name: app.candidate.name, email: app.candidate.email },
     application: {
       id: app.id,
       funnelId: app.funnelId,
+      funnelName: app.funnel?.name || null,
       status: app.status,
       appliedAt: (app.appliedAt ?? app.createdAt).toISOString(),
       currentStage: app.currentStage,
@@ -31,7 +34,10 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       stageHistory: uj(app.stageHistory),
       extractedCv: uj(app.extractedCv),
       driveName: app.drive.name,
+      overallScore: overall.total,
+      overallComplete: overall.complete,
     },
+    funnelOptions: (app.drive.funnels || []).map((funnel: AnyObj) => ({ id: funnel.id, name: funnel.name || `Funnel v${funnel.version}`, version: funnel.version })),
     funnelStages,
     results: app.results.map((r: AnyObj) => ({
       id: r.id,
@@ -74,7 +80,7 @@ export async function getCandidateView(applicationId: string, user: any) {
     where: { id: applicationId },
     include: {
       candidate: true,
-      drive: true,
+      drive: { include: { funnels: { where: { published: true }, orderBy: { version: "desc" } } } },
       results: { include: { attempt: true }, orderBy: { createdAt: "asc" } },
       assessmentAttempts: { orderBy: { attemptNumber: "asc" } },
       funnel: true,

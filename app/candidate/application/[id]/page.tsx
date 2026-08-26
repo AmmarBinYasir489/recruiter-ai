@@ -1,9 +1,9 @@
-import { prisma, uj } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { signCvToken } from "@/lib/cv/access";
-import { CV_RUBRIC } from "@/lib/engine/cv";
 import { resultForCurrentStage } from "@/lib/candidateStage";
-import { Card, SectionTitle, decisionBadge, statusBadge, LinkButton, Pill } from "@/components/ui";
+import { candidateCanSeeScore, candidateSafeNotification } from "@/lib/candidatePrivacy";
+import { Card, SectionTitle, decisionBadge, statusBadge, LinkButton } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +11,6 @@ const STAGE_LABEL: Record<string, string> = {
   CV_SCREENING: "CV screening", CCAT: "CCAT / IQ", MTT: "Math thinking", CODING: "Coding",
   ESSAY: "Essay", PROMPT: "Prompt engineering", ENGLISH_SPEAKING: "English speaking", GAMES: "Games", RAT: "Research test",
   MANUAL_REVIEW: "Manual review", ONSITE: "Onsite", FINAL: "Final decision",
-};
-
-const COMPONENT_LABEL: Record<string, string> = {
-  academics: "Academics", universityDegree: "University & degree", skills: "Skills",
-  projects: "Projects", experience: "Experience", other: "Other evidence",
 };
 
 export default async function ApplicationPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
@@ -33,12 +28,13 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 8,
   });
-  const extracted = uj<any>(app.extractedCv) || {};
   const currentStage = app.currentStage || "CV_SCREENING";
   const currentResult = resultForCurrentStage(app.results, currentStage);
   const cvToken = signCvToken(app.id, user.id);
   const processing = app.cvResult === "PROCESSING";
-  const currentScore = currentStage === "CV_SCREENING" ? app.cvScore : currentResult?.normalized;
+  const currentScore = candidateCanSeeScore(currentStage)
+    ? (currentStage === "CV_SCREENING" ? app.cvScore : currentResult?.normalized)
+    : null;
   const currentDecision = currentStage === "CV_SCREENING" ? app.cvResult : currentResult?.status;
 
   return (
@@ -76,14 +72,18 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
           ) : currentDecision === "PENDING" || app.cvResult === "PENDING" ? (
             <p className="text-sm font-medium text-amber-700">Your score is ready. The recruitment team is reviewing the threshold decision; no action is needed from you.</p>
           ) : app.status === "REJECTED" ? (
-            <p className="text-sm text-slate-600">This application is complete. Please see the latest update below.</p>
+            <p className="text-sm font-medium text-rose-700">Your application was not selected. Please see the latest update below.</p>
+          ) : app.status === "OFFERED" || app.status === "HIRED" ? (
+            <p className="text-sm font-medium text-emerald-700">Congratulations — you have been selected. The recruitment team will contact you with the next details.</p>
+          ) : currentStage === "FINAL" ? (
+            <p className="text-sm font-medium text-amber-700">Your assessments are complete and your final decision is pending.</p>
           ) : (
             <p className="text-sm font-medium text-amber-700">Waiting for the recruitment team to release your next action. You’ll be notified here automatically.</p>
           )}
         </div>
       </section>
 
-      <SectionTitle>CV score and profile</SectionTitle>
+      <SectionTitle>CV score</SectionTitle>
       <Card className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -92,44 +92,6 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
           </div>
           <a href={`/api/cv/${app.id}?token=${cvToken}`} className="btn-outline text-sm">Download your CV</a>
         </div>
-
-        {extracted.components && (
-          <details className="mt-5 border-t border-slate-100 pt-4">
-            <summary className="cursor-pointer text-sm font-semibold text-brand-700">How this score was calculated</summary>
-            <p className="mt-2 text-xs text-slate-500">Each component is scored out of 100, multiplied by its rubric weight, then added to produce the final score.</p>
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-slate-400"><tr><th className="py-2">Component</th><th>Score</th><th>Weight</th><th>Contribution</th></tr></thead>
-                <tbody>
-                  {Object.entries(extracted.components).map(([key, value]) => {
-                    const weight = CV_RUBRIC[key as keyof typeof CV_RUBRIC] || 0;
-                    return (
-                      <tr key={key} className="border-t border-slate-100">
-                        <td className="py-2 font-medium">{COMPONENT_LABEL[key] || key}</td>
-                        <td>{Math.round(Number(value))}</td>
-                        <td>{weight}%</td>
-                        <td>{(Number(value) * weight / 100).toFixed(1)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        )}
-
-        {extracted.name && (
-          <details className="mt-4 border-t border-slate-100 pt-4">
-            <summary className="cursor-pointer text-sm font-semibold text-brand-700">Review extracted CV details</summary>
-            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-              <div><dt className="text-slate-500">Name</dt><dd className="font-semibold">{extracted.name || "—"}</dd></div>
-              <div><dt className="text-slate-500">University</dt><dd className="font-semibold">{extracted.university || "—"}</dd></div>
-              <div><dt className="text-slate-500">Degree</dt><dd className="font-semibold">{extracted.degree || "—"}</dd></div>
-              <div><dt className="text-slate-500">CGPA</dt><dd className="font-semibold">{extracted.gpa ?? "—"}{extracted.gpaScale ? ` / ${extracted.gpaScale}` : ""}</dd></div>
-            </dl>
-            <div className="mt-3 flex flex-wrap gap-1.5">{(extracted.skills || []).map((skill: string) => <Pill key={skill}>{skill}</Pill>)}</div>
-          </details>
-        )}
       </Card>
 
       <SectionTitle>Latest updates</SectionTitle>
@@ -139,7 +101,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         ) : notes.map((note) => (
           <Card key={note.id} className={`text-sm ${note.read ? "text-slate-600" : "border-brand-200 bg-brand-50 text-ink-900"}`}>
             <div className="flex items-start justify-between gap-3">
-              <p>{note.message}</p>
+              <p>{note.type === "CV_SCORED" || note.type === "CV_THRESHOLD" ? `Your CV screening is complete. Your current score is ${app.cvScore}/100.` : candidateSafeNotification(note.message)}</p>
               {!note.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-label="Unread" />}
             </div>
             <p className="mt-1 text-xs text-slate-400">{note.createdAt.toLocaleString()}</p>

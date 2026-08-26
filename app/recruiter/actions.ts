@@ -25,10 +25,11 @@ import {
   type Funnel,
   type FunnelStage,
   type StageType,
+  automaticStageTransition,
 } from "@/lib/engine/funnel";
 
 const AUTOMATIC_THRESHOLD_TYPES = new Set(["CV_SCREENING", "CCAT", "MTT"]);
-const MANUAL_GRADING_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLISH_SPEAKING", "MANUAL_REVIEW"]);
+const MANUAL_GRADING_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLISH_SPEAKING"]);
 
 // Routes that display candidate/funnel state. Revalidate them after any mutation
 // so the recruiter UI and the candidate-facing page reflect the change immediately.
@@ -49,16 +50,37 @@ const DEFAULT_STAGES = (reviewerId?: string) => [
   { id: "st-cv", type: "CV_SCREENING", name: "CV Screening", order: 1, passAction: "NEXT", failAction: "REJECT" },
   { id: "st-ccat", type: "CCAT", name: "CCAT / IQ", order: 2, gradingMode: "AUTO", passScore: 55, durationMin: 15, passAction: "NEXT", failAction: "REJECT" },
   { id: "st-mtt", type: "MTT", name: "Math Thinking Test", order: 3, gradingMode: "AUTO", passScore: 55, durationMin: 20, passAction: "NEXT", failAction: "REJECT" },
-  { id: "st-coding", type: "CODING", name: "Coding", order: 4, gradingMode: "MANUAL", passScore: 60, durationMin: 45, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-  { id: "st-essay", type: "ESSAY", name: "Essay", order: 5, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-  { id: "st-prompt", type: "PROMPT", name: "Prompt Engineering", order: 6, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-  { id: "st-english", type: "ENGLISH_SPEAKING", name: "English Speaking", order: 7, gradingMode: "MANUAL", passScore: 60, durationMin: 5, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
+  { id: "st-coding", type: "CODING", name: "Coding", order: 4, gradingMode: "MANUAL", passScore: 60, durationMin: 45, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
+  { id: "st-essay", type: "ESSAY", name: "Essay", order: 5, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
+  { id: "st-prompt", type: "PROMPT", name: "Prompt Engineering", order: 6, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
+  { id: "st-english", type: "ENGLISH_SPEAKING", name: "English Speaking", order: 7, gradingMode: "MANUAL", passScore: 60, durationMin: 5, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
   { id: "st-games", type: "GAMES", name: "Games", order: 8, gradingMode: "AUTO", passAction: "NEXT", failAction: "NEXT" },
-  { id: "st-rat", type: "RAT", name: "Research Amplitude Test", order: 9, gradingMode: "MANUAL", passScore: 60, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "MOVE_TO", failTargetStageId: "st-review" },
-  { id: "st-review", type: "MANUAL_REVIEW", name: "Manual Review", order: 10, gradingMode: "MANUAL", assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
-  { id: "st-onsite", type: "ONSITE", name: "Onsite", order: 11, passAction: "OFFER", failAction: "REJECT" },
-  { id: "st-final", type: "FINAL", name: "Final Decision", order: 12 },
+  { id: "st-rat", type: "RAT", name: "Research Amplitude Test", order: 9, gradingMode: "MANUAL", passScore: 60, assignedReviewers: reviewerId ? [reviewerId] : [], passAction: "NEXT", failAction: "HOLD" },
+  { id: "st-onsite", type: "ONSITE", name: "Onsite", order: 10, passAction: "NEXT", failAction: "REJECT" },
+  { id: "st-final", type: "FINAL", name: "Final Decision", order: 11 },
 ];
+
+export async function assignCandidateFunnelAction(applicationId: string, formData: FormData) {
+  const user = await requireRole("recruiter", "admin");
+  const app = await requireManagedApplication(user, applicationId);
+  const funnelId = String(formData.get("funnelId") || "");
+  const funnelRow = await prisma.funnel.findFirst({ where: { id: funnelId, driveId: app.driveId, published: true } });
+  if (!funnelRow) return { error: "Select a published funnel for this drive." };
+  const nonCvResult = await prisma.assessmentResult.findFirst({ where: { applicationId, type: { not: "CV_SCREENING" } }, select: { id: true } });
+  if (nonCvResult) return { error: "The funnel cannot be changed after assessments have started." };
+  const funnel = await getFunnel(funnelId);
+  if (!funnel) return { error: "Funnel not found." };
+  const transition = app.cvResult === "PASS" || app.cvResult === "FAIL"
+    ? automaticStageTransition(funnel, "CV_SCREENING", app.cvResult)
+    : { applicationStatus: "IN_PROGRESS" as const, currentStage: "CV_SCREENING" as StageType, phaseReleased: false, nextStageName: undefined };
+  await prisma.$transaction(async (tx) => {
+    await tx.application.update({ where: { id: applicationId }, data: { funnelId, funnelVersion: funnelRow.version, status: transition.applicationStatus, currentStage: transition.currentStage, phaseReleased: transition.phaseReleased } });
+    await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_ASSIGNED", meta: j({ applicationId, funnelId, version: funnelRow.version }) } });
+    await createNotification({ userId: app.candidateId, type: "APPLICATION_UPDATED", message: transition.nextStageName ? `${transition.nextStageName} is now available.` : "Your application setup has been updated.", relatedAppId: applicationId }, tx);
+  });
+  revalidateCandidateRoutes();
+  return { ok: true };
+}
 
 export async function createDriveAction(formData: FormData) {
   const user = await requireRole("recruiter", "admin");
@@ -212,13 +234,14 @@ export async function advanceApplicationAction(applicationId: string) {
   const next = nextEnabledStage(funnel, { type: app.currentStage as StageType });
   if (!next) return { error: "No next enabled stage is configured." };
   const nextName = next.name || next.type;
+  const reachingFinal = next.type === "FINAL";
   await prisma.$transaction(async (tx) => {
     await tx.application.update({
       where: { id: applicationId },
       data: {
         currentStage: next.type,
-        phaseReleased: true,
-        status: "IN_PROGRESS",
+        phaseReleased: !reachingFinal,
+        status: reachingFinal ? "HOLD" : "IN_PROGRESS",
         stageHistory: j([
           ...(uj<any[]>(app.stageHistory) || []),
           { stage: app.currentStage, status: "ADVANCED", at: new Date().toISOString(), note: `Next phase released: ${nextName}` },
@@ -228,7 +251,7 @@ export async function advanceApplicationAction(applicationId: string) {
     await createNotification({
       userId: app.candidateId,
       type: "PHASE_RELEASED",
-      message: `Next phase released: ${nextName}.`,
+      message: reachingFinal ? "Your assessments are complete. The final decision is pending." : `Next phase released: ${nextName}.`,
       relatedAppId: applicationId,
     }, tx);
     await tx.auditLog.create({ data: { actorId: user.id, action: "ADVANCE", meta: j({ applicationId, from: app.currentStage, next: next.type }) } });
@@ -252,6 +275,7 @@ export async function manualPassAction(applicationId: string) {
   const next = nextEnabledStage(funnel, { type: type as StageType });
   if (!next) return { error: "No next enabled stage is configured." };
   const nextName = next.name || next.type;
+  const reachingFinal = next.type === "FINAL";
 
   const scores = uj<Record<string, number>>(app.scores) || {};
   scores[type] = 100;
@@ -267,14 +291,14 @@ export async function manualPassAction(applicationId: string) {
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        status: "IN_PROGRESS", currentStage: next.type, phaseReleased: true, scores: j(scores),
+        status: reachingFinal ? "HOLD" : "IN_PROGRESS", currentStage: next.type, phaseReleased: !reachingFinal, scores: j(scores),
         stageHistory: j([
           ...(uj<any[]>(app.stageHistory) ?? []),
           { stage: type, status: "PASS", at: new Date().toISOString(), manual: true, note: `Manually passed; next phase released: ${nextName}` },
         ]),
       },
     });
-    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: `Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
+    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? "Your assessments are complete. The final decision is pending." : `Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
     await tx.auditLog.create({
       data: { actorId: user.id, action: "MANUAL_PASS", meta: j({ applicationId, stage: type, next: next.type }) },
     });
@@ -361,6 +385,7 @@ function newStageId() {
 async function persistFunnelStructure(userId: string, funnelId: string, stages: FunnelStage[], change: Record<string, unknown>) {
   const funnel = await prisma.funnel.findUnique({ where: { id: funnelId }, include: { _count: { select: { applications: true } } } });
   if (!funnel) return { error: "Not found." } as const;
+  if (stages.some((stage) => stage.type === "MANUAL_REVIEW")) return { error: "Manual Review is not a portal stage." } as const;
   const normalized = stages.map((stage, index) => ({ ...stage, order: index + 1 }));
   if (new Set(normalized.map((stage) => stage.type)).size !== normalized.length) return { error: "Each phase type can only be used once in a funnel." } as const;
   if (funnel._count.applications === 0) {
@@ -386,7 +411,8 @@ export async function addStageAction(funnelId: string, formData: FormData) {
   const funnel = await prisma.funnel.findUnique({ where: { id: funnelId } });
   if (!funnel) return { error: "Not found." };
   const stages = uj<any[]>(funnel.stages);
-  const type = String(formData.get("type") || "MANUAL_REVIEW");
+  const type = String(formData.get("type") || "ONSITE");
+  if (type === "MANUAL_REVIEW") return { error: "Manual Review is not a portal stage." };
   if (stages.some((existing) => existing.type === type)) return { error: "That phase type already exists in this funnel." };
   const name = String(formData.get("name") || type);
   const gradingMode = String(formData.get("gradingMode") || "") || undefined;
@@ -447,6 +473,7 @@ export async function createFunnelAction(driveId: string, formData: FormData) {
     return { error: "Invalid stages configuration." };
   }
   if (!Array.isArray(stages) || stages.length === 0) return { error: "Add at least one phase." };
+  if (stages.some((stage) => stage.type === "MANUAL_REVIEW")) return { error: "Manual Review is not a portal stage." };
   if (new Set(stages.map((stage) => stage.type)).size !== stages.length) return { error: "Each phase type can only be used once in a funnel." };
 
   const reviewer = await prisma.user.findFirst({ where: { role: "reviewer" } });
@@ -490,6 +517,7 @@ export async function editFunnelStructureAction(funnelId: string, formData: Form
     return { error: "Invalid stages." };
   }
   if (!Array.isArray(stages) || stages.length === 0) return { error: "Add at least one phase." };
+  if (stages.some((stage) => stage.type === "MANUAL_REVIEW")) return { error: "Manual Review is not a portal stage." };
   if (new Set(stages.map((stage) => stage.type)).size !== stages.length) return { error: "Each phase type can only be used once in a funnel." };
   const norm = stages.map((s, i) => ({ ...s, order: i + 1, enabled: s.enabled !== false, id: s.id || "st-" + Math.random().toString(36).slice(2, 8) }));
 
@@ -638,6 +666,7 @@ export async function issueNextPhaseAction(
   const next = nextEnabledStage(funnel, { type: phaseType as StageType });
   if (!next) return { error: "No next phase configured after this stage." };
   const nextName = next.name || next.type;
+  const reachingFinal = next.type === "FINAL";
 
   const cohort = await getPhaseCohort(funnelId, phaseType);
   let targetIds = applicationIds;
@@ -658,8 +687,8 @@ export async function issueNextPhaseAction(
         where: { id, funnelId, currentStage: phaseType, phaseReleased: false },
         data: {
           currentStage: next.type,
-          phaseReleased: true,
-          status: "IN_PROGRESS",
+          phaseReleased: !reachingFinal,
+          status: reachingFinal ? "HOLD" : "IN_PROGRESS",
           stageHistory: j([
             ...(uj<any[]>(prev?.stageHistory) || []),
             { stage: phaseType, status: "ISSUED", at: new Date().toISOString(), note: `Next phase released: ${nextName}` },
@@ -668,7 +697,7 @@ export async function issueNextPhaseAction(
       });
       if (updated.count !== 1) continue;
       releasedCount += 1;
-      await createNotification({ userId: prev.candidateId, type: "PHASE_RELEASED", message: `Next phase released: ${nextName}.`, relatedAppId: id }, tx);
+      await createNotification({ userId: prev.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? "Your assessments are complete. The final decision is pending." : `Next phase released: ${nextName}.`, relatedAppId: id }, tx);
     }
     await tx.auditLog.create({
       data: { actorId: user.id, action: "ISSUE_NEXT_PHASE", meta: j({ funnelId, phaseType, next: next.type, count: releasedCount, mode }) },

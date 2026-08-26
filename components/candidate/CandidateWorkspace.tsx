@@ -8,7 +8,9 @@ import {
   requestRetestAction,
   sendNotificationAction,
   updateResultScoreAction,
+  assignCandidateFunnelAction,
 } from "@/app/recruiter/actions";
+import { CV_RUBRIC } from "@/lib/engine/cv";
 
 type AnyObj = Record<string, any>;
 
@@ -39,7 +41,7 @@ function IntegrityBadge({ level }: { level?: string | null }) {
 }
 
 function deriveStages(view: AnyObj) {
-  const configured: AnyObj[] = view.funnelStages.filter((s: AnyObj) => s.enabled !== false).map((s: AnyObj) => ({
+  const configured: AnyObj[] = view.funnelStages.filter((s: AnyObj) => s.enabled !== false && s.type !== "MANUAL_REVIEW").map((s: AnyObj) => ({
       type: s.type,
       name: s.name,
       passScore: s.passScore,
@@ -65,7 +67,7 @@ function deriveStages(view: AnyObj) {
           ? "PASSED"
           : s === "REJECTED"
             ? "FAILED"
-            : s === "HOLD" || s === "IN_PROGRESS"
+            : stage.type === view.application.currentStage && (s === "HOLD" || s === "IN_PROGRESS")
               ? "ACTIVE"
               : "NOT_REACHED";
     } else if (stage.isCv) {
@@ -180,6 +182,20 @@ function CandidateCard({
             <span><span className="text-slate-400">Drive:</span> {view.application.driveName}</span>
             <span><span className="text-slate-400">Applied:</span> {new Date(view.application.appliedAt).toLocaleDateString()}</span>
           </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <span className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white">Total score: {view.application.overallScore}/100</span>
+            {!view.application.overallComplete && <span className="text-xs text-amber-700">Provisional until all weighted assessments are graded</span>}
+            {view.canManage && view.funnelOptions?.length > 0 && view.application.currentStage === "CV_SCREENING" ? (
+              <form action={assignCandidateFunnelAction.bind(null, view.application.id)} className="flex items-center gap-2">
+                <label className="sr-only" htmlFor={`funnel-${view.application.id}`}>Assign funnel</label>
+                <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue={view.application.funnelId || ""} required>
+                  <option value="" disabled>Assign funnel</option>
+                  {view.funnelOptions.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
+                </select>
+                <button className="btn-outline whitespace-nowrap">Apply funnel</button>
+              </form>
+            ) : view.application.funnelName ? <span className="text-xs text-slate-500">Path: {view.application.funnelName}</span> : null}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <span className={finalBadgeCls[finalStatus]}>{view.application.status.replace("_", " ")}</span>
@@ -247,7 +263,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 function ProfileSection({ view, onClose }: { view: AnyObj; onClose: () => void }) {
   const cv = parse(view.application.extractedCv) || {};
   const rows: [string, any][] = [
-    ["Full name", cv.fullName || view.candidate.name],
+    ["Full name", cv.name || view.candidate.name],
     ["Email", cv.email || view.candidate.email],
     ["Phone", cv.phone],
     ["Location", cv.location],
@@ -256,8 +272,8 @@ function ProfileSection({ view, onClose }: { view: AnyObj; onClose: () => void }
     ["University", cv.university],
     ["Degree", cv.degree],
     ["GPA", cv.gpa],
-    ["Graduation year", cv.graduationYear],
-    ["Work experience", cv.experience],
+    ["Graduation year", cv.gradYear],
+    ["Work experience", cv.experienceYears != null ? `${cv.experienceYears} years` : null],
     ["Job titles", cv.jobTitles],
     ["Companies", cv.companies],
     ["Employment dates", cv.employmentDates],
@@ -300,7 +316,7 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
   const online = results.filter((r: AnyObj) => r.mode === "ONLINE");
   const onsite = results.filter((r: AnyObj) => r.mode === "ONSITE");
   const onlineScore = online.length ? online[online.length - 1].normalized : null;
-  const onsiteScore = onsite.length ? onsite[online.length - 1].normalized : null;
+  const onsiteScore = onsite.length ? onsite[onsite.length - 1].normalized : null;
   const isSubjective = ["CODING", "ESSAY", "PROMPT"].includes(stage.type);
 
   return (
@@ -551,17 +567,35 @@ function CvScreeningSection({ view, onClose }: { view: AnyObj; onClose: () => vo
       <hr className="my-4 border-slate-100" />
       <Section title="Parsed / Extracted CV Summary">
         <div className="grid grid-cols-2 gap-3 text-sm">
-          <Field label="Name" value={cv.fullName || view.candidate.name} />
+          <Field label="Name" value={cv.name || view.candidate.name} />
           <Field label="Email" value={cv.email || view.candidate.email} />
           <Field label="University" value={cv.university} />
           <Field label="Degree" value={cv.degree} />
           <Field label="GPA" value={cv.gpa} />
-          <Field label="Graduation year" value={cv.graduationYear} />
+          <Field label="Graduation year" value={cv.gradYear} />
           <Field label="Skills" value={Array.isArray(cv.skills) ? cv.skills.join(", ") : cv.skills} />
-          <Field label="Experience" value={cv.experience} />
+          <Field label="Experience" value={cv.experienceYears != null ? `${cv.experienceYears} years` : null} />
         </div>
         {cv.summary && <p className="mt-2 text-sm text-slate-600">{cv.summary}</p>}
       </Section>
+      {cv.components && (
+        <>
+          <hr className="my-4 border-slate-100" />
+          <Section title="Scoring breakdown (staff only)">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="text-xs uppercase text-slate-400"><tr><th className="py-2">Component</th><th>Score</th><th>Weight</th><th>Contribution</th></tr></thead>
+                <tbody>
+                  {Object.entries(cv.components).map(([key, value]) => {
+                    const weight = CV_RUBRIC[key as keyof typeof CV_RUBRIC] || 0;
+                    return <tr key={key} className="border-t border-slate-100"><td className="py-2 font-medium">{key === "universityDegree" ? "University & degree" : key}</td><td>{Math.round(Number(value))}</td><td>{weight}%</td><td>{(Number(value) * weight / 100).toFixed(1)}</td></tr>;
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+        </>
+      )}
       <div className="mt-4">
         {view.cvToken ? (
           <a href={`/api/cv/${app.id}?token=${view.cvToken}`} className="btn-outline text-sm" target="_blank" rel="noreferrer">

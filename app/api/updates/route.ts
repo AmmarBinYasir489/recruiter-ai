@@ -26,7 +26,9 @@ export async function GET() {
         phaseReleased: true,
         cvResult: true,
         cvScore: true,
-        results: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { id: true, type: true, status: true, normalized: true } },
+        // This is only a cache-busting watermark. Never expose subjective or
+        // internal assessment decisions/scores through the polling endpoint.
+        results: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { id: true, createdAt: true } },
         cvJobs: { orderBy: { updatedAt: "desc" }, take: 1, select: { id: true, status: true, updatedAt: true } },
       },
     });
