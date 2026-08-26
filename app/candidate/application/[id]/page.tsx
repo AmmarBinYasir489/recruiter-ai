@@ -19,7 +19,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   if (!user) return null;
   const app = await prisma.application.findUnique({
     where: { id: params.id },
-    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } } },
+    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } }, onsiteInvites: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
   if (!app || app.candidateId !== user.id) return <Card>Application not found.</Card>;
 
@@ -37,6 +37,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   const opensAt = currentStageConfig?.opensAt ? new Date(currentStageConfig.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
   const phaseAvailable = app.phaseReleased || Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
+  const onsiteInvite = app.onsiteInvites[0] || null;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -58,6 +59,13 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <div className="mt-4">
           {processing ? (
             <p className="text-sm text-slate-600" role="status">Your CV is securely queued for scoring. This page updates automatically.</p>
+          ) : currentStage === "ONSITE" ? (
+            onsiteInvite ? <div className="text-sm text-slate-700">
+              <p className="font-semibold text-ink-900">Onsite screening: {onsiteInvite.scheduledAt.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC</p>
+              <p className="mt-1">{onsiteInvite.location || "The recruitment team will confirm the location."}</p>
+              {onsiteInvite.locationUrl && <a href={onsiteInvite.locationUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-brand-700 hover:underline">Open location details</a>}
+              {onsiteInvite.notes && <p className="mt-2 text-slate-600">{onsiteInvite.notes}</p>}
+            </div> : <p className="text-sm font-medium text-amber-700">You have been selected for onsite screening. The recruitment team will email the date and location details.</p>
           ) : phaseAvailable && currentStage !== "FINAL" ? (
             <>
               <p className="mb-3 text-sm text-slate-600">This assessment is ready. Your timer starts only when you begin.</p>

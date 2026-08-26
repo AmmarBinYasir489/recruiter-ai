@@ -139,6 +139,7 @@ export function automaticStageTransition(
     if (stage.failAction === "MOVE_TO" && stage.failTargetStageId) {
       const target = findStage(funnel, null, stage.failTargetStageId);
       if (target && target.enabled !== false) {
+        if (target.type === "ONSITE") return { applicationStatus: "HOLD", currentStage: "ONSITE", phaseReleased: false, nextStageName: target.name };
         return { applicationStatus: "IN_PROGRESS", currentStage: target.type, phaseReleased: true, nextStageName: target.name };
       }
     }
@@ -155,11 +156,15 @@ export function automaticStageTransition(
   if (stage.passAction === "ADVANCE_TO" && stage.passTargetStageId) {
     const target = findStage(funnel, null, stage.passTargetStageId);
     if (target && target.enabled !== false) {
+      if (target.type === "ONSITE") return { applicationStatus: "HOLD", currentStage: "ONSITE", phaseReleased: false, nextStageName: target.name };
       return { applicationStatus: "IN_PROGRESS", currentStage: target.type, phaseReleased: true, nextStageName: target.name };
     }
   }
   const next = nextEnabledStage(funnel, { id: stage.id });
   if (next) {
+    if (next.type === "ONSITE") {
+      return { applicationStatus: "HOLD", currentStage: "ONSITE", phaseReleased: false, nextStageName: next.name };
+    }
     if (next.type === "FINAL") {
       return { applicationStatus: "HOLD", currentStage: "FINAL", phaseReleased: false, nextStageName: next.name };
     }

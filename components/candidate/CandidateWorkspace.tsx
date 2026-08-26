@@ -11,6 +11,7 @@ import {
   sendNotificationAction,
   updateResultScoreAction,
   assignCandidateFunnelAction,
+  sendOnsiteInviteAction,
 } from "@/app/recruiter/actions";
 import { CV_RUBRIC } from "@/lib/engine/cv";
 
@@ -328,6 +329,7 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
   }
   if (stage.isCv) return <CvScreeningSection view={view} onClose={onClose} />;
   if (stage.isFinal) return <FinalDecisionSection view={view} onClose={onClose} />;
+  if (stage.type === "ONSITE") return <OnsiteSection view={view} stage={stage} onClose={onClose} />;
 
   const results = stage.resultsForType || [];
   const attempts = stage.attemptsForType || [];
@@ -505,6 +507,76 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
       )}
     </div>
   );
+}
+
+function OnsiteSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; onClose: () => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
+  const invites = view.onsiteInvites || [];
+
+  async function sendInvite(formData: FormData) {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const localDate = String(formData.get("scheduledAt") || "");
+      if (localDate) formData.set("scheduledAt", new Date(localDate).toISOString());
+      const result = await sendOnsiteInviteAction(view.application.id, formData);
+      if ("error" in result) throw new Error(result.error);
+      setFeedback({ kind: result.emailSent ? "success" : "error", message: result.emailSent ? "Onsite invitation email sent and the candidate was notified." : result.warning || "Invite saved, but the email could not be sent." });
+      router.refresh();
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not send the onsite invitation." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function completeOnsite() {
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const result = await advanceApplicationAction(view.application.id);
+      if ("error" in result) throw new Error(result.error);
+      setFeedback({ kind: "success", message: "Onsite screening marked complete and the candidate moved to the next stage." });
+      router.refresh();
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not complete the onsite stage." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return <div className="card p-5">
+    {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
+    <SectionHeader title={`${stage.name} — Invitation`} onClose={onClose} />
+    <p className="mt-2 text-sm text-slate-600">This is an invitation-only screening stage. It does not create a candidate test or assessment score.</p>
+
+    <Section title="Invitation history">
+      {invites.length === 0 ? <p className="text-sm text-slate-400">No onsite invitation has been sent.</p> : <div className="space-y-2">
+        {invites.map((invite: AnyObj) => <div key={invite.id} className="rounded-xl border border-slate-200 p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{new Date(invite.scheduledAt).toLocaleString()}</span><span className="badge-info">{invite.status}</span></div>
+          <p className="mt-1 text-slate-600">{invite.location || "Location to be confirmed"}</p>
+          {invite.locationUrl && <a href={invite.locationUrl} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">Open location link</a>}
+          {invite.notes && <p className="mt-1 text-xs text-slate-500">{invite.notes}</p>}
+        </div>)}
+      </div>}
+    </Section>
+
+    {view.canManage && <>
+      <hr className="my-4 border-slate-100" />
+      <Section title="Send onsite invitation">
+        <form action={sendInvite} className="grid gap-3 sm:grid-cols-2">
+          <div><label className="label">Date and time</label><input name="scheduledAt" type="datetime-local" className="input" required /></div>
+          <div><label className="label">Location</label><input name="location" className="input" placeholder="Office address or venue" /></div>
+          <div><label className="label">Map/location link</label><input name="locationUrl" type="url" className="input" placeholder="https://…" /></div>
+          <div><label className="label">Instructions</label><input name="notes" className="input" placeholder="Bring ID, arrival time…" /></div>
+          <button className="btn-primary sm:col-span-2" disabled={busy}>Send invitation email</button>
+        </form>
+        {stage.type === view.application.currentStage && <button type="button" className="btn-outline mt-3" disabled={busy} onClick={completeOnsite}>Mark onsite complete &amp; move next</button>}
+      </Section>
+    </>}
+  </div>;
 }
 
 function SubjectiveAttempt({ view, result, canManage }: { view: AnyObj; result: AnyObj; canManage: boolean }) {

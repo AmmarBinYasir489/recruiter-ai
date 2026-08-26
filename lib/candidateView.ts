@@ -71,6 +71,15 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       deadlineAt: a.deadlineAt?.toISOString() ?? null,
       status: a.status,
     })),
+    onsiteInvites: (app.onsiteInvites || []).map((invite: AnyObj) => ({
+      id: invite.id,
+      scheduledAt: invite.scheduledAt.toISOString(),
+      location: invite.location,
+      locationUrl: invite.locationUrl,
+      status: invite.status,
+      notes: invite.notes,
+      createdAt: invite.createdAt.toISOString(),
+    })),
     questionsByBank,
     cvToken,
     canManage: Boolean(canManage),
@@ -86,6 +95,7 @@ export async function getCandidateView(applicationId: string, user: any) {
       drive: { include: { funnels: { where: { published: true }, orderBy: { version: "desc" } } } },
       results: { include: { attempt: true }, orderBy: { createdAt: "asc" } },
       assessmentAttempts: { orderBy: { attemptNumber: "asc" } },
+      onsiteInvites: { orderBy: { createdAt: "desc" } },
       funnel: true,
     },
   });

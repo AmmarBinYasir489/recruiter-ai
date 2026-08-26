@@ -97,3 +97,29 @@ export function rejectionEmail(p: { to: string; name: string; driveName: string 
     text: `Thank you for your interest in ${p.driveName}. We will not be moving forward with your application at this time.`,
   });
 }
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+}
+
+export function onsiteInviteEmail(p: { to: string; name: string; driveName: string; scheduledAt: Date; location?: string; locationUrl?: string; notes?: string }) {
+  const name = escapeHtml(p.name || "candidate");
+  const drive = escapeHtml(p.driveName);
+  const location = p.location ? escapeHtml(p.location) : "Location will be confirmed by the recruitment team";
+  const locationLine = p.locationUrl
+    ? `<a href="${escapeHtml(p.locationUrl)}">${location}</a>`
+    : location;
+  const notes = p.notes ? `<br/><br/><b>Instructions:</b> ${escapeHtml(p.notes)}` : "";
+  const when = p.scheduledAt.toLocaleString("en", { dateStyle: "full", timeStyle: "short", timeZone: "UTC" });
+  return sendEmail({
+    to: p.to,
+    subject: `Onsite screening invitation — ${p.driveName}`,
+    html: wrap(
+      `Onsite screening invitation for ${name}`,
+      `You have been selected for an onsite screening for <b>${drive}</b>.<br/><br/>
+       <b>Date and time:</b> ${when} UTC<br/>
+       <b>Location:</b> ${locationLine}${notes}`,
+    ),
+    text: `You have been selected for an onsite screening for ${p.driveName}. Date: ${when} UTC. Location: ${p.location || "To be confirmed"}.${p.notes ? ` Instructions: ${p.notes}` : ""}`,
+  });
+}

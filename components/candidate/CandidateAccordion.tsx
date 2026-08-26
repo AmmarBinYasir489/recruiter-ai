@@ -12,6 +12,7 @@ import {
   requestRetestsAction,
   sendBulkNotificationAction,
   assignSelectedFunnelAction,
+  sendOnsiteInvitesAction,
 } from "@/app/recruiter/actions";
 
 type AnyObj = Record<string, any>;
@@ -23,6 +24,9 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [bulkFunnelId, setBulkFunnelId] = useState("");
+  const [bulkTestMode, setBulkTestMode] = useState<"ONLINE" | "ONSITE">("ONLINE");
+  const [onsiteDate, setOnsiteDate] = useState("");
+  const [onsiteLocation, setOnsiteLocation] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const allIds = views.map((v) => v.application.id);
@@ -36,7 +40,9 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   );
   const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
-  const canMoveNext = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && view.application.currentStage !== "FINAL");
+  const canMoveNext = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && !["ONSITE", "FINAL"].includes(view.application.currentStage));
+  const canIssueTest = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && !["CV_SCREENING", "ONSITE", "FINAL"].includes(view.application.currentStage));
+  const canInviteOnsite = selectedViews.length > 0 && selectedViews.every((view) => view.application.currentStage === "ONSITE");
 
   async function runIssue() {
     setBusy(true);
@@ -93,9 +99,9 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await requestRetestsAction(selected);
+      const result = await requestRetestsAction(selected, bulkTestMode);
       if ("error" in result) throw new Error(String(result.error || "Could not reissue the selected tests."));
-      setFeedback({ kind: "success", message: `${result.count} retest${result.count === 1 ? "" : "s"} prepared. Timers start when candidates begin.` });
+      setFeedback({ kind: "success", message: `${result.count} ${bulkTestMode.toLowerCase()} test${result.count === 1 ? "" : "s"} prepared. Timers start when candidates begin.` });
       setSelected([]);
       router.refresh();
     } catch (error) {
@@ -136,6 +142,26 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
       router.refresh();
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not assign the selected candidates." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runOnsiteInvites() {
+    if (!onsiteDate) return;
+    setBusy(true);
+    setFeedback(null);
+    try {
+      const result = await sendOnsiteInvitesAction(selected, { scheduledAt: new Date(onsiteDate).toISOString(), location: onsiteLocation });
+      if ("error" in result) throw new Error(result.error);
+      const warning = result.emailFailures ? ` ${result.emailFailures} email${result.emailFailures === 1 ? "" : "s"} failed, but portal notifications were saved.` : "";
+      setFeedback({ kind: result.emailFailures ? "error" : "success", message: `${result.count} onsite invitation${result.count === 1 ? "" : "s"} prepared.${warning}` });
+      setSelected([]);
+      setOnsiteDate("");
+      setOnsiteLocation("");
+      router.refresh();
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not send onsite invitations." });
     } finally {
       setBusy(false);
     }
@@ -230,8 +256,19 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
           {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
           {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened, unassigned applicants from one drive.</span>}
           {canMoveNext && <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Pass &amp; move next</button>}
+          {canInviteOnsite && <>
+            <input type="datetime-local" className="input min-w-52" aria-label="Onsite screening date and time" value={onsiteDate} onChange={(event) => setOnsiteDate(event.target.value)} />
+            <input className="input min-w-48" aria-label="Onsite screening location" placeholder="Onsite location" value={onsiteLocation} onChange={(event) => setOnsiteLocation(event.target.value)} />
+            <button className="btn-primary whitespace-nowrap" disabled={busy || !onsiteDate} onClick={runOnsiteInvites}>Send onsite invitations</button>
+          </>}
           <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runOffer}>Offer</button>
-          {canMoveNext && <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Reissue current test</button>}
+          {canIssueTest && <>
+            <select className="input min-w-40" aria-label="Bulk test delivery mode" value={bulkTestMode} onChange={(event) => setBulkTestMode(event.target.value as "ONLINE" | "ONSITE")}>
+              <option value="ONLINE">Test: Online</option>
+              <option value="ONSITE">Test: Onsite</option>
+            </select>
+            <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Issue/reissue test</button>
+          </>}
           <button className="btn-danger whitespace-nowrap" disabled={busy} onClick={runReject}>Reject</button>
           <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" />
           <button className="btn-outline whitespace-nowrap" disabled={busy || !message.trim()} onClick={runNotify}>Send notification</button>

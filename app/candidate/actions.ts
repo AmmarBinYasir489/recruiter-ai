@@ -541,6 +541,7 @@ async function storeResult(
   const transition = isAutomatic
     ? automaticStageTransition(funnel, type as "CCAT" | "MTT", decision)
     : null;
+  const nextIsOnsite = transition?.currentStage === "ONSITE";
   const scores = uj<Record<string, number>>(app.scores) || {};
   scores[type] = normalized;
   await prisma.$transaction(async (tx) => {
@@ -561,7 +562,7 @@ async function storeResult(
           {
             stage: type, status: isAutomatic ? decision : "SCORED", at: nowIso(),
             note: isAutomatic
-              ? `${type} ${normalized}/100 — automatic threshold result: ${decision}${transition?.nextStageName ? `; ${transition.nextStageName} released` : ""}`
+              ? `${type} ${normalized}/100 — automatic threshold result: ${decision}${transition?.nextStageName ? nextIsOnsite ? `; selected for ${transition.nextStageName}, invitation pending` : `; ${transition.nextStageName} released` : ""}`
               : `${type} ${normalized}/100; awaiting recruiter threshold decision`,
           },
         ]),
@@ -575,7 +576,7 @@ async function storeResult(
       userId: candidateId,
       type: "SCORE_READY",
       message: isAutomatic
-        ? `Your ${type} result is ${decision} (${normalized}/100).${transition?.nextStageName ? ` ${transition.nextStageName} is now available.` : ""}`
+        ? `Your ${type} result is ${decision} (${normalized}/100).${transition?.nextStageName ? nextIsOnsite ? " You have been selected for onsite screening; date and location details will be emailed by the recruitment team." : ` ${transition.nextStageName} is now available.` : ""}`
         : `Your ${type} assessment was submitted. The recruitment team will review it and notify you about the next step.`,
       relatedAppId: app.id,
     }, tx);

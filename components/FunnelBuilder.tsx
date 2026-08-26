@@ -108,14 +108,15 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
               <input type="checkbox" checked={r.enabled} disabled={r.type === "CV_SCREENING" || r.type === "FINAL"} onChange={(e) => update(i, { enabled: e.target.checked })} />
               {r.name} <span className="text-xs text-slate-400">{r.type}</span>
             </label>
-            {r.type !== "CV_SCREENING" && r.type !== "FINAL" && (
+            {r.type !== "CV_SCREENING" && r.type !== "ONSITE" && r.type !== "FINAL" && (
               <div className="flex items-center gap-2 text-xs">
                 <span>Pass ≥</span>
                 <input type="number" className="input w-20" value={r.passScore} onChange={(e) => update(i, { passScore: Number(e.target.value) })} />
               </div>
             )}
           </div>
-          {r.enabled && r.type !== "CV_SCREENING" && r.type !== "FINAL" && (
+          {r.enabled && r.type === "ONSITE" && <p className="mt-3 text-sm text-slate-500">Invitation-only stage. Recruiters schedule the screening and send the candidate an email; no portal test or score is created.</p>}
+          {r.enabled && r.type !== "CV_SCREENING" && r.type !== "ONSITE" && r.type !== "FINAL" && (
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-xs">
               <div>
                 <label className="label">Duration (min)</label>

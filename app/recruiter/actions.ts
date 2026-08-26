@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma, j, uj, getFunnel } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { onsiteInviteEmail } from "@/lib/email";
 import {
   managedApplicationIds,
   requireManagedApplication,
@@ -58,6 +59,7 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
   const firstAssessment = firstAssessmentStage(funnel);
   if (!firstAssessment) return { error: "This funnel has no assessment after CV screening." };
   const reachingFinal = firstAssessment.type === "FINAL";
+  const reachingOnsite = firstAssessment.type === "ONSITE";
   const opensAt = firstAssessment.opensAt ? new Date(firstAssessment.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
   const releaseMessage = scheduled
@@ -69,14 +71,14 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
       data: {
         funnelId,
         funnelVersion: funnelRow.version,
-        status: reachingFinal || scheduled ? "HOLD" : "IN_PROGRESS",
+        status: reachingFinal || reachingOnsite || scheduled ? "HOLD" : "IN_PROGRESS",
         currentStage: firstAssessment.type,
-        phaseReleased: !reachingFinal && !scheduled,
-        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal || scheduled ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${releaseMessage}` }]),
+        phaseReleased: !reachingFinal && !reachingOnsite && !scheduled,
+        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal || reachingOnsite || scheduled ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${reachingOnsite ? "onsite invitation details pending" : releaseMessage}` }]),
       },
     });
     await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_ASSIGNED", meta: j({ applicationId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }) } });
-    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : `You were selected for ${funnelRow.name}. ${releaseMessage}`, relatedAppId: applicationId }, tx);
+    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : reachingOnsite ? `You were selected for onsite screening in ${funnelRow.name}. Date and location details will be emailed by the recruitment team.` : `You were selected for ${funnelRow.name}. ${releaseMessage}`, relatedAppId: applicationId }, tx);
   });
   return { ok: true };
 }
@@ -249,13 +251,14 @@ export async function advanceApplicationAction(applicationId: string) {
   if (!next) return { error: "No next enabled stage is configured." };
   const nextName = next.name || next.type;
   const reachingFinal = next.type === "FINAL";
+  const reachingOnsite = next.type === "ONSITE";
   await prisma.$transaction(async (tx) => {
     await tx.application.update({
       where: { id: applicationId },
       data: {
         currentStage: next.type,
-        phaseReleased: !reachingFinal,
-        status: reachingFinal ? "HOLD" : "IN_PROGRESS",
+        phaseReleased: !reachingFinal && !reachingOnsite,
+        status: reachingFinal || reachingOnsite ? "HOLD" : "IN_PROGRESS",
         stageHistory: j([
           ...(uj<any[]>(app.stageHistory) || []),
           { stage: app.currentStage, status: "ADVANCED", at: new Date().toISOString(), note: `Next phase released: ${nextName}` },
@@ -265,7 +268,7 @@ export async function advanceApplicationAction(applicationId: string) {
     await createNotification({
       userId: app.candidateId,
       type: "PHASE_RELEASED",
-      message: reachingFinal ? "Your assessments are complete. The final decision is pending." : `Next phase released: ${nextName}.`,
+      message: reachingFinal ? "Your assessments are complete. The final decision is pending." : reachingOnsite ? "You have been selected for onsite screening. Date and location details will be emailed by the recruitment team." : `Next phase released: ${nextName}.`,
       relatedAppId: applicationId,
     }, tx);
     await tx.auditLog.create({ data: { actorId: user.id, action: "ADVANCE", meta: j({ applicationId, from: app.currentStage, next: next.type }) } });
@@ -289,6 +292,7 @@ export async function manualPassAction(applicationId: string) {
   if (!next) return { error: "No next enabled stage is configured." };
   const nextName = next.name || next.type;
   const reachingFinal = next.type === "FINAL";
+  const reachingOnsite = next.type === "ONSITE";
   const latest = await prisma.assessmentResult.findFirst({
     where: { applicationId, type },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -304,14 +308,14 @@ export async function manualPassAction(applicationId: string) {
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        status: reachingFinal ? "HOLD" : "IN_PROGRESS", currentStage: next.type, phaseReleased: !reachingFinal, scores: j(scores),
+        status: reachingFinal || reachingOnsite ? "HOLD" : "IN_PROGRESS", currentStage: next.type, phaseReleased: !reachingFinal && !reachingOnsite, scores: j(scores),
         stageHistory: j([
           ...(uj<any[]>(app.stageHistory) ?? []),
           { stage: type, status: "PASS", at: new Date().toISOString(), manual: true, note: `Manually passed; next phase released: ${nextName}` },
         ]),
       },
     });
-    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? `Your ${type} result is PASS. Your assessments are complete and the final decision is pending.` : `Your ${type} result is PASS. Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
+    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? `Your ${type} result is PASS. Your assessments are complete and the final decision is pending.` : reachingOnsite ? `Your ${type} result is PASS. You have been selected for onsite screening; details will be emailed by the recruitment team.` : `Your ${type} result is PASS. Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
     await tx.auditLog.create({
       data: { actorId: user.id, action: "MANUAL_PASS", meta: j({ applicationId, stage: type, next: next.type }) },
     });
@@ -694,6 +698,7 @@ export async function issueNextPhaseAction(
   if (!next) return { error: "No next phase configured after this stage." };
   const nextName = next.name || next.type;
   const reachingFinal = next.type === "FINAL";
+  const reachingOnsite = next.type === "ONSITE";
 
   const cohort = await getPhaseCohort(funnelId, phaseType);
   let targetIds = applicationIds;
@@ -714,8 +719,8 @@ export async function issueNextPhaseAction(
         where: { id, funnelId, currentStage: phaseType, phaseReleased: false },
         data: {
           currentStage: next.type,
-          phaseReleased: !reachingFinal,
-          status: reachingFinal ? "HOLD" : "IN_PROGRESS",
+          phaseReleased: !reachingFinal && !reachingOnsite,
+          status: reachingFinal || reachingOnsite ? "HOLD" : "IN_PROGRESS",
           stageHistory: j([
             ...(uj<any[]>(prev?.stageHistory) || []),
             { stage: phaseType, status: "ISSUED", at: new Date().toISOString(), note: `Next phase released: ${nextName}` },
@@ -724,7 +729,7 @@ export async function issueNextPhaseAction(
       });
       if (updated.count !== 1) continue;
       releasedCount += 1;
-      await createNotification({ userId: prev.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? "Your assessments are complete. The final decision is pending." : `Next phase released: ${nextName}.`, relatedAppId: id }, tx);
+      await createNotification({ userId: prev.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? "Your assessments are complete. The final decision is pending." : reachingOnsite ? "You have been selected for onsite screening. Date and location details will be emailed by the recruitment team." : `Next phase released: ${nextName}.`, relatedAppId: id }, tx);
     }
     await tx.auditLog.create({
       data: { actorId: user.id, action: "ISSUE_NEXT_PHASE", meta: j({ funnelId, phaseType, next: next.type, count: releasedCount, mode }) },
@@ -782,6 +787,79 @@ export async function offerSelectedAction(applicationIds: string[], formData?: F
   return { ok: true };
 }
 
+export async function sendOnsiteInviteAction(applicationId: string, formData: FormData) {
+  const user = await requireRole("recruiter", "admin");
+  const app = await prisma.application.findUnique({
+    where: { id: applicationId },
+    include: { drive: true, candidate: true, funnel: true },
+  });
+  if (!app) return { error: "Application not found." };
+  if (user.role === "recruiter" && app.drive.ownerId !== user.id) return { error: "Not authorized." };
+  const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
+  if (!funnel?.stages.some((stage) => stage.type === "ONSITE" && stage.enabled !== false)) return { error: "This application has no onsite stage." };
+  if (app.status === "REJECTED" || app.status === "ARCHIVED") return { error: "An onsite invite cannot be sent for this application." };
+
+  const scheduledRaw = String(formData.get("scheduledAt") || "");
+  const scheduledAt = new Date(scheduledRaw);
+  const location = String(formData.get("location") || "").trim();
+  const locationUrl = String(formData.get("locationUrl") || "").trim();
+  const notes = String(formData.get("notes") || "").trim();
+  if (!scheduledRaw || !Number.isFinite(scheduledAt.getTime())) return { error: "Choose a valid onsite date and time." };
+  if (scheduledAt.getTime() <= Date.now()) return { error: "Onsite screening must be scheduled in the future." };
+  if (locationUrl) {
+    try {
+      const url = new URL(locationUrl);
+      if (url.protocol !== "https:" && url.protocol !== "http:") return { error: "Location link must use HTTPS or HTTP." };
+    } catch {
+      return { error: "Enter a valid location link." };
+    }
+  }
+
+  const invite = await prisma.$transaction(async (tx) => {
+    await tx.onsiteInvite.updateMany({ where: { applicationId, status: "SENT" }, data: { status: "CANCELLED" } });
+    const created = await tx.onsiteInvite.create({ data: { applicationId, scheduledAt, location: location || null, locationUrl: locationUrl || null, notes: notes || null, status: "SENT" } });
+    await tx.application.update({
+      where: { id: applicationId },
+      data: {
+        currentStage: "ONSITE",
+        phaseReleased: false,
+        status: "HOLD",
+        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: "ONSITE", status: "INVITED", at: new Date().toISOString(), scheduledAt: scheduledAt.toISOString(), note: "Onsite screening invitation sent" }]),
+      },
+    });
+    await createNotification({ userId: app.candidateId, type: "ONSITE_INVITE", message: `You are invited to onsite screening on ${scheduledAt.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC${location ? ` at ${location}` : ""}.`, relatedAppId: applicationId }, tx);
+    return created;
+  });
+
+  const email = await onsiteInviteEmail({ to: app.candidate.email, name: app.candidate.name, driveName: app.drive.name, scheduledAt, location, locationUrl, notes });
+  await prisma.auditLog.create({ data: { actorId: user.id, action: "ONSITE_INVITE_SENT", meta: j({ applicationId, inviteId: invite.id, scheduledAt: scheduledAt.toISOString(), emailSent: email.sent, emailError: email.error }) } });
+  revalidateCandidateRoutes();
+  return email.sent ? { ok: true, emailSent: true } : { ok: true, emailSent: false, warning: `Invite saved and candidate notified in the portal, but email was not sent: ${email.error || "email provider error"}` };
+}
+
+export async function sendOnsiteInvitesAction(applicationIds: string[], details: { scheduledAt: string; location: string; locationUrl?: string; notes?: string }) {
+  const user = await requireRole("recruiter", "admin");
+  const ids = await managedApplicationIds(user, applicationIds);
+  let count = 0;
+  let emailFailures = 0;
+  const errors: string[] = [];
+  for (const id of ids) {
+    const formData = new FormData();
+    formData.set("scheduledAt", details.scheduledAt);
+    formData.set("location", details.location || "");
+    formData.set("locationUrl", details.locationUrl || "");
+    formData.set("notes", details.notes || "");
+    const result = await sendOnsiteInviteAction(id, formData);
+    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
+    else {
+      count += 1;
+      if (!result.emailSent) emailFailures += 1;
+    }
+  }
+  if (errors.length) return { error: `${count} invited. ${errors.join(" ")}`, count, emailFailures };
+  return { ok: true, count, emailFailures };
+}
+
 // Enable / disable a phase. Structural change: creates a new immutable version
 // when the funnel already has applications; otherwise edits in place.
 export async function toggleStageEnabledAction(funnelId: string, stageId: string) {
@@ -820,7 +898,7 @@ export async function requestRetestAction(applicationId: string, formData: FormD
   if (user.role === "recruiter" && app.drive?.ownerId !== user.id) return { error: "Not authorized." };
   const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
   const stage = funnel?.stages.find((s) => s.type === type);
-  if (!stage || type === "CV_SCREENING" || type === "FINAL") return { error: "This stage cannot be reissued." };
+  if (!stage || type === "CV_SCREENING" || type === "ONSITE" || type === "FINAL") return { error: "This stage cannot be issued as a test." };
   const last = await prisma.assessmentAttempt.findFirst({ where: { applicationId, type }, orderBy: { attemptNumber: "desc" } });
   const attemptNumber = (last?.attemptNumber ?? 0) + 1;
   await prisma.assessmentAttempt.updateMany({
@@ -856,20 +934,21 @@ export async function requestRetestAction(applicationId: string, formData: FormD
   return { ok: true };
 }
 
-export async function requestRetestsAction(applicationIds: string[]) {
+export async function requestRetestsAction(applicationIds: string[], mode: "ONLINE" | "ONSITE" = "ONLINE") {
   const user = await requireRole("recruiter", "admin");
+  if (mode !== "ONLINE" && mode !== "ONSITE") return { error: "Choose online or onsite delivery." };
   const ids = await managedApplicationIds(user, applicationIds);
   const apps = await prisma.application.findMany({
     where: { id: { in: ids } },
-    select: { id: true, currentStage: true, results: { select: { type: true } } },
+    select: { id: true, currentStage: true },
   });
   let count = 0;
   for (const app of apps) {
     const type = app.currentStage;
-    if (!type || !app.results.some((result) => result.type === type)) continue;
+    if (!type || type === "CV_SCREENING" || type === "ONSITE" || type === "FINAL") continue;
     const formData = new FormData();
     formData.set("type", type);
-    formData.set("mode", "ONLINE");
+    formData.set("mode", mode);
     const result = await requestRetestAction(app.id, formData);
     if ("ok" in result && result.ok) count++;
   }

@@ -72,7 +72,8 @@ export default async function AdminFunnelPage({ params: paramsPromise, searchPar
                 <button className="btn-ghost px-2 py-1 text-xs">{s.enabled === false ? "Enable" : "Disable"}</button>
               </form>
             </div>
-            {s.enabled !== false && (
+            {s.enabled !== false && s.type === "ONSITE" && <p className="mt-3 text-sm text-slate-500">Invitation-only stage. Open a candidate to schedule and email the onsite screening; no threshold or portal test applies.</p>}
+            {s.enabled !== false && s.type !== "ONSITE" && (
               <PhaseThresholdEditor
                 funnelId={funnel.id}
                 phaseType={s.type}
@@ -80,7 +81,7 @@ export default async function AdminFunnelPage({ params: paramsPromise, searchPar
                 currentThreshold={s.passScore ?? 0}
               />
             )}
-            {s.enabled !== false && (
+            {s.enabled !== false && s.type !== "ONSITE" && (
               <CohortView
                 funnelId={funnel.id}
                 phaseType={s.type}

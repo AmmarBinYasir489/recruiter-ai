@@ -103,6 +103,16 @@ describe("funnel configuration", () => {
       phaseReleased: false,
     });
   });
+
+  it("holds at onsite for a staff invitation instead of releasing a portal test", () => {
+    const f = funnel([stage({ type: "CCAT", order: 1 }), stage({ type: "ONSITE", order: 2 }), stage({ type: "FINAL", order: 3 })]);
+    expect(automaticStageTransition(f, "CCAT", "PASS")).toEqual({
+      applicationStatus: "HOLD",
+      currentStage: "ONSITE",
+      phaseReleased: false,
+      nextStageName: "ONSITE",
+    });
+  });
 });
 
 describe("phase threshold preview/apply (read-only vs applied)", () => {

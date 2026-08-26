@@ -14,6 +14,7 @@ export default async function CandidateDetail({ params: paramsPromise }: { param
       drive: true,
       results: { include: { attempt: true }, orderBy: { createdAt: "asc" } },
       assessmentAttempts: { orderBy: { attemptNumber: "asc" } },
+      onsiteInvites: { orderBy: { createdAt: "desc" } },
       funnel: true,
     },
   });
@@ -83,6 +84,15 @@ export default async function CandidateDetail({ params: paramsPromise }: { param
       submittedAt: a.submittedAt?.toISOString() ?? null,
       deadlineAt: a.deadlineAt?.toISOString() ?? null,
       status: a.status,
+    })),
+    onsiteInvites: app.onsiteInvites.map((invite) => ({
+      id: invite.id,
+      scheduledAt: invite.scheduledAt.toISOString(),
+      location: invite.location,
+      locationUrl: invite.locationUrl,
+      status: invite.status,
+      notes: invite.notes,
+      createdAt: invite.createdAt.toISOString(),
     })),
     questionsByBank,
     cvToken,
