@@ -56,9 +56,11 @@ model Drive {
   rubricConfig     String // JSON: rubric config
   thresholdHistory String // JSON: [{threshold,...}]
   ownerId          String
+  defaultFunnelId  String?  @unique
   createdAt        DateTime @default(now())
 
   owner        User          @relation("DriveOwner", fields: [ownerId], references: [id])
+  defaultFunnel Funnel?      @relation("DriveDefaultFunnel", fields: [defaultFunnelId], references: [id], onDelete: SetNull)
   funnels      Funnel[]
   applications Application[]
   ratBatches   RatBatch[]
@@ -77,6 +79,7 @@ model Funnel {
 
   drive        Drive         @relation(fields: [driveId], references: [id], onDelete: Cascade)
   applications Application[]
+  defaultForDrive Drive?        @relation("DriveDefaultFunnel")
 
   @@index([driveId, published])
 }

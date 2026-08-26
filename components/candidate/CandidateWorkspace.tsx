@@ -188,14 +188,14 @@ function CandidateCard({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white">Total score: {view.application.overallScore}/100</span>
             {!view.application.overallComplete && <span className="text-xs text-amber-700">Provisional until all weighted assessments are graded</span>}
-            {view.canManage && !view.application.funnelId && view.funnelOptions?.length > 0 && view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
+            {view.canManage && view.funnelOptions?.length > 0 && view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
               <form action={assignCandidateFunnelAction.bind(null, view.application.id)} className="flex items-center gap-2">
                 <label className="sr-only" htmlFor={`funnel-${view.application.id}`}>Assign funnel</label>
                 <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue={view.application.funnelId || ""} required>
                   <option value="" disabled>Select assessment funnel</option>
                   {view.funnelOptions.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
                 </select>
-                <button className="btn-outline whitespace-nowrap">Select &amp; release test</button>
+                <button className="btn-outline whitespace-nowrap">{view.application.funnelId ? "Release or move funnel" : "Select & release test"}</button>
               </form>
             ) : view.application.funnelName ? <span className="text-xs text-slate-500">Assigned path: {view.application.funnelName}</span> : view.canManage && view.application.currentStage === "CV_SCREENING" ? <span className="text-xs text-amber-700">Drive applicant pool · not assigned to a funnel</span> : null}
           </div>

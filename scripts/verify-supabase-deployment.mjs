@@ -16,7 +16,7 @@ const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE
 const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
 
 try {
-  const [banks, publicTables, archiveTables, rlsTables, browserGrants, performanceIndexes, users, drives, funnels] = await Promise.all([
+  const [banks, publicTables, archiveTables, rlsTables, browserGrants, performanceIndexes, defaultFunnelSchema, users, drives, funnels] = await Promise.all([
     prisma.question.groupBy({ by: ["bank"], _count: { _all: true }, orderBy: { bank: "asc" } }),
     prisma.$queryRawUnsafe(`select count(*)::int as count from pg_tables where schemaname = 'public'`),
     prisma.$queryRawUnsafe(`select count(*)::int as count from pg_tables where schemaname = 'recruitment_portal_v2_archive'`),
@@ -38,6 +38,12 @@ try {
         'ThresholdChange_driveId_phaseType_idx'
       )
     `),
+    prisma.$queryRawUnsafe(`
+      select (
+        exists(select 1 from information_schema.columns where table_schema = 'public' and table_name = 'Drive' and column_name = 'defaultFunnelId')
+        and exists(select 1 from pg_constraint where conname = 'Drive_defaultFunnelId_fkey')
+      ) as ready
+    `),
     prisma.user.count(),
     prisma.drive.count(),
     prisma.funnel.count(),
@@ -58,6 +64,7 @@ try {
     rlsTables: rlsTables[0]?.count ?? 0,
     browserRoleTableGrants: browserGrants[0]?.count ?? 0,
     performanceIndexes: performanceIndexes[0]?.count ?? 0,
+    defaultFunnelSchemaReady: Boolean(defaultFunnelSchema[0]?.ready),
     portalUsers: users,
     drives,
     funnels,

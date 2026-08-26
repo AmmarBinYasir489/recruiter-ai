@@ -63,7 +63,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const selectedViews = views.filter((view) => selected.includes(view.application.id));
   const selectedDriveIds = new Set(selectedViews.map((view) => view.application.driveId));
   const canBulkAssign = selectedViews.length > 0 && selectedDriveIds.size === 1 && selectedViews.every((view) =>
-    !view.application.funnelId && view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult),
+    view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult),
   );
   const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
@@ -285,7 +285,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
             <button className="btn-primary whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={runAssignFunnel}>Assign funnel &amp; release test</button>
           </>}
           {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
-          {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened, unassigned applicants from one drive.</span>}
+          {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel release or reassignment requires screened applicants from one drive before testing starts.</span>}
           {canMoveNext && <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Pass &amp; move next</button>}
           {canInviteOnsite && <>
             <input type="datetime-local" className="input min-w-52" aria-label="Onsite screening date and time" value={onsiteDate} onChange={(event) => setOnsiteDate(event.target.value)} />

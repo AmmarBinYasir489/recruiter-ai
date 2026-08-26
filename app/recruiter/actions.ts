@@ -117,25 +117,65 @@ export async function createDriveAction(formData: FormData) {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
   if (deadline < startOfToday) return { error: "Deadline must be today or a future date." };
+  const createDefaultFunnel = formData.get("createDefaultFunnel") === "on";
+  const defaultFunnelName = String(formData.get("defaultFunnelName") || "Default Funnel").trim().slice(0, 100);
+  let defaultStages: FunnelStage[] = [];
+  if (createDefaultFunnel) {
+    try {
+      defaultStages = JSON.parse(String(formData.get("defaultFunnelStages") || "[]"));
+    } catch {
+      return { error: "Invalid default funnel configuration." };
+    }
+    const allowed = new Set<StageType>(["CV_SCREENING", "CCAT", "MTT", "GAMES", "CODING", "ESSAY", "PROMPT", "ENGLISH_SPEAKING", "ONSITE", "FINAL"]);
+    if (!Array.isArray(defaultStages) || defaultStages.length < 2) return { error: "The default funnel needs CV screening and final decision phases." };
+    if (defaultStages.some((stage) => !allowed.has(stage.type))) return { error: "The default funnel contains an unsupported phase." };
+    if (new Set(defaultStages.map((stage) => stage.type)).size !== defaultStages.length) return { error: "Each default funnel phase can only be used once." };
+    if (defaultStages[0]?.type !== "CV_SCREENING" || defaultStages.at(-1)?.type !== "FINAL") return { error: "CV screening must be first and final decision must be last." };
+  }
+  const reviewer = createDefaultFunnel ? await prisma.user.findFirst({ where: { role: "reviewer" }, select: { id: true } }) : null;
 
-  const drive = await prisma.drive.create({
-    data: {
-      name,
-      jobDescription,
-      location,
-      deadline,
-      publicLink: `/apply/${name.toLowerCase().replace(/\s+/g, "-")}`,
-      status: "OPEN",
-      cvPassThreshold,
-      tciWeights: j({ CV_SCREENING: 10, GAMES: 10, CCAT: 15, MTT: 15, ESSAY: 10, CODING: 25, PROMPT: 15 }),
-      rubricConfig: j({ ccat: { threshold: 55 }, mtt: { threshold: 55 } }),
-      thresholdHistory: j([]),
-      ownerId: user.id,
-    },
-  });
-
-  await prisma.auditLog.create({
-    data: { actorId: user.id, action: "DRIVE_CREATED", meta: j({ driveId: drive.id, name }) },
+  const drive = await prisma.$transaction(async (tx) => {
+    const createdDrive = await tx.drive.create({
+      data: {
+        name,
+        jobDescription,
+        location,
+        deadline,
+        publicLink: `/apply/${name.toLowerCase().replace(/\s+/g, "-")}`,
+        status: "OPEN",
+        cvPassThreshold,
+        tciWeights: j({ CV_SCREENING: 10, GAMES: 10, CCAT: 15, MTT: 15, ESSAY: 10, CODING: 25, PROMPT: 15 }),
+        rubricConfig: j({ ccat: { threshold: 55 }, mtt: { threshold: 55 } }),
+        thresholdHistory: j([]),
+        ownerId: user.id,
+      },
+    });
+    let defaultFunnelId: string | null = null;
+    if (createDefaultFunnel) {
+      const normalized = defaultStages.map((stage, index) => ({
+        id: `st-${Math.random().toString(36).slice(2, 8)}`,
+        type: stage.type,
+        name: String(stage.name || stage.type).slice(0, 100),
+        order: index + 1,
+        enabled: true,
+        gradingMode: AUTOMATIC_THRESHOLD_TYPES.has(stage.type) ? "AUTO" : MANUAL_GRADING_TYPES.has(stage.type) ? "MANUAL" : "AUTO",
+        passScore: Math.max(0, Math.min(100, Number(stage.passScore) || 0)),
+        durationMin: Math.max(0, Math.min(240, Number(stage.durationMin) || 0)),
+        passAction: "NEXT",
+        failAction: stage.type === "CV_SCREENING" ? "HOLD" : "REJECT",
+        assignedReviewers: reviewer ? [reviewer.id] : [],
+      }));
+      const funnel = await tx.funnel.create({
+        data: { driveId: createdDrive.id, name: defaultFunnelName || "Default Funnel", version: 1, published: true, stages: j(normalized) },
+      });
+      defaultFunnelId = funnel.id;
+      await tx.$executeRaw`UPDATE "Drive" SET "defaultFunnelId" = ${defaultFunnelId} WHERE "id" = ${createdDrive.id}`;
+      await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_PUBLISHED", meta: j({ driveId: createdDrive.id, funnelId: funnel.id, name: funnel.name, phases: normalized.length, default: true }) } });
+    }
+    await tx.auditLog.create({
+      data: { actorId: user.id, action: "DRIVE_CREATED", meta: j({ driveId: createdDrive.id, name, defaultFunnelId }) },
+    });
+    return createdDrive;
   });
 
   redirect(user.role === "admin" ? `/admin/drives/${drive.id}` : `/recruiter/drives/${drive.id}`);

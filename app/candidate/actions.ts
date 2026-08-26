@@ -78,6 +78,13 @@ export async function applyAction(driveId: string, formData: FormData) {
   // sets gating, and notifies the candidate. This keeps apply non-blocking and
   // makes CV scoring retryable without re-running AI on already-scored jobs.
   const applicationId = randomUUID();
+  const [defaultFunnel = null] = await prisma.$queryRaw<Array<{ id: string; version: number; published: boolean }>>`
+    SELECT f."id", f."version", f."published"
+    FROM "Drive" d
+    JOIN "Funnel" f ON f."id" = d."defaultFunnelId" AND f."driveId" = d."id"
+    WHERE d."id" = ${driveId} AND f."published" = true
+    LIMIT 1
+  `;
   let storagePath = "";
   try {
     storagePath = await storeCvFile(applicationId, input.file.name, input.file.mime, input.file.buf);
@@ -87,8 +94,8 @@ export async function applyAction(driveId: string, formData: FormData) {
           id: applicationId,
           candidateId: user.id,
           driveId,
-          funnelId: null,
-          funnelVersion: 1,
+          funnelId: defaultFunnel?.id ?? null,
+          funnelVersion: defaultFunnel?.version ?? 1,
           status: "IN_PROGRESS",
           cvScore: 0,
           cvResult: "PROCESSING",
@@ -110,7 +117,7 @@ export async function applyAction(driveId: string, formData: FormData) {
           attempts: 0,
         },
       });
-      await tx.auditLog.create({ data: { actorId: user.id, action: "APPLY", meta: j({ applicationId, driveId, funnelId: null }) } });
+      await tx.auditLog.create({ data: { actorId: user.id, action: "APPLY", meta: j({ applicationId, driveId, funnelId: defaultFunnel?.id ?? null, defaultFunnel: Boolean(defaultFunnel) }) } });
       await createNotification({ userId: user.id, type: "APPLICATION_RECEIVED", message: "Your application was received and your CV is queued for screening.", relatedAppId: applicationId }, tx);
     });
   } catch (error) {
