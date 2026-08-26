@@ -14,6 +14,7 @@ export interface FunnelStage {
   gradingMode?: GradingMode; // for assessments: AUTO / MANUAL / AUTO_APPROVAL
   passScore?: number; // required pass percentage for the stage
   durationMin?: number;
+  opensAt?: string; // optional ISO timestamp; assignment stays locked until then
   deadline?: string;
   passAction?: "NEXT" | "ADVANCE_TO" | "OFFER";
   failAction?: "REJECT" | "HOLD" | "MOVE_TO";

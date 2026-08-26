@@ -156,7 +156,14 @@ export async function startAssessmentAction(applicationId: string, type: string)
   const user = await requireRole("candidate");
   const app = await prisma.application.findUnique({ where: { id: applicationId } });
   if (!app || app.candidateId !== user.id) return { error: "Not found." };
-  if (app.currentStage !== type || !app.phaseReleased) return { error: "This phase is not available yet." };
+  const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
+  const stage = funnel?.stages.find((item) => item.type === type);
+  const opensAt = stage?.opensAt ? new Date(stage.opensAt) : null;
+  const scheduledReleaseReady = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
+  if (app.currentStage !== type || (!app.phaseReleased && !scheduledReleaseReady)) return { error: "This phase is not available yet." };
+  if (!app.phaseReleased && scheduledReleaseReady) {
+    await prisma.application.update({ where: { id: applicationId }, data: { phaseReleased: true, status: "IN_PROGRESS" } });
+  }
 
   // Prevent multiple active attempts for the same phase.
   const active = await getSingleActiveAttempt(applicationId, type);
@@ -164,8 +171,6 @@ export async function startAssessmentAction(applicationId: string, type: string)
     return { ok: true, attempt: { id: active.id, startedAt: active.startedAt, deadlineAt: active.deadlineAt, attemptNumber: active.attemptNumber } };
   }
 
-  const funnel = await getFunnel(app.funnelId!);
-  const stage = funnel?.stages.find((s) => s.type === type);
   const durationMin = stage?.durationMin && stage.durationMin > 0 ? stage.durationMin : null;
   const now = new Date();
   const deadlineAt = durationMin ? new Date(now.getTime() + durationMin * 60000) : null;

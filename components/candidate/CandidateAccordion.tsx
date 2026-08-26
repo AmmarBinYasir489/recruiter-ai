@@ -130,7 +130,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     try {
       const result = await assignSelectedFunnelAction(selected, bulkFunnelId);
       if ("error" in result) throw new Error(result.error);
-      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} assigned. Their first assessment is now available and notifications were sent.` });
+      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} assigned. Opening-time notifications were sent.` });
       setSelected([]);
       setBulkFunnelId("");
       router.refresh();

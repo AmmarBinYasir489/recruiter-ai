@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import { prisma, uj } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { signCvToken } from "@/lib/cv/access";
 import { resultForCurrentStage } from "@/lib/candidateStage";
@@ -19,7 +19,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   if (!user) return null;
   const app = await prisma.application.findUnique({
     where: { id: params.id },
-    include: { drive: true, results: { orderBy: { createdAt: "desc" } } },
+    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } } },
   });
   if (!app || app.candidateId !== user.id) return <Card>Application not found.</Card>;
 
@@ -33,6 +33,10 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   const cvToken = signCvToken(app.id, user.id);
   const processing = app.cvResult === "PROCESSING";
   const currentDecision = currentStage === "CV_SCREENING" ? app.cvResult : currentResult?.status;
+  const currentStageConfig = app.funnel ? (uj<any[]>(app.funnel.stages) || []).find((stage) => stage.type === currentStage) : null;
+  const opensAt = currentStageConfig?.opensAt ? new Date(currentStageConfig.opensAt) : null;
+  const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
+  const phaseAvailable = app.phaseReleased || Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -54,13 +58,15 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <div className="mt-4">
           {processing ? (
             <p className="text-sm text-slate-600" role="status">Your CV is securely queued for scoring. This page updates automatically.</p>
-          ) : app.phaseReleased && currentStage !== "FINAL" ? (
+          ) : phaseAvailable && currentStage !== "FINAL" ? (
             <>
               <p className="mb-3 text-sm text-slate-600">This assessment is ready. Your timer starts only when you begin.</p>
               <LinkButton href={`/candidate/test/${app.id}/${currentStage}`} className="btn-primary">
                 Start {STAGE_LABEL[currentStage] || currentStage} →
               </LinkButton>
             </>
+          ) : scheduled ? (
+            <p className="text-sm font-medium text-amber-700">This assessment opens on {opensAt!.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC. You’ll be notified here automatically when it is available.</p>
           ) : currentDecision === "PENDING" || app.cvResult === "PENDING" ? (
             <p className="text-sm font-medium text-amber-700">Your submission is under review. No action is needed from you.</p>
           ) : app.status === "REJECTED" ? (

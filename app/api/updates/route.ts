@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prisma, uj } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET() {
   let candidateState: unknown = null;
   let staffState: unknown = null;
   if (user.role === "candidate") {
-    candidateState = await prisma.application.findFirst({
+    const application = await prisma.application.findFirst({
       where: { candidateId: user.id },
       orderBy: { createdAt: "desc" },
       select: {
@@ -26,12 +26,23 @@ export async function GET() {
         phaseReleased: true,
         cvResult: true,
         cvScore: true,
+        funnel: { select: { stages: true } },
         // This is only a cache-busting watermark. Never expose subjective or
         // internal assessment decisions/scores through the polling endpoint.
         results: { orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1, select: { id: true, createdAt: true } },
         cvJobs: { orderBy: { updatedAt: "desc" }, take: 1, select: { id: true, status: true, updatedAt: true } },
       },
     });
+    const stages = application?.funnel ? uj<any[]>(application.funnel.stages) || [] : [];
+    const current = stages.find((stage) => stage.type === application?.currentStage);
+    const opensAt = current?.opensAt ? new Date(current.opensAt) : null;
+    if (application) {
+      const { funnel: _privateFunnel, ...safeApplication } = application;
+      candidateState = {
+        ...safeApplication,
+        releaseReady: Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now()),
+      };
+    }
   }
   if (user.role === "recruiter" || user.role === "admin") {
     const applicationScope = user.role === "admin" ? {} : { application: { drive: { ownerId: user.id } } };

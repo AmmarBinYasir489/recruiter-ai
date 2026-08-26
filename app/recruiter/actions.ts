@@ -58,20 +58,25 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
   const firstAssessment = firstAssessmentStage(funnel);
   if (!firstAssessment) return { error: "This funnel has no assessment after CV screening." };
   const reachingFinal = firstAssessment.type === "FINAL";
+  const opensAt = firstAssessment.opensAt ? new Date(firstAssessment.opensAt) : null;
+  const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
+  const releaseMessage = scheduled
+    ? `${firstAssessment.name} will open on ${opensAt!.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC.`
+    : `${firstAssessment.name} is now available.`;
   await prisma.$transaction(async (tx) => {
     await tx.application.update({
       where: { id: applicationId },
       data: {
         funnelId,
         funnelVersion: funnelRow.version,
-        status: reachingFinal ? "HOLD" : "IN_PROGRESS",
+        status: reachingFinal || scheduled ? "HOLD" : "IN_PROGRESS",
         currentStage: firstAssessment.type,
-        phaseReleased: !reachingFinal,
-        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${firstAssessment.name} ${reachingFinal ? "is pending" : "released"}` }]),
+        phaseReleased: !reachingFinal && !scheduled,
+        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal || scheduled ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${releaseMessage}` }]),
       },
     });
     await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_ASSIGNED", meta: j({ applicationId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }) } });
-    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : `You were selected for ${funnelRow.name}. ${firstAssessment.name} is now available.`, relatedAppId: applicationId }, tx);
+    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : `You were selected for ${funnelRow.name}. ${releaseMessage}`, relatedAppId: applicationId }, tx);
   });
   return { ok: true };
 }
@@ -507,6 +512,7 @@ export async function createFunnelAction(driveId: string, formData: FormData) {
     gradingMode: AUTOMATIC_THRESHOLD_TYPES.has(s.type) ? "AUTO" : MANUAL_GRADING_TYPES.has(s.type) ? "MANUAL" : s.gradingMode,
     passScore: s.passScore,
     durationMin: s.durationMin,
+    opensAt: s.opensAt,
     passAction: s.passAction || "NEXT",
     failAction: s.failAction || "REJECT",
     assignedReviewers: s.assignedReviewers || (reviewer ? [reviewer.id] : []),

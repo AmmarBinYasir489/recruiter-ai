@@ -38,16 +38,22 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
   const app = await prisma.application.findUnique({ where: { id: applicationId } });
   if (!app || app.candidateId !== user.id) return <Card>Not found.</Card>;
   if (!STAGE_LABEL[type]) return <Card>Unknown stage.</Card>;
+  const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
+  const stage = funnel?.stages.find((item) => item.type === type);
+  const opensAt = stage?.opensAt ? new Date(stage.opensAt) : null;
+  const phaseAvailable = app.phaseReleased || Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
 
   // Gating: the candidate may only open the test when the recruiter has
   // released this specific stage for this application.
-  if (app.currentStage !== type || !app.phaseReleased) {
+  if (app.currentStage !== type || !phaseAvailable) {
     return (
       <div className="max-w-3xl mx-auto">
         <Card>
           <h1 className="text-xl font-bold text-ink-900">{STAGE_LABEL[type]}</h1>
           <p className="text-sm text-amber-600 mt-2">
-            This stage is not available yet. The recruiter releases each stage after reviewing results. You will be notified when it opens.
+            {opensAt && opensAt.getTime() > Date.now()
+              ? `This assessment opens on ${opensAt.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC.`
+              : "This stage is not available yet. The recruitment team will notify you when it opens."}
           </p>
           <p className="text-xs text-slate-400 mt-2">Your current stage: <b>{app.currentStage ? STAGE_LABEL[app.currentStage] : "—"}</b></p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -88,8 +94,6 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
     }
   }
 
-  const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
-  const stage = funnel?.stages.find((s) => s.type === type);
   const durationMin = stage?.durationMin && stage.durationMin > 0 ? stage.durationMin : null;
 
   return (

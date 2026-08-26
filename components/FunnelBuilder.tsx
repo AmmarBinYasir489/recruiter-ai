@@ -27,6 +27,7 @@ interface Row {
   enabled: boolean;
   passScore: number;
   durationMin: number;
+  opensAt: string;
   gradingMode: string;
   passAction: string;
   failAction: string;
@@ -42,6 +43,7 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
       enabled: a.type === "CV_SCREENING" || a.type === "FINAL",
       passScore: a.def,
       durationMin: a.type === "CV_SCREENING" ? 0 : 20,
+      opensAt: "",
       gradingMode: AUTOMATIC_TYPES.has(a.type) ? "AUTO" : MANUAL_TYPES.has(a.type) ? "MANUAL" : "AUTO",
       passAction: "NEXT",
       failAction: "REJECT",
@@ -65,6 +67,7 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
         enabled: true,
         passScore: r.passScore,
         durationMin: r.durationMin,
+        opensAt: r.opensAt ? new Date(r.opensAt).toISOString() : undefined,
         gradingMode: r.gradingMode || undefined,
         passAction: r.passAction,
         failAction: r.failAction,
@@ -113,10 +116,15 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
             )}
           </div>
           {r.enabled && r.type !== "CV_SCREENING" && r.type !== "FINAL" && (
-            <div className="grid sm:grid-cols-3 gap-3 mt-3 text-xs">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3 text-xs">
               <div>
                 <label className="label">Duration (min)</label>
                 <input type="number" className="input" value={r.durationMin} onChange={(e) => update(i, { durationMin: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="label">Opens at (optional)</label>
+                <input type="datetime-local" className="input" value={r.opensAt} onChange={(e) => update(i, { opensAt: e.target.value })} />
+                <p className="mt-1 text-[11px] text-slate-400">Selected candidates are notified now but cannot start before this time.</p>
               </div>
               <div>
                 <label className="label">Grading</label>
