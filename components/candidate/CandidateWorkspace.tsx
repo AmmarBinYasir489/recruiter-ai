@@ -188,7 +188,7 @@ function CandidateCard({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white">Total score: {view.application.overallScore}/100</span>
             {!view.application.overallComplete && <span className="text-xs text-amber-700">Provisional until all weighted assessments are graded</span>}
-            {view.canManage && view.funnelOptions?.length > 0 && view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
+            {view.canManage && view.funnelOptions?.length > 0 && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
               <form action={assignCandidateFunnelAction.bind(null, view.application.id)} className="flex items-center gap-2">
                 <label className="sr-only" htmlFor={`funnel-${view.application.id}`}>Assign funnel</label>
                 <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue={view.application.funnelId || ""} required>
@@ -653,7 +653,6 @@ function SubjectiveAttempt({ view, result, canManage }: { view: AnyObj; result: 
 function CvScreeningSection({ view, onClose }: { view: AnyObj; onClose: () => void }) {
   const app = view.application;
   const cv = parse(app.extractedCv) || {};
-  const cvStatus = app.cvResult || app.cvJobStatus || "PENDING";
   return (
     <div className="card p-5">
       <SectionHeader title="CV Screening — Details" onClose={onClose} />
@@ -673,14 +672,44 @@ function CvScreeningSection({ view, onClose }: { view: AnyObj; onClose: () => vo
         <div className="grid grid-cols-2 gap-3 text-sm">
           <Field label="Name" value={cv.name || view.candidate.name} />
           <Field label="Email" value={cv.email || view.candidate.email} />
+          <Field label="Phone" value={cv.phone} />
+          <Field label="Location" value={cv.location} />
           <Field label="University" value={cv.university} />
           <Field label="Degree" value={cv.degree} />
-          <Field label="GPA" value={cv.gpa} />
+          <Field label="GPA" value={cv.gpa != null ? `${Number(cv.gpa).toFixed(2)}/${cv.gpaScale || 4}${cv.gpaAssumed ? " · assumed because CV did not state CGPA" : ""}` : "—"} />
           <Field label="Graduation year" value={cv.gradYear} />
           <Field label="Skills" value={Array.isArray(cv.skills) ? cv.skills.join(", ") : cv.skills} />
           <Field label="Experience" value={cv.experienceYears != null ? `${cv.experienceYears} years` : null} />
+          <Field label="Extraction confidence" value={cv.extractionConfidence != null ? `${cv.extractionConfidence}%` : "—"} />
+          <Field label="Candidate quality" value={cv.candidateQualityScore != null ? `${cv.candidateQualityScore}%` : "—"} />
         </div>
-        {cv.summary && <p className="mt-2 text-sm text-slate-600">{cv.summary}</p>}
+        {cv.fitSummary && <div className="mt-4 rounded-xl border border-brand-200 bg-brand-50 p-3 text-sm text-ink-900"><strong>Drive fit:</strong> {cv.fitSummary}</div>}
+        {cv.summary && <p className="mt-3 text-sm text-slate-600"><strong>Candidate summary:</strong> {cv.summary}</p>}
+      </Section>
+      <hr className="my-4 border-slate-100" />
+      <Section title="Job requirement match">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3"><p className="text-xs font-semibold uppercase text-emerald-700">Matched required skills</p><p className="mt-1 text-sm text-emerald-950">{(cv.matched || cv.matchedSkills || []).join(", ") || "No explicit matches"}</p></div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3"><p className="text-xs font-semibold uppercase text-amber-700">Missing required evidence</p><p className="mt-1 text-sm text-amber-950">{(cv.missing || cv.missingSkills || []).join(", ") || "None detected"}</p></div>
+        </div>
+        {cv.skillCategories && <div className="mt-3 space-y-1 text-sm">{Object.entries(cv.skillCategories).map(([category, values]) => <p key={category}><strong>{category}:</strong> {Array.isArray(values) ? values.join(", ") : String(values)}</p>)}</div>}
+      </Section>
+      <hr className="my-4 border-slate-100" />
+      <Section title={`Projects (${cv.projectDetails?.length || 0})`}>
+        {cv.projectDetails?.length ? <div className="space-y-3">{cv.projectDetails.map((project: AnyObj, index: number) => <div key={`${project.name}-${index}`} className="rounded-xl border border-slate-200 p-3"><p className="font-semibold text-ink-900">{project.name}</p>{project.description && <p className="mt-1 text-sm text-slate-600">{project.description}</p>}{project.technologies?.length ? <p className="mt-1 text-xs text-slate-500">Technology: {project.technologies.join(", ")}</p> : null}{project.url && <a href={project.url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm text-brand-700 hover:underline">Open project link</a>}</div>)}</div> : <p className="text-sm text-slate-400">No project evidence extracted.</p>}
+      </Section>
+      <hr className="my-4 border-slate-100" />
+      <Section title={`Work experience (${cv.experience?.length || 0})`}>
+        {cv.experience?.length ? <div className="space-y-3">{cv.experience.map((job: AnyObj, index: number) => <div key={`${job.title}-${job.company}-${index}`} className="rounded-xl border border-slate-200 p-3"><p className="font-semibold text-ink-900">{job.title || "Role not identified"}{job.company ? ` · ${job.company}` : ""}</p><p className="mt-1 text-xs text-slate-500">{job.location || "Location not stated"}{job.rawDate ? ` · ${job.rawDate}` : ""}{job.durationMonths ? ` · ${job.durationMonths} calculated month(s)` : ""}</p>{job.description && <p className="mt-2 text-sm text-slate-600">{job.description}</p>}</div>)}</div> : <p className="text-sm text-slate-400">No work experience evidence extracted.</p>}
+      </Section>
+      <hr className="my-4 border-slate-100" />
+      <Section title="Additional evidence">
+        <div className="grid gap-3 text-sm sm:grid-cols-2">
+          <Field label="Certifications" value={cv.certifications?.join(", ") || "None extracted"} />
+          <Field label="Coursework" value={cv.coursework?.join(", ") || "None extracted"} />
+          <Field label="Profile links" value={cv.links?.length ? <span className="space-x-2">{cv.links.map((link: AnyObj, index: number) => <a key={`${link.url}-${index}`} href={link.url} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">{link.kind}</a>)}</span> : "None extracted"} />
+          <Field label="Validation" value={cv.validationWarnings?.join(" · ") || "No parser warnings"} />
+        </div>
       </Section>
       {cv.components && (
         <>

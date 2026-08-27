@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { prisma, uj } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { Card, StatCard, SectionTitle, decisionBadge, statusBadge, LinkButton, EmptyState } from "@/components/ui";
+import { Card, StatCard, SectionTitle, statusBadge, LinkButton, EmptyState } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,6 @@ export default async function CandidateDashboard() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {a.cvScore !== null && decisionBadge(a.cvResult)}
                   {statusBadge(a.status)}
                 </div>
               </Link>

@@ -32,7 +32,8 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   const currentResult = resultForCurrentStage(app.results, currentStage);
   const cvToken = signCvToken(app.id, user.id);
   const processing = app.cvResult === "PROCESSING";
-  const currentDecision = currentStage === "CV_SCREENING" ? app.cvResult : currentResult?.status;
+  const currentDecision = currentStage === "CV_SCREENING" ? null : currentResult?.status;
+  const visibleDecision = app.status === "HOLD" && currentDecision === "FAIL" ? null : currentDecision;
   const currentStageConfig = app.funnel ? (uj<any[]>(app.funnel.stages) || []).find((stage) => stage.type === currentStage) : null;
   const opensAt = currentStageConfig?.opensAt ? new Date(currentStageConfig.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
@@ -54,7 +55,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <p className="text-xs font-bold uppercase tracking-wider text-brand-600">Current step</p>
         <h2 id="current-step" className="mt-1 text-2xl font-bold text-ink-900">{STAGE_LABEL[currentStage] || currentStage}</h2>
 
-        {!processing && currentDecision && <div className="mt-4">{decisionBadge(currentDecision)}</div>}
+        {!processing && visibleDecision && <div className="mt-4">{decisionBadge(visibleDecision)}</div>}
 
         <div className="mt-4">
           {processing ? (
@@ -95,8 +96,8 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
       <Card className="mb-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-slate-500">Result</p>
-            <div className="mt-1">{processing ? <span className="badge-info">Processing</span> : decisionBadge(app.cvResult || "PENDING")}</div>
+            <p className="text-sm text-slate-500">Screening status</p>
+            <div className="mt-1"><span className={processing ? "badge-info" : "badge-muted"}>{processing ? "Processing" : "Reviewed"}</span></div>
           </div>
           <a href={`/api/cv/${app.id}?token=${cvToken}`} className="btn-outline text-sm">Download your CV</a>
         </div>
@@ -109,7 +110,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         ) : notes.map((note) => (
           <Card key={note.id} className={`text-sm ${note.read ? "text-slate-600" : "border-brand-200 bg-brand-50 text-ink-900"}`}>
             <div className="flex items-start justify-between gap-3">
-              <p>{candidateSafeNotification(note.message)}</p>
+              <p>{candidateSafeNotification(note.message, app.status === "HOLD")}</p>
               {!note.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-label="Unread" />}
             </div>
             <p className="mt-1 text-xs text-slate-400">{note.createdAt.toLocaleString()}</p>

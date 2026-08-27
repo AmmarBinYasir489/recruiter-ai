@@ -6,7 +6,7 @@ import { CandidateWorkspace } from "@/components/candidate/CandidateWorkspace";
 import { ActionFeedbackDialog } from "@/components/ActionFeedbackDialog";
 import { decisionBadge, statusBadge } from "@/components/ui";
 import {
-  passSelectedAction,
+  advanceSelectedAction,
   rejectSelectedAction,
   offerSelectedAction,
   requestRetestsAction,
@@ -25,6 +25,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const [message, setMessage] = useState("");
   const [bulkFunnelId, setBulkFunnelId] = useState("");
   const [bulkTestMode, setBulkTestMode] = useState<"ONLINE" | "ONSITE">("ONLINE");
+  const [bulkTestType, setBulkTestType] = useState("CCAT");
   const [onsiteDate, setOnsiteDate] = useState("");
   const [onsiteLocation, setOnsiteLocation] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
@@ -62,22 +63,20 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const toggleAll = () => setSelected((s) => (s.length === allIds.length ? [] : allIds));
   const selectedViews = views.filter((view) => selected.includes(view.application.id));
   const selectedDriveIds = new Set(selectedViews.map((view) => view.application.driveId));
-  const canBulkAssign = selectedViews.length > 0 && selectedDriveIds.size === 1 && selectedViews.every((view) =>
-    view.application.currentStage === "CV_SCREENING" && ["PASS", "FAIL"].includes(view.application.cvResult),
-  );
+  const canBulkAssign = selectedViews.length > 0 && selectedDriveIds.size === 1 && selectedViews.every((view) => ["PASS", "FAIL"].includes(view.application.cvResult));
   const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
   const canMoveNext = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && !["ONSITE", "FINAL"].includes(view.application.currentStage));
-  const canIssueTest = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && !["CV_SCREENING", "ONSITE", "FINAL"].includes(view.application.currentStage));
+  const canIssueTest = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId);
   const canInviteOnsite = selectedViews.length > 0 && selectedViews.every((view) => view.application.currentStage === "ONSITE");
 
   async function runIssue() {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await passSelectedAction(selected);
+      const result = await advanceSelectedAction(selected);
       if ("error" in result) throw new Error(result.error);
-      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} passed and moved to the next phase.` });
+      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} moved to the next phase. No test result was changed.` });
       setSelected([]);
       router.refresh();
     } catch (error) {
@@ -122,11 +121,11 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   }
 
   async function runRetest() {
-    if (!window.confirm(`Reissue the current completed assessment for ${selected.length} selected candidate(s)?`)) return;
+    if (!window.confirm(`Issue ${bulkTestType} in ${bulkTestMode.toLowerCase()} mode for ${selected.length} selected candidate(s)? Their present funnel position will be restored after this additional attempt.`)) return;
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await requestRetestsAction(selected, bulkTestMode);
+      const result = await requestRetestsAction(selected, bulkTestType, bulkTestMode);
       if ("error" in result) throw new Error(String(result.error || "Could not reissue the selected tests."));
       setFeedback({ kind: "success", message: `${result.count} ${bulkTestMode.toLowerCase()} test${result.count === 1 ? "" : "s"} prepared. Timers start when candidates begin.` });
       setSelected([]);
@@ -285,8 +284,8 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
             <button className="btn-primary whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={runAssignFunnel}>Assign funnel &amp; release test</button>
           </>}
           {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
-          {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel release or reassignment requires screened applicants from one drive before testing starts.</span>}
-          {canMoveNext && <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Pass &amp; move next</button>}
+          {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened applicants from the same drive.</span>}
+          {canMoveNext && <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Move to next stage</button>}
           {canInviteOnsite && <>
             <input type="datetime-local" className="input min-w-52" aria-label="Onsite screening date and time" value={onsiteDate} onChange={(event) => setOnsiteDate(event.target.value)} />
             <input className="input min-w-48" aria-label="Onsite screening location" placeholder="Onsite location" value={onsiteLocation} onChange={(event) => setOnsiteLocation(event.target.value)} />
@@ -294,11 +293,19 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
           </>}
           <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runOffer}>Offer</button>
           {canIssueTest && <>
+            <select className="input min-w-40" aria-label="Bulk assessment type" value={bulkTestType} onChange={(event) => setBulkTestType(event.target.value)}>
+              <option value="CCAT">CCAT / IQ</option>
+              <option value="MTT">Math Thinking</option>
+              <option value="CODING">Coding</option>
+              <option value="ESSAY">Essay</option>
+              <option value="PROMPT">Prompt Engineering</option>
+              <option value="GAMES">Games</option>
+            </select>
             <select className="input min-w-40" aria-label="Bulk test delivery mode" value={bulkTestMode} onChange={(event) => setBulkTestMode(event.target.value as "ONLINE" | "ONSITE")}>
               <option value="ONLINE">Test: Online</option>
               <option value="ONSITE">Test: Onsite</option>
             </select>
-            <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Issue/reissue test</button>
+            <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Issue additional test</button>
           </>}
           <button className="btn-danger whitespace-nowrap" disabled={busy} onClick={runReject}>Reject</button>
           <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" />

@@ -40,9 +40,16 @@ export function scoreSkills(
     if (have.has(p)) prefMatched.push(p);
     else prefMissing.push(p);
   }
-  const reqScore = required.length ? reqMatched.length / required.length : 1;
-  const prefScore = preferred.length ? prefMatched.length / preferred.length : 1;
-  const score = Math.round(clamp((reqScore * 0.7 + prefScore * 0.3) * 100));
+  const reqScore = required.length ? reqMatched.length / required.length : 0;
+  const prefScore = preferred.length ? prefMatched.length / preferred.length : 0;
+  const combined = required.length && preferred.length
+    ? reqScore * 0.7 + prefScore * 0.3
+    : required.length
+      ? reqScore
+      : preferred.length
+        ? prefScore
+        : 1;
+  const score = Math.round(clamp(combined * 100));
   return {
     required,
     preferred,

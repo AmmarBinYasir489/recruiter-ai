@@ -1,8 +1,9 @@
 import { prisma, j, uj } from "@/lib/db";
-import { parseCv, scoreParsedCv, extractRequiredFromJd } from "@/lib/ai/parseCv";
+import { parseCv, parseCvDocument, scoreParsedCv, extractRequiredFromJd } from "@/lib/ai/parseCv";
 import { extractTextFromBuffer } from "@/lib/cv/extract";
 import { readCvFile } from "@/lib/cv/storage";
 import { createNotification } from "@/lib/notifications";
+import { DEFAULT_CGPA } from "@/lib/engine/cgpa";
 
 const MAX_RETRIES = 3;
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -31,7 +32,10 @@ export async function processCvJob(jobId: string) {
     const fallbackText = [submitted.name, submitted.email, submitted.phone, submitted.university, submitted.degree, submitted.screening]
       .filter(Boolean)
       .join("\n");
-    const parsed = await parseCv(text.trim() || fallbackText, required, []);
+    const parserText = text.trim() || fallbackText;
+    const parsed = text.trim() || job.fileType === "application/pdf"
+      ? await parseCvDocument(buf, job.fileType, parserText, required)
+      : await parseCv(parserText, required, []);
     const hydrated = {
       ...parsed,
       name: parsed.name || submitted.name,
@@ -40,7 +44,9 @@ export async function processCvJob(jobId: string) {
       university: parsed.university || submitted.university,
       degree: parsed.degree || submitted.degree,
       gradYear: parsed.gradYear || submitted.gradYear,
-      gpa: parsed.gpa ?? submitted.gpa,
+      gpa: parsed.gpa ?? submitted.gpa ?? DEFAULT_CGPA,
+      gpaScale: parsed.gpaScale ?? 4,
+      gpaAssumed: parsed.gpaAssumed ?? (submitted.gpa == null),
     };
     const configuredTiers = await prisma.universityTier.findMany();
     const university = (hydrated.university || "").toLowerCase();
@@ -65,7 +71,7 @@ export async function processCvJob(jobId: string) {
       requiredSkills: required,
       matched: hydrated.matchedSkills,
       missing: hydrated.missingSkills,
-      extractionState: text.trim() ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK",
+      extractionState: hydrated.extractionMethod || (text.trim() ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK"),
       scoringState: "AUTOMATIC_THRESHOLD_APPLIED",
       threshold,
     };
@@ -97,7 +103,7 @@ export async function processCvJob(jobId: string) {
         {
           userId: app.candidateId,
           type: "CV_SCORED",
-          message: `Your CV screening result is ${cvResult}. The recruitment team will contact you if you are selected for an assessment path.`,
+          message: "Your CV screening is complete. Your application is now with the recruitment team for assessment-path selection.",
           relatedAppId: app.id,
         },
         tx,

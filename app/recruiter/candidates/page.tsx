@@ -11,6 +11,7 @@ import { Card } from "@/components/ui";
 import { CandidateAccordion } from "@/components/candidate/CandidateAccordion";
 import { buildCandidateListViews } from "@/lib/candidateView";
 import Link from "next/link";
+import { AutoRefresh } from "@/components/AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -82,6 +83,7 @@ export default async function CandidatesPage({ searchParams: searchParamsPromise
 
   return (
     <div>
+      <AutoRefresh intervalMs={5000} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-ink-900">Candidates</h1>
         <span className="text-sm text-slate-500">{filtered.length} of {scoped.length} match</span>

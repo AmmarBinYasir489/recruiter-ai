@@ -16,4 +16,11 @@ describe("candidate privacy", () => {
     expect(candidateSafeNotification("Your ESSAY was graded: 75/100.")).not.toContain("75/100");
     expect(candidateSafeNotification("Your CCAT result is PASS (80/100).")).toBe("Your CCAT result is PASS.");
   });
+
+  it("never exposes CV decisions and suppresses failed assessment decisions while held", () => {
+    expect(candidateSafeNotification("Your CV screening result is FAIL (33/100)."))
+      .toBe("Your CV screening is complete and is with the recruitment team.");
+    expect(candidateSafeNotification("Your MTT result is FAIL (40/100).", true))
+      .toBe("Your assessment has been reviewed. The recruitment team will notify you about the next step.");
+  });
 });

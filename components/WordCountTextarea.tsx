@@ -21,7 +21,7 @@ export function WordCountTextarea({
     <div className="mt-3">
       <textarea
         name={name}
-        className="input"
+        className="input select-text"
         rows={rows}
         required
         value={value}

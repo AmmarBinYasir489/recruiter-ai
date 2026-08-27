@@ -9,10 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function CandidateNotifications() {
   const user = await getCurrentUser();
   if (!user) return null;
-  const notes = await prisma.notification.findMany({
-    where: { userId: user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [notes, heldApplications] = await Promise.all([
+    prisma.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: "desc" } }),
+    prisma.application.findMany({ where: { candidateId: user.id, status: "HOLD" }, select: { id: true } }),
+  ]);
+  const heldIds = new Set(heldApplications.map((application) => application.id));
   return (
     <div className="max-w-2xl mx-auto">
       <SectionTitle action={
@@ -26,7 +27,7 @@ export default async function CandidateNotifications() {
         <div className="space-y-2">
           {notes.map((n) => (
             <Card key={n.id} className={`text-sm flex items-start justify-between gap-3 ${n.read ? "opacity-60" : ""}`}>
-              <span>{candidateSafeNotification(n.message)}</span>
+              <span>{candidateSafeNotification(n.message, Boolean(n.relatedAppId && heldIds.has(n.relatedAppId)))}</span>
               <span className="text-xs text-slate-400 whitespace-nowrap">{new Date(n.createdAt).toLocaleDateString()}</span>
             </Card>
           ))}

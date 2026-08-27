@@ -26,6 +26,11 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function supplementalReturnState(idempotencyKey?: string | null) {
+  const match = idempotencyKey?.match(/:RETURN:([^:]+):([01]):([^:]+)$/);
+  return match ? { stage: match[1], phaseReleased: match[2] === "1", status: match[3] } : null;
+}
+
 // Prepare pasted text or an uploaded file for the same durable CV queue.
 async function readCvInput(formData: FormData): Promise<{ file?: { buf: Buffer; name: string; mime: string }; error?: string }> {
   const f = formData.get("cvFile");
@@ -78,13 +83,6 @@ export async function applyAction(driveId: string, formData: FormData) {
   // sets gating, and notifies the candidate. This keeps apply non-blocking and
   // makes CV scoring retryable without re-running AI on already-scored jobs.
   const applicationId = randomUUID();
-  const [defaultFunnel = null] = await prisma.$queryRaw<Array<{ id: string; version: number; published: boolean }>>`
-    SELECT f."id", f."version", f."published"
-    FROM "Drive" d
-    JOIN "Funnel" f ON f."id" = d."defaultFunnelId" AND f."driveId" = d."id"
-    WHERE d."id" = ${driveId} AND f."published" = true
-    LIMIT 1
-  `;
   let storagePath = "";
   try {
     storagePath = await storeCvFile(applicationId, input.file.name, input.file.mime, input.file.buf);
@@ -94,8 +92,8 @@ export async function applyAction(driveId: string, formData: FormData) {
           id: applicationId,
           candidateId: user.id,
           driveId,
-          funnelId: defaultFunnel?.id ?? null,
-          funnelVersion: defaultFunnel?.version ?? 1,
+          funnelId: null,
+          funnelVersion: 1,
           status: "IN_PROGRESS",
           cvScore: 0,
           cvResult: "PROCESSING",
@@ -117,7 +115,7 @@ export async function applyAction(driveId: string, formData: FormData) {
           attempts: 0,
         },
       });
-      await tx.auditLog.create({ data: { actorId: user.id, action: "APPLY", meta: j({ applicationId, driveId, funnelId: defaultFunnel?.id ?? null, defaultFunnel: Boolean(defaultFunnel) }) } });
+      await tx.auditLog.create({ data: { actorId: user.id, action: "APPLY", meta: j({ applicationId, driveId, funnelId: null, assignment: "RECRUITER_REQUIRED" }) } });
       await createNotification({ userId: user.id, type: "APPLICATION_RECEIVED", message: "Your application was received and your CV is queued for screening.", relatedAppId: applicationId }, tx);
     });
   } catch (error) {
@@ -234,7 +232,7 @@ const INTEGRITY_EVENT_TYPES = new Set(["TAB_SWITCH", "FULLSCREEN_EXIT", "FULLSCR
 
 function readIntegrity(
   formData: FormData,
-  attempt: { id: string; mode: string; startedAt: Date | null; deadlineAt: Date | null },
+  attempt: { id: string; mode: string; startedAt: Date | null; deadlineAt: Date | null; idempotencyKey?: string | null },
 ) {
   let events: AssessmentIntegrityEvent[] = [];
   try {
@@ -261,6 +259,7 @@ function readIntegrity(
     integrityEvents: j(events),
     integrityLevel: summary.level,
     integrityReasons: j(summary.reasons),
+    returnState: supplementalReturnState(attempt.idempotencyKey),
   };
 }
 
@@ -344,6 +343,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     payload = { text: String(formData.get("answer") || "").trim(), submittedAt: nowIso() };
   }
   const integrity = readIntegrity(formData, chk.attempt);
+  const returnState = supplementalReturnState(chk.attempt.idempotencyKey);
   // AI may provide a reviewer aid, but subjective assessments remain manual.
   // An AI suggestion never changes the result state or advances a candidate.
   let aiScored = false;
@@ -395,7 +395,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        scores: j(scores), currentStage: type, phaseReleased: false, status: "IN_PROGRESS",
+        scores: j(scores), currentStage: returnState?.stage ?? type, phaseReleased: returnState?.phaseReleased ?? false, status: returnState?.status ?? "IN_PROGRESS",
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: type, status: "MANUAL_REVIEW", at: nowIso(), note: aiScored ? "AI score prepared as a reviewer aid; human review required" : "Submitted for reviewer grading" }]),
       },
     });
@@ -529,6 +529,7 @@ type IntegrityPayload = {
   integrityEvents: string;
   integrityLevel: string;
   integrityReasons: string;
+  returnState: { stage: string; phaseReleased: boolean; status: string } | null;
 };
 
 async function storeResult(
@@ -545,7 +546,7 @@ async function storeResult(
 ) {
   const isAutomatic = type === "CCAT" || type === "MTT";
   const decision = _suggestedResult === "PASS" ? "PASS" : "FAIL";
-  const transition = isAutomatic
+  const transition = isAutomatic && !integrity.returnState
     ? automaticStageTransition(funnel, type as "CCAT" | "MTT", decision)
     : null;
   const nextIsOnsite = transition?.currentStage === "ONSITE";
@@ -573,9 +574,9 @@ async function storeResult(
               : `${type} ${normalized}/100; awaiting recruiter threshold decision`,
           },
         ]),
-        currentStage: transition?.currentStage ?? type,
-        phaseReleased: transition?.phaseReleased ?? false,
-        status: transition?.applicationStatus ?? "IN_PROGRESS",
+        currentStage: integrity.returnState?.stage ?? transition?.currentStage ?? type,
+        phaseReleased: integrity.returnState?.phaseReleased ?? transition?.phaseReleased ?? false,
+        status: integrity.returnState?.status ?? transition?.applicationStatus ?? "IN_PROGRESS",
       },
     });
     await tx.assessmentAttempt.update({ where: { id: integrity.attemptId }, data: { status: "SUBMITTED", submittedAt: new Date() } });

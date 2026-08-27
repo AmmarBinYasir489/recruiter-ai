@@ -110,7 +110,7 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
         <>
           <Countdown deadlineAt={attempt.deadlineAt ? new Date(attempt.deadlineAt).toISOString() : null} applicationId={applicationId} />
           {type === "CCAT" && <CcatAssessment applicationId={applicationId} attemptId={attempt.id} questions={(await getBank("CCAT", attempt.id)).map((q) => ({ number: q.number, text: q.text, options: q.options, imageUrl: q.imageUrl, localImagePath: q.localImagePath }))} />}
-          {type === "MTT" && <MttForm applicationId={applicationId} attemptId={attempt.id} questions={await getBank("MTT", attempt.id)} />}
+          {type === "MTT" && <CcatAssessment type="MTT" applicationId={applicationId} attemptId={attempt.id} questions={(await getBank("MTT", attempt.id)).map((q) => ({ number: q.number, text: q.text, options: q.options, optionImages: q.optionImages, imageUrl: q.imageUrl }))} />}
           {(type === "ESSAY" || type === "CODING" || type === "PROMPT") && (
             <SubjectiveForm applicationId={applicationId} attemptId={attempt.id} type={type} questions={await getBank(type, attempt.id)} />
           )}
@@ -130,37 +130,6 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
   );
 }
 
-function MttForm({ applicationId, attemptId, questions }: { applicationId: string; attemptId: string; questions: any[] }) {
-  return (
-    <form action={submitAutoTestAction.bind(null, applicationId, "MTT")}>
-      <ProctorMonitor stage="MTT" applicationId={applicationId} attemptId={attemptId} />
-      <Card className="space-y-3">
-        {questions.map((q) => (
-            <fieldset key={q.number} className="border-b border-slate-100 pb-4 last:border-0">
-              <legend className="text-sm font-medium">{q.number}. {q.text}</legend>
-              {q.imageUrl && <img src={q.imageUrl} alt={`Question ${q.number} diagram`} className="my-3 max-h-72 w-auto rounded-lg border border-slate-200 object-contain" />}
-              {Array.isArray(q.options) ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {q.options.map((option: string, index: number) => (
-                    <label key={index} className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm hover:bg-slate-50">
-                      <input type="radio" name={`a${q.number}`} value={index} required />
-                      {q.optionImages?.[index]
-                        ? <img src={q.optionImages[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="max-h-20 w-auto object-contain" />
-                        : <span><b>{String.fromCharCode(65 + index)}.</b> {option}</span>}
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <input type="text" inputMode="numeric" name={`a${q.number}`} className="input mt-3 w-28" placeholder="Answer" autoComplete="off" />
-              )}
-            </fieldset>
-        ))}
-        <button className="btn-primary">Submit MTT</button>
-      </Card>
-    </form>
-  );
-}
-
 function SubjectiveForm({ applicationId, attemptId, type, questions }: { applicationId: string; attemptId: string; type: string; questions: any[] }) {
   const labels: Record<string, string> = {
     ESSAY: "Essay",
@@ -169,7 +138,7 @@ function SubjectiveForm({ applicationId, attemptId, type, questions }: { applica
   };
   const questionText = (q: any) => q?.prompt ?? q?.text ?? q?.question ?? q?.title ?? "";
   return (
-    <form action={submitSubjectiveAction.bind(null, applicationId, type)}>
+    <form action={submitSubjectiveAction.bind(null, applicationId, type)} className="select-none">
       <ProctorMonitor stage={type} applicationId={applicationId} attemptId={attemptId} />
       <Card className="space-y-4">
         <p className="text-sm text-slate-600">Answer every question below, then submit for review.</p>
@@ -200,7 +169,7 @@ function SubjectiveForm({ applicationId, attemptId, type, questions }: { applica
 
 function GameForm({ applicationId, attemptId }: { applicationId: string; attemptId: string }) {
   return (
-    <form action={submitGameAction.bind(null, applicationId)}>
+    <form action={submitGameAction.bind(null, applicationId)} className="select-none">
       <ProctorMonitor stage="GAMES" applicationId={applicationId} attemptId={attemptId} />
       <Card className="space-y-3">
         <p className="text-sm text-slate-600">Complete all three Neodým cognitive games. Accuracy and completion time are scored securely.</p>

@@ -44,7 +44,7 @@ export async function getAiRuntimeConfig(providerOverride?: string) {
 
   const envKey = provider === "groq" ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY;
   const model = provider === "gemini"
-    ? process.env.GEMINI_MODEL || "gemini-1.5-flash"
+    ? process.env.GEMINI_MODEL || "gemini-2.5-flash"
     : process.env.GROQ_MODEL || "llama-3.1-8b-instant";
   return {
     provider,

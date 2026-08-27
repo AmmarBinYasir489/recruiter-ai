@@ -52,8 +52,6 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
   const funnelRow = await prisma.funnel.findFirst({ where: { id: funnelId, driveId: app.driveId, published: true } });
   if (!funnelRow) return { error: "Select a published funnel for this drive." };
   if (app.cvResult !== "PASS" && app.cvResult !== "FAIL") return { error: "Wait for CV screening to finish before assigning a funnel." };
-  const nonCvResult = await prisma.assessmentResult.findFirst({ where: { applicationId, type: { not: "CV_SCREENING" } }, select: { id: true } });
-  if (nonCvResult) return { error: "The funnel cannot be changed after assessments have started." };
   const funnel = await getFunnel(funnelId);
   if (!funnel) return { error: "Funnel not found." };
   const firstAssessment = firstAssessmentStage(funnel);
@@ -62,10 +60,17 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
   const reachingOnsite = firstAssessment.type === "ONSITE";
   const opensAt = firstAssessment.opensAt ? new Date(firstAssessment.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
+  const priorResult = await prisma.assessmentResult.findFirst({ where: { applicationId, type: firstAssessment.type }, select: { id: true } });
+  const lastAttempt = priorResult ? await prisma.assessmentAttempt.findFirst({ where: { applicationId, type: firstAssessment.type }, orderBy: { attemptNumber: "desc" } }) : null;
   const releaseMessage = scheduled
     ? `${firstAssessment.name} will open on ${opensAt!.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC.`
     : `${firstAssessment.name} is now available.`;
   await prisma.$transaction(async (tx) => {
+    if (priorResult && !reachingFinal && !reachingOnsite) {
+      await tx.assessmentAttempt.updateMany({ where: { applicationId, type: firstAssessment.type, status: { in: ["ACTIVE", "READY"] } }, data: { status: "CANCELLED" } });
+      const attemptNumber = (lastAttempt?.attemptNumber ?? 0) + 1;
+      await tx.assessmentAttempt.create({ data: { applicationId, type: firstAssessment.type, mode: "ONLINE", attemptNumber, status: "READY", idempotencyKey: `${applicationId}:${firstAssessment.type}:${attemptNumber}:FUNNEL_REASSIGNMENT` } });
+    }
     await tx.application.update({
       where: { id: applicationId },
       data: {
@@ -77,7 +82,7 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal || reachingOnsite || scheduled ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${reachingOnsite ? "onsite invitation details pending" : releaseMessage}` }]),
       },
     });
-    await tx.auditLog.create({ data: { actorId: user.id, action: "FUNNEL_ASSIGNED", meta: j({ applicationId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }) } });
+    await tx.auditLog.create({ data: { actorId: user.id, action: app.funnelId ? "FUNNEL_REASSIGNED" : "FUNNEL_ASSIGNED", meta: j({ applicationId, fromFunnelId: app.funnelId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type, freshAttempt: Boolean(priorResult) }) } });
     await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : reachingOnsite ? `You were selected for onsite screening in ${funnelRow.name}. Date and location details will be emailed by the recruitment team.` : `You were selected for ${funnelRow.name}. ${releaseMessage}`, relatedAppId: applicationId }, tx);
   });
   return { ok: true };
@@ -253,7 +258,7 @@ export async function applyThresholdAction(driveId: string, proposed: number, cu
         data: {
           userId: app.candidateId,
           type: "CV_THRESHOLD",
-          message: `Your CV result was re-evaluated and is now: ${c.newResult} (threshold ${proposed}).`,
+          message: "Your CV screening was updated. Your application remains with the recruitment team for assessment-path selection.",
           relatedAppId: app.id,
         },
       });
@@ -375,6 +380,19 @@ export async function passSelectedAction(applicationIds: string[]) {
     else count += 1;
   }
   return errors.length ? { error: `${count} passed. ${errors.join(" ")}`, count } : { ok: true, count };
+}
+
+export async function advanceSelectedAction(applicationIds: string[]) {
+  const user = await requireRole("recruiter", "admin");
+  const ids = await managedApplicationIds(user, applicationIds);
+  let count = 0;
+  const errors: string[] = [];
+  for (const id of ids) {
+    const result = await advanceApplicationAction(id);
+    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
+    else count += 1;
+  }
+  return errors.length ? { error: `${count} moved. ${errors.join(" ")}`, count } : { ok: true, count };
 }
 
 // Recruiter/admin adjusts a (manual-graded) score without losing the original.
@@ -686,7 +704,7 @@ export async function applyPhaseThresholdAction(
         data: {
           userId: cand.candidateId,
           type: "PHASE_THRESHOLD",
-          message: `Your ${phaseType} result was re-evaluated and is now: ${c.newResult} (threshold ${proposed}).`,
+          message: phaseType === "CV_SCREENING" ? "Your CV screening was updated. Your application remains with the recruitment team." : `Your ${phaseType} result was re-evaluated and is now: ${c.newResult}.`,
           relatedAppId: cand.id,
         },
       });
@@ -941,8 +959,10 @@ export async function requestRetestAction(applicationId: string, formData: FormD
   if (!stage || type === "CV_SCREENING" || type === "ONSITE" || type === "FINAL") return { error: "This stage cannot be issued as a test." };
   const last = await prisma.assessmentAttempt.findFirst({ where: { applicationId, type }, orderBy: { attemptNumber: "desc" } });
   const attemptNumber = (last?.attemptNumber ?? 0) + 1;
+  const returnStage = app.currentStage && app.currentStage !== type ? app.currentStage : null;
+  const returnState = returnStage ? `:RETURN:${returnStage}:${app.phaseReleased ? 1 : 0}:${app.status}` : "";
   await prisma.assessmentAttempt.updateMany({
-    where: { applicationId, type, status: "ACTIVE" },
+    where: { applicationId, type, status: { in: ["ACTIVE", "READY"] } },
     data: { status: "CANCELLED" },
   });
   await prisma.assessmentAttempt.create({
@@ -954,7 +974,7 @@ export async function requestRetestAction(applicationId: string, formData: FormD
       startedAt: null,
       deadlineAt: null,
       status: "READY",
-      idempotencyKey: `${applicationId}:${type}:${attemptNumber}:${mode}`,
+      idempotencyKey: `${applicationId}:${type}:${attemptNumber}:${mode}${returnState}`,
     },
   });
   await prisma.application.update({
@@ -968,31 +988,28 @@ export async function requestRetestAction(applicationId: string, formData: FormD
     relatedAppId: app.id,
   });
   await prisma.auditLog.create({
-    data: { actorId: user.id, action: "RETEST_ISSUED", meta: j({ applicationId, type, mode, attemptNumber }) },
+    data: { actorId: user.id, action: "RETEST_ISSUED", meta: j({ applicationId, type, mode, attemptNumber, returnStage }) },
   });
   revalidateCandidateRoutes();
   return { ok: true };
 }
 
-export async function requestRetestsAction(applicationIds: string[], mode: "ONLINE" | "ONSITE" = "ONLINE") {
+export async function requestRetestsAction(applicationIds: string[], type: string, mode: "ONLINE" | "ONSITE" = "ONLINE") {
   const user = await requireRole("recruiter", "admin");
   if (mode !== "ONLINE" && mode !== "ONSITE") return { error: "Choose online or onsite delivery." };
   const ids = await managedApplicationIds(user, applicationIds);
-  const apps = await prisma.application.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, currentStage: true },
-  });
+  if (!["CCAT", "MTT", "CODING", "ESSAY", "PROMPT", "GAMES"].includes(type)) return { error: "Choose a supported assessment type." };
+  const apps = await prisma.application.findMany({ where: { id: { in: ids } }, select: { id: true, funnelId: true } });
   let count = 0;
+  const errors: string[] = [];
   for (const app of apps) {
-    const type = app.currentStage;
-    if (!type || type === "CV_SCREENING" || type === "ONSITE" || type === "FINAL") continue;
     const formData = new FormData();
     formData.set("type", type);
     formData.set("mode", mode);
     const result = await requestRetestAction(app.id, formData);
-    if ("ok" in result && result.ok) count++;
+    if ("ok" in result && result.ok) count++; else if ("error" in result) errors.push(`${app.id.slice(0, 8)}: ${result.error}`);
   }
-  return { ok: true, count };
+  return errors.length ? { error: `${count} issued. ${errors.join(" ")}`, count } : { ok: true, count };
 }
 
 export async function sendBulkNotificationAction(applicationIds: string[], message: string) {

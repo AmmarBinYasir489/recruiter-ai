@@ -68,7 +68,7 @@ export default async function DriveDetail({ params: paramsPromise, searchParams:
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
-        <LinkButton href={`/recruiter/candidates?driveId=${drive.id}&stage=CV_SCREENING`} className="btn-primary">Open drive applicant pool ({unassigned}) →</LinkButton>
+        <LinkButton href={`/recruiter/candidates?driveId=${drive.id}`} className="btn-primary">Open all drive applicants ({drive._count.applications}) →</LinkButton>
         <LinkButton href={`/recruiter/drives/${drive.id}/scores`} className="btn-outline">Weighted leaderboard →</LinkButton>
       </div>
 
@@ -76,7 +76,7 @@ export default async function DriveDetail({ params: paramsPromise, searchParams:
         Candidates
       </SectionTitle>
       <Card className="text-sm text-slate-600">
-        {drive._count.applications} applications. Filter the drive pool by CV result or score, select candidates, then assign them to a published funnel. Failed CV applicants remain available for an intentional staff override.
+        {drive._count.applications} applications. The full drive list includes unassigned, active, completed, and held candidates so staff can move or reassign any screened applicant to another published funnel.
       </Card>
     </div>
   );
