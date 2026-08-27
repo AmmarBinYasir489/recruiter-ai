@@ -96,7 +96,8 @@ afterAll(async () => {
 describe("1. Apply + async CV processing + gating + duplicate", () => {
   it("uploads CV, enqueues CvJob, then worker scores it (async pipeline)", async () => {
     authState.user = { id: "c1", role: "candidate" };
-    const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", "LUMS university computer science GPA: 4.0/4.0 python machine learning data structures 3 years experience 3 projects"), fullName: "C1", email: "c1@portal.com" })));
+    const evidencedCv = `C1\nLUMS university\nComputer Science\nGPA: 4.0/4.0\n\nSkills\nPython, machine learning, data structures\n\nExperience\nMachine Learning Engineer | Acme | 2021 - 2025\nBuilt and deployed fraud detection models in Python.\n\nProjects\nFraud Detection Model\nProduction machine learning classifier built with Python.`;
+    const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", evidencedCv), fullName: "C1", email: "c1@portal.com" })));
     expect(res).toEqual({ __redirected: true } as any);
     const app = await prisma.application.findFirst({ where: { candidateId: "c1", driveId: ctx.driveA.id } });
     expect(app).toBeTruthy();
@@ -515,19 +516,22 @@ describe("9. Retest (re-issue), manual pass override, integrity summary", () => 
         cvResult: "PASS", currentStage: "CCAT", phaseReleased: false, status: "IN_PROGRESS", scores: j({}),
       },
     });
+    await prisma.assessmentResult.create({
+      data: { applicationId: app.id, type: "CCAT", mode: "ONLINE", rawScore: 8, maxScore: 20, normalized: 40, status: "FAIL", answers: j({}), integrityLevel: "HONEST", integrityReasons: j([]) },
+    });
     authState.user = { id: "qa-rec", role: "recruiter" };
     const passed = await manualPassAction(app.id);
     expect((passed as any).ok).toBe(true);
 
     const result = await prisma.assessmentResult.findFirst({ where: { applicationId: app.id, type: "CCAT" } });
     expect(result!.status).toBe("PASS");
-    expect(result!.normalized).toBe(100);
+    expect(result!.normalized).toBe(40); // manual approval preserves the submitted score
     expect(result!.mode).toBe("ONLINE");
     expect(result!.integrityLevel).toBe("HONEST");
 
     const updated = await prisma.application.findUnique({ where: { id: app.id } });
     expect(updated!.status).toBe("IN_PROGRESS");
     expect(updated!.currentStage).toBe("CODING"); // next stage after CCAT in funnelA
-    expect((JSON.parse(updated!.scores) as Record<string, number>)["CCAT"]).toBe(100);
+    expect((JSON.parse(updated!.scores) as Record<string, number>)["CCAT"]).toBe(40);
   });
 });

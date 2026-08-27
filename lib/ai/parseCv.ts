@@ -2,6 +2,8 @@
 import { cvComponents, computeCvScore } from "../engine/cv";
 import { DEFAULT_CGPA } from "../engine/cgpa";
 import { getAiRuntimeConfig } from "@/lib/ai/config";
+import { generateAiText, testAiProvider } from "@/lib/ai/client";
+import { normalizeAiModel, normalizeAiProvider } from "@/lib/ai/providers";
 
 export type CvLinkKind = "LINKEDIN" | "GITHUB" | "PORTFOLIO" | "HUGGINGFACE" | "OTHER";
 export interface CvProject { name: string; description?: string; technologies: string[]; url?: string }
@@ -143,25 +145,14 @@ function normalizeLlm(o: Record<string, any>): ParsedCv {
   return result;
 }
 async function llmParse(text: string, document?: { mime: string; base64: string }): Promise<ParsedCv | null> {
-  const { provider, apiKey, model, fallbackApiKey } = await getAiRuntimeConfig(); if (!apiKey) return null;
+  const config = await getAiRuntimeConfig(); if (!config.apiKey) return null;
   const prompt = `Extract this CV as strict JSON. Never invent missing evidence. Preserve raw dates and URLs. Fields: name,email,phone,location,university,degree,gradYear,gpa,gpaScale,gpaAssumed,skills[],skillCategories(object of arrays),experienceYears,experience[{title,company,location,rawDate,durationMonths,description}],projects,projectDetails[{name,description,technologies[],url}],certifications[],coursework[],links[{kind,url}],summary,extractionConfidence(0-100),validationWarnings[],duplicateFields[]. If GPA is absent use 2.5/4 and gpaAssumed=true. JSON only.\nCV:\n${text.slice(0, 16000)}`;
-  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), 35000);
   try {
-    let output = "";
-    if (provider === "gemini") {
-      const parts: any[] = [{ text: prompt }];
-      if (document) parts.push({ inlineData: { mimeType: document.mime, data: document.base64 } });
-      const request = (key: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json" } }), signal: controller.signal });
-      let response = await request(apiKey); if (!response.ok && fallbackApiKey) response = await request(fallbackApiKey); if (!response.ok) return null;
-      output = (await response.json())?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    } else {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], response_format: { type: "json_object" } }), signal: controller.signal });
-      if (!response.ok) return null; output = (await response.json())?.choices?.[0]?.message?.content || "";
-    }
+    const output = await generateAiText({ prompt, json: true, document: config.provider === "gemini" ? document : undefined, config });
     const json = output.match(/\{[\s\S]*\}/)?.[0];
     if (!json) return null;
     return { ...normalizeLlm(JSON.parse(json)), extractionMethod: document ? "AI_DOCUMENT" : "AI_TEXT" };
-  } catch { return null } finally { clearTimeout(timer) }
+  } catch { return null }
 }
 
 export function extractRequiredFromJd(jd: string) {
@@ -185,17 +176,10 @@ function completeParse(parsed: ParsedCv, requiredSkills: string[]): CvParseResul
   const fitSummary = requiredSkills.length ? `${matchedSkills.length} of ${requiredSkills.length} required skills matched. ${missingSkills.length ? `Missing evidence for: ${missingSkills.join(", ")}.` : "All detected requirements are represented."} ${parsed.projectDetails.length} project(s) and ${parsed.experience.length} work experience entries were verified from the CV.` : `No explicit drive skills were detected. Review ${parsed.projectDetails.length} project(s) and ${parsed.experience.length} experience entries manually.`;
   return { ...parsed, matchedSkills, missingSkills, candidateQualityScore, fitSummary };
 }
-export async function testProvider(provider: string, apiKey: string) {
-  if (!apiKey) return { ok: false, message: "No API key provided." };
-  try {
-    if (provider === "gemini") {
-      const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, body: JSON.stringify({ contents: [{ parts: [{ text: "Say OK." }] }] }) });
-      const body = await response.json().catch(() => ({})); return response.ok ? { ok: true, message: `Gemini connected (${model}).` } : { ok: false, message: `Gemini error ${response.status}: ${String(body?.error?.message || "provider error").slice(0, 140)}` };
-    }
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` }, body: JSON.stringify({ model: process.env.GROQ_MODEL || "llama-3.1-8b-instant", messages: [{ role: "user", content: "Say OK." }] }) });
-    return response.ok ? { ok: true, message: "Groq connected." } : { ok: false, message: `Groq error ${response.status}` };
-  } catch (error) { return { ok: false, message: error instanceof Error ? error.message : "Connection failed." } }
+export async function testProvider(providerValue: string, apiKey: string, modelValue?: string) {
+  const provider = normalizeAiProvider(providerValue);
+  const model = normalizeAiModel(provider, modelValue);
+  return testAiProvider({ provider, model, apiKey, fallbackApiKey: "" });
 }
 export function scoreParsedCv(parsed: CvParseResult, config: { requiredSkills: string[]; preferredSkills: string[]; universityScoreOverride?: number }) {
   const projects = parsed.projectDetails.length ? Math.min(100, parsed.projectDetails.reduce((sum, project) => sum + 12 + Math.min(8, project.technologies.length * 2) + (project.description ? 5 : 0) + (project.url ? 5 : 0), 0)) : 0;

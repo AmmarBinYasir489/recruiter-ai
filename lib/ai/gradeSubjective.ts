@@ -6,7 +6,7 @@
 // Errors are surfaced to the caller so the reviewer sees a useful diagnostic;
 // the caller still falls back to manual grading and never auto-advances.
 
-import { getAiRuntimeConfig } from "@/lib/ai/config";
+import { generateAiText } from "@/lib/ai/client";
 
 const PER_QUESTION_MAX: Record<string, number> = {
   CODING: 10,
@@ -59,50 +59,7 @@ Return ONLY a JSON object of this exact shape:
 }
 
 async function callAiText(prompt: string, timeoutMs = 25000): Promise<string> {
-  const { provider, apiKey, model, fallbackApiKey } = await getAiRuntimeConfig();
-  if (!apiKey) throw new Error("No AI provider key is configured");
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    if (provider === "gemini") {
-      const request = (key: string) => fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } }),
-          signal: controller.signal,
-        },
-      );
-      let res = await request(apiKey);
-      let data = await res.json();
-      if ((res.status === 400 || res.status === 401 || res.status === 403) && fallbackApiKey) {
-        res = await request(fallbackApiKey);
-        data = await res.json();
-      }
-      if (!res.ok) throw new Error(`Gemini grading failed (${res.status}): ${String(data?.error?.message || "provider error").slice(0, 180)}`);
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error("Gemini returned no grading content");
-      return text;
-    }
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: prompt + "\nReturn only JSON." }],
-        response_format: { type: "json_object" },
-      }),
-      signal: controller.signal,
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(`Groq grading failed (${res.status}): ${String(data?.error?.message || "provider error").slice(0, 180)}`);
-    const text = data?.choices?.[0]?.message?.content;
-    if (!text) throw new Error("Groq returned no grading content");
-    return text;
-  } finally {
-    clearTimeout(timer);
-  }
+  return generateAiText({ prompt, json: true, timeoutMs });
 }
 
 export async function gradeSubjective(type: string, items: GradingItem[]): Promise<SubjectiveGrade | null> {

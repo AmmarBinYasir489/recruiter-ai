@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 async function main() {
 try {
   const config = await getAiRuntimeConfig();
-  const connection = await testProvider(config.provider, config.apiKey);
+  const connection = await testProvider(config.provider, config.apiKey, config.model);
   let grading: { ok: boolean; normalized?: number; error?: string } = { ok: false };
   try {
     const result = await gradeSubjective("ESSAY", [{ number: 1, prompt: "Explain why testing matters.", answer: "Testing identifies regressions and verifies that software behavior matches its requirements.", maxScore: 10 }]);

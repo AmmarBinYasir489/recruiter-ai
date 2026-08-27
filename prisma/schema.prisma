@@ -58,11 +58,11 @@ model Drive {
   defaultFunnelId  String?  @unique
   createdAt        DateTime @default(now())
 
-  owner        User          @relation("DriveOwner", fields: [ownerId], references: [id])
-  defaultFunnel Funnel?      @relation("DriveDefaultFunnel", fields: [defaultFunnelId], references: [id], onDelete: SetNull)
-  funnels      Funnel[]
-  applications Application[]
-  ratBatches   RatBatch[]
+  owner         User          @relation("DriveOwner", fields: [ownerId], references: [id])
+  defaultFunnel Funnel?       @relation("DriveDefaultFunnel", fields: [defaultFunnelId], references: [id], onDelete: SetNull)
+  funnels       Funnel[]
+  applications  Application[]
+  ratBatches    RatBatch[]
 
   @@index([ownerId, status])
 }
@@ -76,8 +76,8 @@ model Funnel {
   stages    String // JSON: FunnelStage[]
   createdAt DateTime @default(now())
 
-  drive        Drive         @relation(fields: [driveId], references: [id], onDelete: Cascade)
-  applications Application[]
+  drive           Drive         @relation(fields: [driveId], references: [id], onDelete: Cascade)
+  applications    Application[]
   defaultForDrive Drive?        @relation("DriveDefaultFunnel")
 
   @@index([driveId, published])
@@ -299,8 +299,10 @@ model Question {
 }
 
 model AiSetting {
-  id        String   @id @default("singleton")
-  provider  String   @default("gemini")
-  apiKey    String   @default("")
-  updatedAt DateTime @default(now())
+  id           String   @id @default("singleton")
+  provider     String   @default("gemini")
+  model        String   @default("")
+  apiKey       String   @default("") // legacy active-provider key; retained for safe migration
+  providerKeys String   @default("{}") // JSON: encrypted key per provider
+  updatedAt    DateTime @default(now())
 }

@@ -86,7 +86,7 @@ const updates = new Map([
   ["PORTAL_SEED_PASSWORD", seedPassword],
 ]);
 
-for (const key of ["GEMINI_API_KEY", "GEMINI_MODEL", "GROQ_API_KEY", "GROQ_MODEL"]) {
+for (const key of ["GEMINI_API_KEY", "GEMINI_MODEL", "GROQ_API_KEY", "GROQ_MODEL", "OPENAI_API_KEY", "OPENAI_MODEL", "ANTHROPIC_API_KEY", "ANTHROPIC_MODEL", "OPENROUTER_API_KEY", "OPENROUTER_MODEL"]) {
   if (source.get(key)) updates.set(key, source.get(key));
 }
 

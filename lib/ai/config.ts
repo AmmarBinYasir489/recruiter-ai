@@ -1,7 +1,13 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
+import { defaultModelFor, normalizeAiModel, normalizeAiProvider, type AiProvider } from "@/lib/ai/providers";
 
-type Provider = "gemini" | "groq";
+export interface AiRuntimeConfig {
+  provider: AiProvider;
+  apiKey: string;
+  model: string;
+  fallbackApiKey: string;
+}
 
 function encryptionKey() {
   const material = process.env.AI_SETTINGS_ENCRYPTION_KEY || "";
@@ -31,21 +37,73 @@ export function decryptAiKey(value: string) {
   }
 }
 
-export async function getAiRuntimeConfig(providerOverride?: string) {
+export type StoredProviderKeys = Partial<Record<AiProvider, string>>;
+
+export function parseStoredProviderKeys(value?: string | null): StoredProviderKeys {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function configuredAiProviders(settings?: { provider: string; apiKey: string; providerKeys?: string | null } | null): AiProvider[] {
+  if (!settings) return [];
+  const keys = parseStoredProviderKeys(settings.providerKeys);
+  const configured = Object.entries(keys).filter(([, value]) => Boolean(value)).map(([provider]) => normalizeAiProvider(provider));
+  if (settings.apiKey && !configured.includes(normalizeAiProvider(settings.provider))) configured.push(normalizeAiProvider(settings.provider));
+  return configured;
+}
+
+function environmentKey(provider: AiProvider) {
+  const keys: Record<AiProvider, string | undefined> = {
+    gemini: process.env.GEMINI_API_KEY,
+    openai: process.env.OPENAI_API_KEY,
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    openrouter: process.env.OPENROUTER_API_KEY,
+  };
+  return keys[provider] || "";
+}
+
+export function hasAiEnvironmentKey(provider: AiProvider) {
+  return Boolean(environmentKey(provider));
+}
+
+export function environmentModelFor(provider: AiProvider) {
+  const models: Record<AiProvider, string | undefined> = {
+    gemini: process.env.GEMINI_MODEL,
+    openai: process.env.OPENAI_MODEL,
+    anthropic: process.env.ANTHROPIC_MODEL,
+    groq: process.env.GROQ_MODEL,
+    openrouter: process.env.OPENROUTER_MODEL,
+  };
+  return models[provider] || defaultModelFor(provider);
+}
+
+export async function getAiRuntimeConfig(providerOverride?: string, modelOverride?: string): Promise<AiRuntimeConfig> {
   const settings = await prisma.aiSetting.findUnique({ where: { id: "singleton" } });
-  const selected = (providerOverride || settings?.provider || process.env.AI_PROVIDER || "gemini").toLowerCase();
-  const provider: Provider = selected === "groq" ? "groq" : "gemini";
-  let storedKey = settings?.apiKey ? decryptAiKey(settings.apiKey) : "";
+  const provider = normalizeAiProvider(providerOverride || settings?.provider || process.env.AI_PROVIDER);
+  const keyMap = parseStoredProviderKeys(settings?.providerKeys);
+  const encryptedKey = keyMap[provider] || (provider === normalizeAiProvider(settings?.provider) ? settings?.apiKey : "") || "";
+  let storedKey = encryptedKey ? decryptAiKey(encryptedKey) : "";
 
   // Transparently migrate a legacy plaintext database key into authenticated encryption.
-  if (settings?.apiKey && storedKey && !settings.apiKey.startsWith("enc:v1:") && encryptionKey()) {
-    await prisma.aiSetting.update({ where: { id: "singleton" }, data: { apiKey: encryptAiKey(storedKey) } });
+  if (encryptedKey && storedKey && !encryptedKey.startsWith("enc:v1:") && encryptionKey()) {
+    const encrypted = encryptAiKey(storedKey);
+    if (keyMap[provider]) {
+      keyMap[provider] = encrypted;
+      await prisma.aiSetting.update({ where: { id: "singleton" }, data: { providerKeys: JSON.stringify(keyMap) } });
+    } else {
+      await prisma.aiSetting.update({ where: { id: "singleton" }, data: { apiKey: encrypted } });
+    }
   }
 
-  const envKey = provider === "groq" ? process.env.GROQ_API_KEY : process.env.GEMINI_API_KEY;
-  const model = provider === "gemini"
-    ? process.env.GEMINI_MODEL || "gemini-2.5-flash"
-    : process.env.GROQ_MODEL || "llama-3.1-8b-instant";
+  const envKey = environmentKey(provider);
+  const selectedModel = modelOverride || (provider === normalizeAiProvider(settings?.provider) ? settings?.model : "") || environmentModelFor(provider);
+  const model = normalizeAiModel(provider, selectedModel);
   return {
     provider,
     apiKey: storedKey || envKey || "",

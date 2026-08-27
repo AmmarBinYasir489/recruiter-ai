@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { prisma, j } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { hashPassword } from "@/lib/auth";
-import { testProvider } from "@/lib/ai/parseCv";
-import { encryptAiKey, getAiRuntimeConfig } from "@/lib/ai/config";
+import { testAiProvider } from "@/lib/ai/client";
+import { encryptAiKey, getAiRuntimeConfig, parseStoredProviderKeys } from "@/lib/ai/config";
+import { normalizeAiModel, normalizeAiProvider } from "@/lib/ai/providers";
 import { revalidatePath } from "next/cache";
 
 export async function createUserAction(formData: FormData) {
@@ -28,30 +29,42 @@ export async function createUserAction(formData: FormData) {
 
 export async function updateAiSettingsAction(formData: FormData) {
   const user = await requireRole("admin");
-  const provider = String(formData.get("provider") || "gemini") === "groq" ? "groq" : "gemini";
+  const provider = normalizeAiProvider(formData.get("provider"));
+  let model: string;
+  try { model = normalizeAiModel(provider, formData.get("model")); }
+  catch (error) { return { error: error instanceof Error ? error.message : "Invalid model ID." }; }
   const apiKey = String(formData.get("apiKey") || "").trim();
   const existing = await prisma.aiSetting.findUnique({ where: { id: "singleton" } });
   const clearApiKey = formData.get("clearApiKey") === "1";
   if (apiKey) {
-    const test = await testProvider(provider, apiKey);
+    const test = await testAiProvider({ provider, model, apiKey, fallbackApiKey: "" });
     if (!test.ok) return { error: `Key was not saved: ${test.message}` };
   }
-  const storedKey = clearApiKey ? "" : apiKey ? encryptAiKey(apiKey) : existing?.apiKey || "";
+  const providerKeys = parseStoredProviderKeys(existing?.providerKeys);
+  if (existing?.apiKey && !providerKeys[normalizeAiProvider(existing.provider)]) {
+    providerKeys[normalizeAiProvider(existing.provider)] = existing.apiKey;
+  }
+  if (clearApiKey) delete providerKeys[provider];
+  else if (apiKey) providerKeys[provider] = encryptAiKey(apiKey);
   await prisma.aiSetting.upsert({
     where: { id: "singleton" },
-    update: { provider, apiKey: storedKey },
-    create: { id: "singleton", provider, apiKey: storedKey },
+    update: { provider, model, providerKeys: JSON.stringify(providerKeys), apiKey: "" },
+    create: { id: "singleton", provider, model, providerKeys: JSON.stringify(providerKeys), apiKey: "" },
   });
-  await prisma.auditLog.create({ data: { actorId: user.id, action: "AI_SETTINGS", meta: j({ provider }) } });
+  await prisma.auditLog.create({ data: { actorId: user.id, action: "AI_SETTINGS", meta: j({ provider, model, keyChanged: Boolean(apiKey || clearApiKey) }) } });
+  revalidatePath("/admin/ai");
   return { ok: true };
 }
 
 export async function testAiAction(formData: FormData) {
   await requireRole("admin");
-  const provider = String(formData.get("provider") || "gemini") === "groq" ? "groq" : "gemini";
+  const provider = normalizeAiProvider(formData.get("provider"));
+  let model: string;
+  try { model = normalizeAiModel(provider, formData.get("model")); }
+  catch (error) { return { ok: false, message: error instanceof Error ? error.message : "Invalid model ID." }; }
   const entered = String(formData.get("apiKey") || "").trim();
-  const runtime = await getAiRuntimeConfig(provider);
-  return testProvider(provider, entered || runtime.apiKey);
+  const runtime = await getAiRuntimeConfig(provider, model);
+  return testAiProvider({ ...runtime, apiKey: entered || runtime.apiKey, fallbackApiKey: entered ? "" : runtime.fallbackApiKey });
 }
 
 export async function upsertUniversityTierAction(formData: FormData) {
