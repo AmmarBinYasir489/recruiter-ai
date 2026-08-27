@@ -84,32 +84,39 @@ model Funnel {
 }
 
 model Application {
-  id            String    @id @default(cuid())
-  candidateId   String
-  driveId       String
-  funnelId      String?
-  funnelVersion Int       @default(1)
-  phaseReleased Boolean   @default(false) // current stage is available; automatic phases can release it after scoring
-  status        String    @default("DRAFT") // DRAFT | SUBMITTED | IN_PROGRESS | REJECTED | ARCHIVED | OFFERED | HIRED | HOLD
-  cvScore       Int?
-  cvResult      String? // PASS | FAIL | PENDING
-  extractedCv   String? // JSON: parsed CV
-  stageHistory  String    @default("[]") // JSON: [{stage,status,at,note}]
-  currentStage  String?
-  scores        String    @default("{}") // JSON: per-assessment scores
-  appliedAt     DateTime?
-  createdAt     DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  candidateId         String
+  driveId             String
+  sourceApplicationId String?
+  trackKey            String    @default("PRIMARY")
+  funnelId            String?
+  funnelVersion       Int       @default(1)
+  phaseReleased       Boolean   @default(false) // current stage is available; automatic phases can release it after scoring
+  status              String    @default("DRAFT") // DRAFT | SUBMITTED | IN_PROGRESS | REJECTED | ARCHIVED | OFFERED | HIRED | HOLD
+  cvScore             Int?
+  cvResult            String? // PASS | FAIL | PENDING
+  extractedCv         String? // JSON: parsed CV
+  stageHistory        String    @default("[]") // JSON: [{stage,status,at,note}]
+  currentStage        String?
+  scores              String    @default("{}") // JSON: per-assessment scores
+  appliedAt           DateTime?
+  createdAt           DateTime  @default(now())
 
   candidate          User                @relation("CandidateApplications", fields: [candidateId], references: [id])
   drive              Drive               @relation(fields: [driveId], references: [id])
   funnel             Funnel?             @relation(fields: [funnelId], references: [id])
+  sourceApplication  Application?        @relation("ApplicationFunnelTracks", fields: [sourceApplicationId], references: [id], onDelete: SetNull)
+  funnelTracks       Application[]       @relation("ApplicationFunnelTracks")
   results            AssessmentResult[]
   assessmentAttempts AssessmentAttempt[]
   cvJobs             CvJob[]
   onsiteInvites      OnsiteInvite[]
   ratSubmissions     RatSubmission[]
 
-  @@unique([candidateId, driveId])
+  @@unique([candidateId, driveId, funnelId])
+  @@unique([candidateId, driveId, trackKey])
+  @@index([sourceApplicationId])
+  @@index([candidateId, driveId])
   @@index([funnelId, currentStage, phaseReleased])
   @@index([driveId, status])
   @@index([candidateId, createdAt])

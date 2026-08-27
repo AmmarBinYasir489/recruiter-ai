@@ -54,38 +54,94 @@ async function assignApplicationToFunnel(user: any, applicationId: string, funne
   if (app.cvResult !== "PASS" && app.cvResult !== "FAIL") return { error: "Wait for CV screening to finish before assigning a funnel." };
   const funnel = await getFunnel(funnelId);
   if (!funnel) return { error: "Funnel not found." };
+  if (app.funnelId === funnelId) return { error: `This candidate already has a track in ${funnelRow.name}.` };
+  const existingTrack = await prisma.application.findFirst({
+    where: { candidateId: app.candidateId, driveId: app.driveId, funnelId },
+    select: { id: true },
+  });
+  if (existingTrack) return { error: `This candidate already has a separate track in ${funnelRow.name}.` };
   const firstAssessment = firstAssessmentStage(funnel);
   if (!firstAssessment) return { error: "This funnel has no assessment after CV screening." };
   const reachingFinal = firstAssessment.type === "FINAL";
   const reachingOnsite = firstAssessment.type === "ONSITE";
   const opensAt = firstAssessment.opensAt ? new Date(firstAssessment.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
-  const priorResult = await prisma.assessmentResult.findFirst({ where: { applicationId, type: firstAssessment.type }, select: { id: true } });
-  const lastAttempt = priorResult ? await prisma.assessmentAttempt.findFirst({ where: { applicationId, type: firstAssessment.type }, orderBy: { attemptNumber: "desc" } }) : null;
+  const createSeparateTrack = Boolean(app.funnelId);
+  const sourceApplicationId = app.sourceApplicationId || app.id;
+  const sourceScores = uj<Record<string, number>>(app.scores) || {};
+  const cvOnlyScores = sourceScores.CV_SCREENING == null ? {} : { CV_SCREENING: sourceScores.CV_SCREENING };
+  const cvJob = createSeparateTrack
+    ? await prisma.cvJob.findFirst({ where: { applicationId: app.id }, orderBy: { createdAt: "desc" } })
+    : null;
   const releaseMessage = scheduled
     ? `${firstAssessment.name} will open on ${opensAt!.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC.`
     : `${firstAssessment.name} is now available.`;
+  let targetApplicationId = applicationId;
   await prisma.$transaction(async (tx) => {
-    if (priorResult && !reachingFinal && !reachingOnsite) {
-      await tx.assessmentAttempt.updateMany({ where: { applicationId, type: firstAssessment.type, status: { in: ["ACTIVE", "READY"] } }, data: { status: "CANCELLED" } });
-      const attemptNumber = (lastAttempt?.attemptNumber ?? 0) + 1;
-      await tx.assessmentAttempt.create({ data: { applicationId, type: firstAssessment.type, mode: "ONLINE", attemptNumber, status: "READY", idempotencyKey: `${applicationId}:${firstAssessment.type}:${attemptNumber}:FUNNEL_REASSIGNMENT` } });
+    const nextHistory = [
+      ...(createSeparateTrack ? [{ stage: "CV_SCREENING", status: "REUSED", at: new Date().toISOString(), note: `CV screening reused from application ${sourceApplicationId.slice(0, 8).toUpperCase()}` }] : (uj<any[]>(app.stageHistory) || [])),
+      { stage: firstAssessment.type, status: reachingFinal || reachingOnsite || scheduled ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${reachingOnsite ? "onsite invitation details pending" : releaseMessage}` },
+    ];
+    const trackState = {
+      funnelId,
+      funnelVersion: funnelRow.version,
+      status: reachingFinal || reachingOnsite || scheduled ? "HOLD" : "IN_PROGRESS",
+      currentStage: firstAssessment.type,
+      phaseReleased: !reachingFinal && !reachingOnsite && !scheduled,
+      stageHistory: j(nextHistory),
+    };
+
+    if (createSeparateTrack) {
+      const created = await tx.application.create({
+        data: {
+          candidateId: app.candidateId,
+          driveId: app.driveId,
+          sourceApplicationId,
+          trackKey: funnelId,
+          ...trackState,
+          cvScore: app.cvScore,
+          cvResult: app.cvResult,
+          extractedCv: app.extractedCv,
+          scores: j(cvOnlyScores),
+          appliedAt: app.appliedAt,
+        },
+      });
+      targetApplicationId = created.id;
+      if (cvJob) {
+        await tx.cvJob.create({
+          data: {
+            applicationId: created.id,
+            fileName: cvJob.fileName,
+            fileType: cvJob.fileType,
+            storagePath: cvJob.storagePath,
+            status: cvJob.status,
+            retryCount: cvJob.retryCount,
+            attempts: cvJob.attempts,
+            error: cvJob.error,
+            extractedText: cvJob.extractedText,
+          },
+        });
+      }
+    } else {
+      await tx.application.update({ where: { id: applicationId }, data: trackState });
     }
-    await tx.application.update({
-      where: { id: applicationId },
+
+    await tx.auditLog.create({
       data: {
-        funnelId,
-        funnelVersion: funnelRow.version,
-        status: reachingFinal || reachingOnsite || scheduled ? "HOLD" : "IN_PROGRESS",
-        currentStage: firstAssessment.type,
-        phaseReleased: !reachingFinal && !reachingOnsite && !scheduled,
-        stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: firstAssessment.type, status: reachingFinal || reachingOnsite || scheduled ? "PENDING" : "RELEASED", at: new Date().toISOString(), note: `Selected for ${funnelRow.name}; ${reachingOnsite ? "onsite invitation details pending" : releaseMessage}` }]),
+        actorId: user.id,
+        action: createSeparateTrack ? "FUNNEL_TRACK_CREATED" : "FUNNEL_ASSIGNED",
+        meta: j({ sourceApplicationId, applicationId: targetApplicationId, fromFunnelId: app.funnelId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }),
       },
     });
-    await tx.auditLog.create({ data: { actorId: user.id, action: app.funnelId ? "FUNNEL_REASSIGNED" : "FUNNEL_ASSIGNED", meta: j({ applicationId, fromFunnelId: app.funnelId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type, freshAttempt: Boolean(priorResult) }) } });
-    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message: reachingFinal ? `You were selected for ${funnelRow.name}. The recruitment team will contact you about the final step.` : reachingOnsite ? `You were selected for onsite screening in ${funnelRow.name}. Date and location details will be emailed by the recruitment team.` : `You were selected for ${funnelRow.name}. ${releaseMessage}`, relatedAppId: applicationId }, tx);
+    const trackPrefix = createSeparateTrack ? `A new assessment track was created for ${funnelRow.name}. ` : `You were selected for ${funnelRow.name}. `;
+    const message = reachingFinal
+      ? `${trackPrefix}The recruitment team will contact you about the final step.`
+      : reachingOnsite
+        ? `${trackPrefix}Date and location details for onsite screening will be emailed by the recruitment team.`
+        : `${trackPrefix}${releaseMessage}`;
+    await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message, relatedAppId: targetApplicationId }, tx);
   });
-  return { ok: true };
+  return { ok: true, applicationId: targetApplicationId, createdTrack: createSeparateTrack };
 }
 
 export async function assignCandidateFunnelAction(applicationId: string, formData: FormData) {
@@ -957,6 +1013,9 @@ export async function requestRetestAction(applicationId: string, formData: FormD
   const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
   const stage = funnel?.stages.find((s) => s.type === type);
   if (!stage || type === "CV_SCREENING" || type === "ONSITE" || type === "FINAL") return { error: "This stage cannot be issued as a test." };
+  if (mode === "ONLINE" && app.currentStage !== type) {
+    return { error: "Online reissue is limited to this track's current stage. Use an onsite comparison test for a completed historical stage." };
+  }
   const last = await prisma.assessmentAttempt.findFirst({ where: { applicationId, type }, orderBy: { attemptNumber: "desc" } });
   const attemptNumber = (last?.attemptNumber ?? 0) + 1;
   const returnStage = app.currentStage && app.currentStage !== type ? app.currentStage : null;

@@ -17,6 +17,8 @@ export function buildCandidateListViews(
       driveName: record.driveName,
       status: record.status,
       funnelId: record.funnelId ?? null,
+      funnelName: record.funnelName ?? null,
+      trackCount: record.trackCount ?? 1,
       currentStage: record.currentStage ?? null,
       phaseReleased: record.phaseReleased ?? false,
       cvScore: record.cvScore ?? null,
@@ -127,11 +129,15 @@ export async function getCandidateView(applicationId: string, user: any) {
   if (user?.role === "recruiter" && app.drive.ownerId !== user.id) return null;
   if (user?.role !== "recruiter" && user?.role !== "admin") return null;
   const view = await buildCandidateView(app as AnyObj, user);
-
   // Populate question banks (needs the async prisma call).
   const banks = Array.from(new Set(app.results.map((result: AnyObj) => result.type)))
     .filter((bank) => ["CODING", "ESSAY", "PROMPT"].includes(bank));
-  const [qRows, cvJob] = await Promise.all([
+  const [siblingTracks, qRows, cvJob] = await Promise.all([
+    prisma.application.findMany({
+      where: { candidateId: app.candidateId, driveId: app.driveId },
+      include: { funnel: { select: { name: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
     banks.length
       ? prisma.question.findMany({ where: { bank: { in: banks } }, select: { bank: true, number: true, content: true } })
       : Promise.resolve([]),
@@ -141,6 +147,12 @@ export async function getCandidateView(applicationId: string, user: any) {
       select: { status: true },
     }),
   ]);
+  view.siblingTracks = siblingTracks.map((track) => ({
+    id: track.id,
+    funnelName: track.funnel?.name || "Drive application",
+    currentStage: track.currentStage,
+    status: track.status,
+  }));
   if (qRows.length) {
     for (const q of qRows) {
       (view.questionsByBank[q.bank] ||= []).push({ number: q.number, content: uj(q.content) });

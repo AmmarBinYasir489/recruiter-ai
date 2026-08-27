@@ -68,6 +68,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
   const canMoveNext = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && !["ONSITE", "FINAL"].includes(view.application.currentStage));
   const canIssueTest = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId);
+  const validBulkRetest = bulkTestMode === "ONSITE" || selectedViews.every((view) => view.application.currentStage === bulkTestType);
   const canInviteOnsite = selectedViews.length > 0 && selectedViews.every((view) => view.application.currentStage === "ONSITE");
 
   async function runIssue() {
@@ -242,8 +243,12 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
                         {v.candidate.name}
                       </button>
                       <div className="text-xs text-slate-400">{v.candidate.email}</div>
+                      {v.application.trackCount > 1 && <div className="mt-1 text-xs font-medium text-brand-700">{v.application.trackCount} funnel tracks</div>}
                     </td>
-                    <td className="p-3 text-slate-600">{v.application.driveName}</td>
+                    <td className="p-3 text-slate-600">
+                      <div>{v.application.driveName}</div>
+                      <div className="text-xs font-medium text-brand-700">{v.application.funnelName || "Applicant pool"}</div>
+                    </td>
                     <td className="p-3">{v.application.currentStage || "—"}</td>
                     <td className="p-3">{v.application.cvScore ?? "—"} {v.application.cvResult && decisionBadge(v.application.cvResult)}</td>
                     <td className="p-3">{scores.CCAT ?? "—"}</td>
@@ -305,7 +310,10 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
               <option value="ONLINE">Test: Online</option>
               <option value="ONSITE">Test: Onsite</option>
             </select>
-            <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runRetest}>Issue additional test</button>
+            <button className="btn-outline whitespace-nowrap" disabled={busy || !validBulkRetest} onClick={runRetest}>
+              {bulkTestMode === "ONSITE" ? "Issue onsite comparison" : "Reissue current online test"}
+            </button>
+            {!validBulkRetest && <span className="text-xs text-amber-700">Online reissue must match every selected track’s current stage.</span>}
           </>}
           <button className="btn-danger whitespace-nowrap" disabled={busy} onClick={runReject}>Reject</button>
           <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" />

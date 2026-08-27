@@ -90,6 +90,14 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  const driveIds = [ctx.driveA?.id, ctx.driveB?.id].filter(Boolean);
+  const qaUserIds = ["qa-rec", "qa-rev", "c-track", ...Array.from({ length: 12 }, (_, index) => `c${index + 1}`)];
+  await prisma.auditLog.deleteMany({ where: { actorId: { in: qaUserIds } } });
+  await prisma.thresholdChange.deleteMany({ where: { driveId: { in: driveIds } } });
+  await prisma.application.deleteMany({ where: { driveId: { in: driveIds } } });
+  await prisma.drive.updateMany({ where: { id: { in: driveIds } }, data: { defaultFunnelId: null } });
+  await prisma.drive.deleteMany({ where: { id: { in: driveIds } } });
+  await prisma.user.deleteMany({ where: { id: { in: qaUserIds } } });
   await prisma.$disconnect();
 });
 
@@ -448,6 +456,70 @@ describe("6. Duplicate submission protection", () => {
     await act(submitAutoTestAction(app.id, "CCAT", form));
     await act(submitAutoTestAction(app.id, "CCAT", form));
     expect(await prisma.assessmentResult.count({ where: { applicationId: app.id, type: "CCAT" } })).toBe(1);
+  });
+});
+
+describe("7b. Independent multi-funnel tracks", () => {
+  it("creates a second track without overwriting the candidate's first funnel progress", async () => {
+    await prisma.user.upsert({
+      where: { email: "track-candidate@portal.com" },
+      update: {},
+      create: { id: "c-track", email: "track-candidate@portal.com", name: "Track Candidate", passwordHash: "x", role: "candidate" },
+    });
+    const secondFunnel = await prisma.funnel.create({
+      data: {
+        driveId: ctx.driveA.id,
+        name: "Funnel B for same drive",
+        version: 1,
+        published: true,
+        stages: j([
+          { id: "track-cv", order: 1, type: "CV_SCREENING", enabled: true, passScore: 60, durationMin: 0, gradingMode: "AUTO", passAction: "NEXT", failAction: "HOLD" },
+          { id: "track-mtt", order: 2, type: "MTT", enabled: true, passScore: 55, durationMin: 20, gradingMode: "AUTO", passAction: "NEXT", failAction: "HOLD" },
+        ]),
+      },
+    });
+    const original = await prisma.application.create({
+      data: {
+        candidateId: "c-track",
+        driveId: ctx.driveA.id,
+        funnelId: ctx.funnelA.id,
+        funnelVersion: ctx.funnelA.version,
+        cvScore: 77,
+        cvResult: "PASS",
+        currentStage: "CODING",
+        phaseReleased: true,
+        status: "IN_PROGRESS",
+        scores: j({ CV_SCREENING: 77, CCAT: 68 }),
+        stageHistory: j([{ stage: "CCAT", status: "PASS", at: new Date().toISOString() }]),
+        appliedAt: new Date(),
+      },
+    });
+    await prisma.assessmentResult.create({
+      data: { applicationId: original.id, type: "CCAT", rawScore: 68, maxScore: 100, normalized: 68, status: "PASS" },
+    });
+
+    authState.user = { id: "qa-rec", role: "recruiter" };
+    const assigned = await assignCandidateFunnelAction(original.id, fd({ funnelId: secondFunnel.id }));
+    expect((assigned as any).ok).toBe(true);
+    expect((assigned as any).createdTrack).toBe(true);
+    expect((assigned as any).applicationId).not.toBe(original.id);
+
+    const unchanged = await prisma.application.findUnique({ where: { id: original.id }, include: { results: true } });
+    expect(unchanged!.funnelId).toBe(ctx.funnelA.id);
+    expect(unchanged!.currentStage).toBe("CODING");
+    expect(unchanged!.results).toHaveLength(1);
+
+    const newTrack = await prisma.application.findUnique({ where: { id: (assigned as any).applicationId }, include: { results: true } });
+    expect(newTrack!.sourceApplicationId).toBe(original.id);
+    expect(newTrack!.funnelId).toBe(secondFunnel.id);
+    expect(newTrack!.currentStage).toBe("MTT");
+    expect(newTrack!.phaseReleased).toBe(true);
+    expect(newTrack!.results).toHaveLength(0);
+    expect(JSON.parse(newTrack!.scores)).toEqual({ CV_SCREENING: 77 });
+
+    const duplicate = await assignCandidateFunnelAction(original.id, fd({ funnelId: secondFunnel.id }));
+    expect((duplicate as any).error).toContain("already has a separate track");
+    expect(await prisma.application.count({ where: { candidateId: "c-track", driveId: ctx.driveA.id } })).toBe(2);
   });
 });
 

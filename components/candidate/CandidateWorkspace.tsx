@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ActionFeedbackDialog, type ActionFeedback } from "@/components/ActionFeedbackDialog";
 import {
   advanceApplicationAction,
@@ -169,6 +170,7 @@ function CandidateCard({
   finalBadgeCls: Record<StageStatus, string>;
 }) {
   const stages = deriveStages(view);
+  const availableFunnels = (view.funnelOptions || []).filter((funnel: AnyObj) => funnel.id !== view.application.funnelId);
   return (
     <div className="card p-5">
       <div className="flex items-start justify-between gap-4">
@@ -188,17 +190,31 @@ function CandidateCard({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white">Total score: {view.application.overallScore}/100</span>
             {!view.application.overallComplete && <span className="text-xs text-amber-700">Provisional until all weighted assessments are graded</span>}
-            {view.canManage && view.funnelOptions?.length > 0 && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
+            {view.canManage && availableFunnels.length > 0 && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
               <form action={assignCandidateFunnelAction.bind(null, view.application.id)} className="flex items-center gap-2">
                 <label className="sr-only" htmlFor={`funnel-${view.application.id}`}>Assign funnel</label>
-                <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue={view.application.funnelId || ""} required>
+                <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue="" required>
                   <option value="" disabled>Select assessment funnel</option>
-                  {view.funnelOptions.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
+                  {availableFunnels.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
                 </select>
-                <button className="btn-outline whitespace-nowrap">{view.application.funnelId ? "Release or move funnel" : "Select & release test"}</button>
+                <button className="btn-outline whitespace-nowrap">{view.application.funnelId ? "Add separate funnel track" : "Select & release test"}</button>
               </form>
             ) : view.application.funnelName ? <span className="text-xs text-slate-500">Assigned path: {view.application.funnelName}</span> : view.canManage && view.application.currentStage === "CV_SCREENING" ? <span className="text-xs text-amber-700">Drive applicant pool · not assigned to a funnel</span> : null}
           </div>
+          {view.siblingTracks?.length > 1 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Candidate funnel tracks">
+              <span className="text-xs font-semibold text-slate-600">{view.siblingTracks.length} separate tracks:</span>
+              {view.siblingTracks.map((track: AnyObj) => (
+                <Link
+                  key={track.id}
+                  href={`/recruiter/candidates/${track.id}`}
+                  className={track.id === view.application.id ? "badge-info" : "badge-muted hover:bg-slate-200"}
+                >
+                  {track.funnelName} · {track.currentStage || "Review"}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <span className={finalBadgeCls[finalStatus]}>{view.application.status.replace("_", " ")}</span>
@@ -312,6 +328,8 @@ function ProfileSection({ view, onClose }: { view: AnyObj; onClose: () => void }
 function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; onClose: () => void }) {
   const router = useRouter();
   const [actionBusy, setActionBusy] = useState(false);
+  const canRetest = !stage.isCv && !stage.isFinal && !["ONSITE", "FINAL"].includes(stage.type)
+    && (stage.type === view.application.currentStage || stage.resultsForType.length > 0);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   async function runRecruiterAction(action: () => Promise<any>, successMessage: string) {
     setActionBusy(true);
@@ -485,14 +503,18 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
           <hr className="my-4 border-slate-100" />
           <Section title="Recruiter Actions">
             <div className="flex flex-wrap items-center gap-2">
-              <form action={(formData) => runRecruiterAction(() => requestRetestAction(view.application.id, formData), `${stage.name} was reissued. The candidate has been notified.`)} className="flex items-center gap-2">
+              {canRetest && <form action={(formData) => runRecruiterAction(() => requestRetestAction(view.application.id, formData), `${stage.name} was reissued. The candidate has been notified.`)} className="flex items-center gap-2">
                 <input type="hidden" name="type" value={stage.type} />
-                <select name="mode" className="input h-10">
-                  <option value="ONLINE">Retest: Online</option>
-                  <option value="ONSITE">Retest: Onsite</option>
-                </select>
-                <button disabled={actionBusy} className="btn-primary whitespace-nowrap">Request Retest</button>
-              </form>
+                {stage.type === view.application.currentStage ? (
+                  <select name="mode" className="input h-10">
+                    <option value="ONLINE">Retest: Online</option>
+                    <option value="ONSITE">Retest: Onsite</option>
+                  </select>
+                ) : <input type="hidden" name="mode" value="ONSITE" />}
+                <button disabled={actionBusy} className="btn-primary whitespace-nowrap">
+                  {stage.type === view.application.currentStage ? "Request Retest" : "Issue onsite comparison"}
+                </button>
+              </form>}
               {stage.type === view.application.currentStage && (
                 <>
                   <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => manualPassAction(view.application.id), "Candidate passed manually and was moved to the next stage. The candidate has been notified.")} className="btn-primary whitespace-nowrap">Manual Pass</button>

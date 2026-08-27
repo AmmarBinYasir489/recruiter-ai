@@ -10,7 +10,7 @@ export default async function HomePage() {
   const drives = await prisma.drive.findMany({
     where: { status: "OPEN" },
     orderBy: { createdAt: "desc" },
-    include: { _count: { select: { applications: true, funnels: true } } },
+    include: { _count: { select: { applications: { where: { sourceApplicationId: null } }, funnels: true } } },
   });
 
   return (

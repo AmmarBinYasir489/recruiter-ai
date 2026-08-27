@@ -9,7 +9,7 @@ export default async function DrivesList() {
   const user = await requireRole("recruiter");
   const drives = await prisma.drive.findMany({
     where: { ownerId: user.id },
-    include: { _count: { select: { applications: true, funnels: true } } },
+    include: { _count: { select: { applications: { where: { sourceApplicationId: null } }, funnels: true } } },
     orderBy: { createdAt: "desc" },
   });
   return (

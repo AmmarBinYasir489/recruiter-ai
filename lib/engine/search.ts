@@ -13,6 +13,8 @@ export interface CandidateRecord {
   driveName: string;
   status: string;
   funnelId?: string;
+  funnelName?: string;
+  trackCount?: number;
   phaseReleased?: boolean;
   scores?: Record<string, number>;
   latestResultId?: string;

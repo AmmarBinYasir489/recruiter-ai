@@ -14,8 +14,8 @@ export default async function AdminDriveDetail({ params: paramsPromise }: { para
     include: {
       owner: true,
       funnels: true,
-      _count: { select: { applications: true } },
-      applications: { select: { cvResult: true, funnelId: true } },
+      _count: { select: { applications: { where: { sourceApplicationId: null } } } },
+      applications: { where: { sourceApplicationId: null }, select: { cvResult: true, funnelId: true } },
     },
   });
   if (!drive) return <Card>Drive not found.</Card>;

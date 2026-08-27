@@ -16,8 +16,8 @@ export default async function DriveDetail({ params: paramsPromise, searchParams:
     include: {
       owner: true,
       funnels: true,
-      _count: { select: { applications: true } },
-      applications: { select: { cvResult: true, funnelId: true } },
+      _count: { select: { applications: { where: { sourceApplicationId: null } } } },
+      applications: { where: { sourceApplicationId: null }, select: { cvResult: true, funnelId: true } },
     },
   });
   if (!drive || drive.ownerId !== user.id) return <Card>Drive not found.</Card>;

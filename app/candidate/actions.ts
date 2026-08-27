@@ -59,7 +59,9 @@ export async function applyAction(driveId: string, formData: FormData) {
   const drive = await prisma.drive.findUnique({ where: { id: driveId } });
   if (!drive || drive.status !== "OPEN") return { error: "Drive is not open for applications." };
 
-  const dup = await prisma.application.findUnique({ where: { candidateId_driveId: { candidateId: user.id, driveId } } });
+  // A candidate applies to a drive once. Recruiters may later create multiple
+  // independent funnel tracks beneath that application.
+  const dup = await prisma.application.findFirst({ where: { candidateId: user.id, driveId } });
   if (dup) return { error: "You have already applied to this drive." };
 
   const input = await readCvInput(formData);

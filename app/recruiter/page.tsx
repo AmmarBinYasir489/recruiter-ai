@@ -10,7 +10,7 @@ export default async function RecruiterOverview() {
   if (!user) return null;
   const drives = await prisma.drive.findMany({
     where: { ownerId: user.id },
-    include: { _count: { select: { applications: true } } },
+    include: { _count: { select: { applications: { where: { sourceApplicationId: null } } } } },
     orderBy: { createdAt: "desc" },
   });
   const totalApps = drives.reduce((s, d) => s + d._count.applications, 0);

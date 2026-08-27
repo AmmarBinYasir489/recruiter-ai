@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDrivesList() {
   await requireRole("admin");
   const drives = await prisma.drive.findMany({
-    include: { _count: { select: { applications: true, funnels: true } } },
+    include: { _count: { select: { applications: { where: { sourceApplicationId: null } }, funnels: true } } },
     orderBy: { createdAt: "desc" },
   });
   return (

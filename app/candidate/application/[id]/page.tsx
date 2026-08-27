@@ -23,11 +23,18 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   });
   if (!app || app.candidateId !== user.id) return <Card>Application not found.</Card>;
 
-  const notes = await prisma.notification.findMany({
-    where: { userId: user.id, relatedAppId: app.id },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 8,
-  });
+  const [notes, siblingTracks] = await Promise.all([
+    prisma.notification.findMany({
+      where: { userId: user.id, relatedAppId: app.id },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 8,
+    }),
+    prisma.application.findMany({
+      where: { candidateId: user.id, driveId: app.driveId },
+      include: { funnel: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
   const currentStage = app.currentStage || "CV_SCREENING";
   const currentResult = resultForCurrentStage(app.results, currentStage);
   const cvToken = signCvToken(app.id, user.id);
@@ -46,10 +53,38 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <div>
           <p className="text-sm font-medium text-brand-600">Your application</p>
           <h1 className="text-2xl font-bold text-ink-900">{app.drive.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">Reference {app.id.slice(0, 8).toUpperCase()}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {app.funnel?.name ? `${app.funnel.name} · ` : ""}Reference {app.id.slice(0, 8).toUpperCase()}
+          </p>
         </div>
         {statusBadge(app.status)}
       </div>
+
+      {siblingTracks.length > 1 && (
+        <section aria-labelledby="assessment-tracks" className="mb-6">
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 id="assessment-tracks" className="font-bold text-ink-900">Your assessment tracks</h2>
+              <p className="text-sm text-slate-500">You are participating in {siblingTracks.length} funnels for this drive. Each keeps its own progress and results.</p>
+            </div>
+            <span className="badge-info">{siblingTracks.length} funnels</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {siblingTracks.map((track) => {
+              const active = track.id === app.id;
+              return (
+                <LinkButton
+                  key={track.id}
+                  href={`/candidate/application/${track.id}`}
+                  className={active ? "btn-primary justify-start" : "btn-outline justify-start"}
+                >
+                  {track.funnel?.name || "Drive application"} · {STAGE_LABEL[track.currentStage || ""] || track.currentStage || "Review"}
+                </LinkButton>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="current-step" className="mb-8 rounded-2xl border border-brand-200 bg-gradient-to-br from-brand-50 to-white p-5 sm:p-6">
         <p className="text-xs font-bold uppercase tracking-wider text-brand-600">Current step</p>

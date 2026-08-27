@@ -9,6 +9,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
     },
     select: {
       id: true,
+      candidateId: true,
       driveId: true,
       status: true,
       funnelId: true,
@@ -23,6 +24,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       createdAt: true,
       candidate: { select: { name: true, email: true } },
       drive: { select: { name: true } },
+      funnel: { select: { name: true } },
       results: {
         orderBy: { createdAt: "desc" },
         select: { id: true, type: true, status: true, integrityLevel: true },
@@ -35,6 +37,12 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
     },
     orderBy: { appliedAt: "desc" },
   });
+
+  const trackCounts = new Map<string, number>();
+  for (const app of apps) {
+    const key = `${app.candidateId}:${app.driveId}`;
+    trackCounts.set(key, (trackCounts.get(key) || 0) + 1);
+  }
 
   return apps.map((a) => {
     const scores = uj<Record<string, number>>(a.scores) || {};
@@ -55,6 +63,8 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       driveName: a.drive.name,
       status: a.status,
       funnelId: a.funnelId ?? undefined,
+      funnelName: a.funnel?.name ?? undefined,
+      trackCount: trackCounts.get(`${a.candidateId}:${a.driveId}`) || 1,
       phaseReleased: a.phaseReleased,
       scores,
       latestResultId: a.results[0]?.id,
