@@ -22,7 +22,7 @@ try {
       return { id: funnel.id, name: funnel.name, version: funnel.version, stages: stages.map((stage) => stage.type), hasManualReview: stages.some((stage) => stage.type === "MANUAL_REVIEW") };
     }),
     applications,
-    ai: ai ? { provider: ai.provider, model: ai.model || null, keyConfigured: Boolean(ai.apiKey || ai.providerKeys) } : { provider: process.env.AI_PROVIDER || "gemini", model: null, keyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY) },
+    ai: ai ? { provider: ai.provider, model: ai.model || null, keyConfigured: Boolean(ai.apiKey || ai.providerKeys), checkedProviders: Object.keys(JSON.parse(ai.providerChecks || "{}")) } : { provider: process.env.AI_PROVIDER || "gemini", model: null, keyConfigured: Boolean(process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY), checkedProviders: [] },
   }));
 } finally {
   await prisma.$disconnect();

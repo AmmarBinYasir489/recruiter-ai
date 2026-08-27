@@ -300,10 +300,11 @@ model Question {
 }
 
 model AiSetting {
-  id           String   @id @default("singleton")
-  provider     String   @default("gemini")
-  model        String   @default("")
-  apiKey       String   @default("") // legacy active-provider key; retained for safe migration
-  providerKeys String   @default("{}") // JSON: encrypted key per provider
-  updatedAt    DateTime @default(now())
+  id             String   @id @default("singleton")
+  provider       String   @default("gemini")
+  model          String   @default("")
+  apiKey         String   @default("") // legacy active-provider key; retained for safe migration
+  providerKeys   String   @default("{}") // JSON: encrypted key per provider
+  providerChecks String   @default("{}") // JSON: last server-side connectivity check per provider
+  updatedAt      DateTime @default(now())
 }

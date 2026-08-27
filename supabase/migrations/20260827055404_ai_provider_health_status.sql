@@ -1,0 +1,2 @@
+ALTER TABLE "AiSetting"
+  ADD COLUMN IF NOT EXISTS "providerChecks" TEXT NOT NULL DEFAULT '{}';

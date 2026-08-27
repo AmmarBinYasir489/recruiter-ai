@@ -251,7 +251,7 @@ async function main() {
   await prisma.aiSetting.upsert({
     where: { id: "singleton" },
     update: {},
-    create: { id: "singleton", provider: process.env.AI_PROVIDER || "gemini", model: "", apiKey: "", providerKeys: "{}" },
+    create: { id: "singleton", provider: process.env.AI_PROVIDER || "gemini", model: "", apiKey: "", providerKeys: "{}", providerChecks: "{}" },
   });
 
   console.log("Seed complete.");

@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/db";
-import { defaultModelFor, normalizeAiModel, normalizeAiProvider, type AiProvider } from "@/lib/ai/providers";
+import { AI_PROVIDERS, defaultModelFor, normalizeAiModel, normalizeAiProvider, type AiProvider } from "@/lib/ai/providers";
 
 export interface AiRuntimeConfig {
   provider: AiProvider;
@@ -38,8 +38,33 @@ export function decryptAiKey(value: string) {
 }
 
 export type StoredProviderKeys = Partial<Record<AiProvider, string>>;
+export type AiProviderCheckStatus = "WORKING" | "FAILED";
+export interface AiProviderCheck {
+  status: AiProviderCheckStatus;
+  model: string;
+  checkedAt: string;
+}
+export type StoredProviderChecks = Partial<Record<AiProvider, AiProviderCheck>>;
+export type AiProviderUiStatus = "NOT_CONFIGURED" | "UNTESTED" | AiProviderCheckStatus;
+export interface AiProviderState {
+  configured: boolean;
+  keySource: "STORED" | "ENVIRONMENT" | "STORED_AND_ENVIRONMENT" | "NONE";
+  status: AiProviderUiStatus;
+  model?: string;
+  checkedAt?: string;
+}
 
 export function parseStoredProviderKeys(value?: string | null): StoredProviderKeys {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function parseStoredProviderChecks(value?: string | null): StoredProviderChecks {
   if (!value) return {};
   try {
     const parsed = JSON.parse(value);
@@ -70,6 +95,25 @@ function environmentKey(provider: AiProvider) {
 
 export function hasAiEnvironmentKey(provider: AiProvider) {
   return Boolean(environmentKey(provider));
+}
+
+export function aiProviderStates(settings?: { provider: string; model: string; apiKey: string; providerKeys?: string | null; providerChecks?: string | null } | null): Record<AiProvider, AiProviderState> {
+  const keys = parseStoredProviderKeys(settings?.providerKeys);
+  const checks = parseStoredProviderChecks(settings?.providerChecks);
+  return Object.fromEntries(AI_PROVIDERS.map((provider) => {
+    const stored = Boolean(keys[provider] || (provider === normalizeAiProvider(settings?.provider) && settings?.apiKey));
+    const environment = hasAiEnvironmentKey(provider);
+    const configured = stored || environment;
+    const check = checks[provider];
+    const keySource = stored && environment ? "STORED_AND_ENVIRONMENT" : stored ? "STORED" : environment ? "ENVIRONMENT" : "NONE";
+    return [provider, {
+      configured,
+      keySource,
+      status: configured ? check?.status || "UNTESTED" : "NOT_CONFIGURED",
+      model: check?.model,
+      checkedAt: check?.checkedAt,
+    }];
+  })) as Record<AiProvider, AiProviderState>;
 }
 
 export function environmentModelFor(provider: AiProvider) {
