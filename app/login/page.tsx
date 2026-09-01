@@ -1,5 +1,5 @@
 import { Card, LinkButton } from "@/components/ui";
-import { loginAction } from "./actions";
+import { LoginForm } from "./LoginForm";
 
 export default function LoginPage() {
   return (
@@ -13,17 +13,7 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500">Sign in to continue</p>
         </div>
         <Card>
-          <form action={loginAction} className="space-y-4">
-            <div>
-              <label className="label" htmlFor="email">Email</label>
-              <input id="email" name="email" type="email" required autoComplete="email" className="input" placeholder="you@portal.com" />
-            </div>
-            <div>
-              <label className="label" htmlFor="password">Password</label>
-              <input id="password" name="password" type="password" required autoComplete="current-password" className="input" placeholder="••••••••" />
-            </div>
-            <button type="submit" className="btn-primary w-full">Sign in</button>
-          </form>
+          <LoginForm />
           {process.env.NODE_ENV !== "production" && (
             <div className="mt-4 text-xs text-slate-400 leading-relaxed">
               Local demo accounts (password: <code>password1234</code>):
