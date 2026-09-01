@@ -104,10 +104,12 @@ export function CandidateWorkspace({
   view,
   expanded,
   onToggleExpand,
+  onSelectTrack,
 }: {
   view: AnyObj;
   expanded?: boolean;
   onToggleExpand?: () => void;
+  onSelectTrack?: (applicationId: string) => void;
 }) {
   const [open, setOpen] = useState<Open>({ kind: "profile" });
   const stages = deriveStages(view);
@@ -141,6 +143,7 @@ export function CandidateWorkspace({
         collapse={collapse}
         finalStatus={finalStatus}
         finalBadgeCls={finalBadgeCls}
+        onSelectTrack={onSelectTrack}
       />
       {isExpanded && (
         <>
@@ -161,6 +164,7 @@ function CandidateCard({
   collapse,
   finalStatus,
   finalBadgeCls,
+  onSelectTrack,
 }: {
   view: AnyObj;
   nameClick: () => void;
@@ -168,6 +172,7 @@ function CandidateCard({
   collapse?: () => void;
   finalStatus: StageStatus;
   finalBadgeCls: Record<StageStatus, string>;
+  onSelectTrack?: (applicationId: string) => void;
 }) {
   const stages = deriveStages(view);
   const availableFunnels = (view.funnelOptions || []).filter((funnel: AnyObj) => funnel.id !== view.application.funnelId);
@@ -205,13 +210,27 @@ function CandidateCard({
             <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Candidate funnel tracks">
               <span className="text-xs font-semibold text-slate-600">{view.siblingTracks.length} separate tracks:</span>
               {view.siblingTracks.map((track: AnyObj) => (
-                <Link
-                  key={track.id}
-                  href={`/recruiter/candidates/${track.id}`}
-                  className={track.id === view.application.id ? "badge-info" : "badge-muted hover:bg-slate-200"}
-                >
-                  {track.funnelName} · {track.currentStage || "Review"}
-                </Link>
+                onSelectTrack ? (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={() => onSelectTrack(track.id)}
+                    disabled={track.id === view.application.id}
+                    aria-current={track.id === view.application.id ? "true" : undefined}
+                    className={track.id === view.application.id ? "badge-info" : "badge-muted hover:bg-slate-200"}
+                  >
+                    {track.funnelName} · {track.currentStage || "Review"}
+                  </button>
+                ) : (
+                  <Link
+                    key={track.id}
+                    href={`/recruiter/candidates/${track.id}`}
+                    aria-current={track.id === view.application.id ? "page" : undefined}
+                    className={track.id === view.application.id ? "badge-info" : "badge-muted hover:bg-slate-200"}
+                  >
+                    {track.funnelName} · {track.currentStage || "Review"}
+                  </Link>
+                )
               ))}
             </div>
           )}

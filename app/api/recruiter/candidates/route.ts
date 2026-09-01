@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { getCandidateRecords } from "@/lib/data";
+import { collapseCandidateTracks, getCandidateRecords } from "@/lib/data";
 import { filterCandidates, sortCandidates, toCsv, type CandidateFilter } from "@/lib/engine/search";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   const records = await getCandidateRecords(filter.driveId);
   const scopedRecords = ownedDriveIds ? records.filter((record) => ownedDriveIds.includes(record.driveId)) : records;
-  const filtered = sortCandidates(filterCandidates(scopedRecords, filter), "appliedAt", "desc");
+  const filtered = sortCandidates(collapseCandidateTracks(filterCandidates(scopedRecords, filter)), "appliedAt", "desc");
   const csv = toCsv(filtered, [
     "applicationId", "name", "email", "phone", "driveName", "status",
     "currentStage", "university", "degree", "gradYear", "gpa",

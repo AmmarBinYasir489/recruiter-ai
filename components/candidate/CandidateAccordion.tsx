@@ -30,6 +30,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   const [onsiteLocation, setOnsiteLocation] = useState("");
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(null);
   const [detailViews, setDetailViews] = useState<Record<string, AnyObj>>({});
+  const [activeTrackByRow, setActiveTrackByRow] = useState<Record<string, string>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<Record<string, string>>({});
 
@@ -54,6 +55,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
 
   useEffect(() => {
     setDetailViews({});
+    setActiveTrackByRow({});
     if (openId) void loadDetail(openId);
   }, [summaryVersion, openId, loadDetail]);
 
@@ -221,6 +223,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
           <tbody>
             {views.map((v) => {
               const id = v.application.id;
+              const activeTrackId = activeTrackByRow[id] || id;
               const open = openId === id;
               const scores = v.application.scores || {};
               const isSel = selected.includes(id);
@@ -259,11 +262,19 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
                     <tr>
                       <td colSpan={8} className="p-0 w-full min-w-0 max-w-0 overflow-hidden">
                         <div className="p-4 bg-slate-50/60 min-w-0">
-                          {detailViews[id]
-                            ? <CandidateWorkspace view={detailViews[id]} expanded onToggleExpand={() => setOpenId(null)} />
-                            : detailError[id]
-                              ? <div className="card text-sm text-rose-700">{detailError[id]} <button type="button" className="ml-2 font-semibold underline" onClick={() => void loadDetail(id)}>Retry</button></div>
-                              : <div className="card text-sm text-slate-500" aria-live="polite">{detailLoading === id ? "Loading secure candidate workspace…" : "Loading candidate workspace…"}</div>}
+                          {detailViews[activeTrackId]
+                            ? <CandidateWorkspace
+                                view={detailViews[activeTrackId]}
+                                expanded
+                                onToggleExpand={() => setOpenId(null)}
+                                onSelectTrack={(trackId) => {
+                                  setActiveTrackByRow((current) => ({ ...current, [id]: trackId }));
+                                  if (!detailViews[trackId]) void loadDetail(trackId);
+                                }}
+                              />
+                            : detailError[activeTrackId]
+                              ? <div className="card text-sm text-rose-700">{detailError[activeTrackId]} <button type="button" className="ml-2 font-semibold underline" onClick={() => void loadDetail(activeTrackId)}>Retry</button></div>
+                              : <div className="card text-sm text-slate-500" aria-live="polite">{detailLoading === activeTrackId ? "Loading secure candidate workspace…" : "Loading candidate workspace…"}</div>}
                         </div>
                       </td>
                     </tr>

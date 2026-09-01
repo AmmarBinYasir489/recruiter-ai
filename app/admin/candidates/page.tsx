@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { getCandidateRecords } from "@/lib/data";
+import { collapseCandidateTracks, getCandidateRecords } from "@/lib/data";
 import {
   filterCandidates,
   sortCandidates,
@@ -64,7 +64,9 @@ export default async function AdminCandidatesPage({ searchParams: searchParamsPr
     }),
     getCandidateRecords(filter.driveId),
   ]);
-  const filtered = filterCandidates(records, filter);
+  const filteredTracks = filterCandidates(records, filter);
+  const filtered = collapseCandidateTracks(filteredTracks);
+  const candidateTotal = collapseCandidateTracks(records).length;
   const sorted = sortCandidates(filtered, (str(searchParams.sortBy) as any) || "appliedAt", (str(searchParams.dir) as any) || "desc");
   const page = paginate(sorted, Number(str(searchParams.page) || 1), 25);
 
@@ -82,7 +84,7 @@ export default async function AdminCandidatesPage({ searchParams: searchParamsPr
       <AutoRefresh intervalMs={5000} />
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-ink-900">Candidates</h1>
-        <span className="text-sm text-slate-500">{filtered.length} of {records.length} match</span>
+        <span className="text-sm text-slate-500">{filtered.length} of {candidateTotal} match</span>
         <a href={`/api/recruiter/candidates?${qs.toString()}`} className="btn-ghost">Export CSV</a>
       </div>
 

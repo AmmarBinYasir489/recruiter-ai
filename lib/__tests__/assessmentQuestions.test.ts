@@ -49,4 +49,14 @@ describe("per-attempt question selection", () => {
     expect(selected.slice(10, 20).every((question) => JSON.parse(question.content).points === 4)).toBe(true);
     expect(selected.slice(20).every((question) => JSON.parse(question.content).points === 5)).toBe(true);
   });
+
+  it("supports the original MTT bank without explicit point metadata", () => {
+    const legacy = Array.from({ length: 30 }, (_, index) => ({ number: index + 1, content: JSON.stringify({ text: `Question ${index + 1}` }) }));
+    const selected = selectAttemptQuestions(legacy, "legacy-mtt-attempt", "MTT");
+
+    expect(selected).toHaveLength(30);
+    expect(selected.slice(0, 10).every((question) => question.number <= 10)).toBe(true);
+    expect(selected.slice(10, 20).every((question) => question.number >= 11 && question.number <= 20)).toBe(true);
+    expect(selected.slice(20).every((question) => question.number >= 21)).toBe(true);
+  });
 });

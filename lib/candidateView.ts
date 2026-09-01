@@ -24,7 +24,7 @@ export function buildCandidateListViews(
       cvScore: record.cvScore ?? null,
       cvResult: record.cvResult ?? null,
       scores: record.scores ?? {},
-      refreshKey: record.latestResultId ?? "",
+      refreshKey: record.groupRefreshKey ?? record.latestResultId ?? "",
     },
     funnelOptions: funnelsByDrive.get(record.driveId) ?? [],
   }));

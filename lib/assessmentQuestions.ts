@@ -108,9 +108,20 @@ function selectCcatQuestions<T>(questions: T[], attemptId: string): T[] {
 function selectMttQuestions<T>(questions: T[], attemptId: string): T[] {
   const sections = [3, 4, 5];
   const selected = sections.flatMap((points) => {
-    const bucket = questions.filter((question) => Number(contentOf(question).points) === points);
+    const bucket = questions.filter((question, index) => {
+      const explicitPoints = Number(contentOf(question).points);
+      if (explicitPoints === points) return true;
+      if ([3, 4, 5].includes(explicitPoints)) return false;
+
+      // Compatibility with the original MTT bank: Q1-10 = 3 points,
+      // Q11-20 = 4 points, Q21-30 = 5 points.
+      const questionNumber = Number((question as { number?: unknown })?.number) || index + 1;
+      const inferredPoints = questionNumber <= 10 ? 3 : questionNumber <= 20 ? 4 : 5;
+      return inferredPoints === points;
+    });
     if (bucket.length < 10) {
-      throw new Error(`MTT question bank incomplete: need at least 10 questions worth ${points} points.`);
+      console.error("[assessment:MTT] question bank incomplete", { points, available: bucket.length, required: 10 });
+      return stableShuffle(bucket, `${attemptId}:MTT:${points}`);
     }
     return stableShuffle(bucket, `${attemptId}:MTT:${points}`).slice(0, 10);
   });

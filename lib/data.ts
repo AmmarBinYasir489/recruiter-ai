@@ -10,6 +10,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
     select: {
       id: true,
       candidateId: true,
+      sourceApplicationId: true,
       driveId: true,
       status: true,
       funnelId: true,
@@ -44,7 +45,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
     trackCounts.set(key, (trackCounts.get(key) || 0) + 1);
   }
 
-  return apps.map((a) => {
+  const records: CandidateRecord[] = apps.map((a) => {
     const scores = uj<Record<string, number>>(a.scores) || {};
     const extracted = uj<any>(a.extractedCv) || {};
     const history = uj<any[]>(a.stageHistory) || [];
@@ -55,6 +56,8 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
     const onsite = a.onsiteInvites[0];
     return {
       id: a.id,
+      candidateGroupKey: `${a.candidateId}:${a.driveId}`,
+      isPrimaryTrack: !a.sourceApplicationId,
       applicationId: a.id.slice(0, 8).toUpperCase(),
       name: a.candidate.name,
       email: a.candidate.email,
@@ -90,5 +93,37 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       integrityFlag: a.results.some((result) => result.integrityLevel === "SUSPICIOUS" || result.integrityLevel === "PLAGIARIST"),
       appliedAt: (a.appliedAt ?? a.createdAt).toISOString(),
     };
+  });
+
+  const refreshKeys = new Map<string, string>();
+  for (const record of records) {
+    const key = record.candidateGroupKey || `${record.email.toLowerCase()}:${record.driveId}`;
+    const part = [record.id, record.status, record.currentStage, record.latestResultId, JSON.stringify(record.scores || {})].join(":");
+    refreshKeys.set(key, [refreshKeys.get(key), part].filter(Boolean).sort().join("|"));
+  }
+  return records.map((record) => {
+    const key = record.candidateGroupKey || `${record.email.toLowerCase()}:${record.driveId}`;
+    return { ...record, groupRefreshKey: refreshKeys.get(key) || "" };
+  });
+}
+
+/** Collapse independent funnel applications into one recruiter-list row. */
+export function collapseCandidateTracks(records: CandidateRecord[]): CandidateRecord[] {
+  const groups = new Map<string, CandidateRecord[]>();
+  for (const record of records) {
+    const key = record.candidateGroupKey || `${record.email.toLowerCase()}:${record.driveId}`;
+    const group = groups.get(key) || [];
+    group.push(record);
+    groups.set(key, group);
+  }
+
+  return [...groups.values()].map((tracks) => {
+    const representative = tracks.find((track) => track.isPrimaryTrack) || tracks[0];
+    const groupRefreshKey = representative.groupRefreshKey || tracks
+      .map((track) => [track.id, track.status, track.currentStage, track.latestResultId, JSON.stringify(track.scores || {})].join(":"))
+      .sort()
+      .join("|");
+    const trackCount = Math.max(tracks.length, ...tracks.map((track) => track.trackCount || 1));
+    return { ...representative, trackCount, groupRefreshKey };
   });
 }

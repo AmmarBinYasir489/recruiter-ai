@@ -98,8 +98,8 @@ async function main() {
     else { text = `What is ${a * b} ÷ ${a}?`; answer = b; }
     await prisma.question.upsert({
       where: { bank_number: { bank: "MTT", number: i } },
-      update: { content: j({ text, answer }) },
-      create: { bank: "MTT", number: i, content: j({ text, answer }) },
+      update: { content: j({ text, answer, points: i <= 10 ? 3 : i <= 20 ? 4 : 5 }) },
+      create: { bank: "MTT", number: i, content: j({ text, answer, points: i <= 10 ? 3 : i <= 20 ? 4 : 5 }) },
     });
   }
 

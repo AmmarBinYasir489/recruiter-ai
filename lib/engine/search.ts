@@ -5,6 +5,9 @@ export type { CandidateFilter } from "./types";
 // Filtering runs over the COMPLETE dataset, not just what's on screen.
 export interface CandidateRecord {
   id: string; // application id
+  candidateGroupKey?: string; // one visible row per candidate + drive
+  isPrimaryTrack?: boolean;
+  groupRefreshKey?: string;
   applicationId: string;
   name: string;
   email: string;
