@@ -56,7 +56,9 @@ export default async function CandidateDashboard() {
                 <div>
                   <h3 id={`drive-${driveId}`} className="font-bold text-ink-900">{tracks[0].drive.name}</h3>
                   <p className="text-sm text-slate-500">
-                    {tracks.length === 1 ? "1 assessment track" : `${tracks.length} assessment tracks running separately`}
+                    {tracks.length === 1
+                      ? "1 recruitment-assigned assessment track"
+                      : `${tracks.length} recruitment-assigned tracks · complete each active track separately`}
                   </p>
                 </div>
                 {tracks.length > 1 && <span className="badge-info">{tracks.length} funnels</span>}
@@ -68,6 +70,9 @@ export default async function CandidateDashboard() {
                       <p className="font-semibold text-ink-900">{track.funnel?.name || "Drive application"}</p>
                       <p className="text-sm text-slate-500">
                         Current step: <b>{track.currentStage || "—"}</b> · Reference {track.id.slice(0, 8).toUpperCase()}
+                      </p>
+                      <p className={`mt-1 text-xs font-medium ${track.phaseReleased ? "text-brand-700" : "text-slate-400"}`}>
+                        {track.phaseReleased ? "Action available — open this track to continue" : "Waiting for the recruitment team to release the next action"}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">{statusBadge(track.status)}</div>

@@ -4,14 +4,13 @@ import { Card, LinkButton } from "@/components/ui";
 import {
   submitAutoTestAction,
   submitSubjectiveAction,
-  submitGameAction,
   getAssessmentAttemptAction,
 } from "@/app/candidate/actions";
 import { StartAssessmentButton } from "@/components/StartAssessmentButton";
 import { Countdown } from "@/components/Countdown";
 import { ProctorMonitor } from "@/components/ProctorMonitor";
 import { WordCountTextarea } from "@/components/WordCountTextarea";
-import { GamesAssessment } from "@/components/games/GamesAssessment";
+import { GameForm } from "@/components/games/GameForm";
 import { EnglishSpeakingAssessment } from "@/components/EnglishSpeakingAssessment";
 import { ENGLISH_SPEAKING_MAX_SECONDS, ENGLISH_SPEAKING_MIN_SECONDS, ENGLISH_SPEAKING_QUESTIONS } from "@/lib/englishSpeaking";
 import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
@@ -162,19 +161,6 @@ function SubjectiveForm({ applicationId, attemptId, type, questions }: { applica
           ))
         )}
         <button className="btn-primary">Submit for review</button>
-      </Card>
-    </form>
-  );
-}
-
-function GameForm({ applicationId, attemptId }: { applicationId: string; attemptId: string }) {
-  return (
-    <form action={submitGameAction.bind(null, applicationId)} className="select-none">
-      <ProctorMonitor stage="GAMES" applicationId={applicationId} attemptId={attemptId} />
-      <Card className="space-y-3">
-        <p className="text-sm text-slate-600">Complete all three Neodým cognitive games. Accuracy and completion time are scored securely.</p>
-        <GamesAssessment />
-        <button className="btn-primary">Submit game</button>
       </Card>
     </form>
   );

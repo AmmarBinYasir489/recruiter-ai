@@ -141,7 +141,7 @@ export function ProctorMonitor({
 
   return (
     <>
-      <input ref={inputRef} type="hidden" name="integrityEvents" />
+      <input ref={inputRef} type="hidden" name="integrityEvents" data-auto-refresh-pause="true" />
       {isOffline && (
         <div className="fixed inset-x-0 top-0 z-[100] bg-amber-600 px-4 py-2 text-center text-sm font-semibold text-white" role="status">
           Connection lost. Your answers remain saved on this device and the assessment timer continues.

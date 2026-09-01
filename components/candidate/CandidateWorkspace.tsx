@@ -376,7 +376,13 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
     ? finalAnswers.items.length
     : Array.isArray(finalAnswers?.questions)
       ? finalAnswers.questions.length
-      : null;
+      : stage.type === "CCAT"
+        ? 80
+        : stage.type === "MTT"
+          ? 30
+          : stage.type === "GAMES"
+            ? "3 games"
+            : null;
   const online = results.filter((r: AnyObj) => r.mode === "ONLINE");
   const onsite = results.filter((r: AnyObj) => r.mode === "ONSITE");
   const onlineScore = online.length ? online[online.length - 1].normalized : null;
@@ -395,16 +401,17 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
           <Field label="Type" value={stage.type} />
           <Field label="Final score" value={finalResult ? `${finalResult.normalized}%` : "—"} />
           <Field label="Raw score" value={finalResult ? `${finalResult.rawScore}/${finalResult.maxScore}` : "—"} />
-          <Field label="Questions assigned" value={assignedQuestionCount ?? (stage.type === "GAMES" ? "3 games" : "—")} />
+          <Field label="Questions assigned" value={assignedQuestionCount ?? "—"} />
           <Field label="Pass threshold" value={stage.passScore != null ? `${stage.passScore}%` : "—"} />
           <Field
             label="Result"
             value={finalResult ? <span className={finalResult.status === "PASS" ? "badge-pass" : finalResult.status === "FAIL" ? "badge-fail" : "badge-pending"}>{finalResult.status}</span> : "—"}
           />
-          <Field label="Final attempt" value={finalResult?.attemptNumber ? `#${finalResult.attemptNumber}` : "—"} />
+          <Field label="Final attempt" value={finalResult ? `#${finalResult.attemptNumber ?? results.length}` : "—"} />
           <Field label="Mode" value={finalResult?.mode ?? "—"} />
+          {finalResult && !finalResult.attemptId && <Field label="Attempt metadata" value="Legacy result · detailed timing was not recorded" />}
           {finalResult?.attemptStartedAt && <Field label="Start" value={new Date(finalResult.attemptStartedAt).toLocaleString()} />}
-          {finalResult?.attemptSubmittedAt && <Field label="Submitted" value={new Date(finalResult.attemptSubmittedAt).toLocaleString()} />}
+          {finalResult && <Field label="Submitted" value={new Date(finalResult.attemptSubmittedAt ?? finalResult.createdAt).toLocaleString()} />}
           {finalResult?.attemptDeadlineAt && <Field label="Deadline" value={new Date(finalResult.attemptDeadlineAt).toLocaleString()} />}
           {finalResult?.attemptStartedAt && finalResult?.attemptSubmittedAt && (
             <Field
@@ -549,7 +556,9 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
               </form>
             </div>
             <p className="mt-2 text-[11px] text-slate-400">
-              A retest creates a <strong>new assessment attempt</strong> — the previous attempt is kept for comparison.
+              {stage.type === view.application.currentStage
+                ? <>A retest creates a <strong>new assessment attempt</strong> — the previous attempt is kept for comparison.</>
+                : <>This is a completed stage. Progression controls are available on the current stage; an onsite comparison creates a separate attempt without replacing this result.</>}
             </p>
           </Section>
         </>

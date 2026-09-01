@@ -20,12 +20,31 @@ test("recruiter sees one candidate row and switches funnel tracks inline", async
   await candidateRows.getByRole("button", { name: "Carol Candidate" }).click();
 
   await expect(page.getByText("2 separate tracks:")).toBeVisible();
-  const secondTrack = page.getByRole("button", { name: /New Funnel · MTT/i });
+  const secondTrack = page.getByRole("button", { name: /New Funnel ·/i });
   await secondTrack.click();
   await expect(secondTrack).toHaveAttribute("aria-current", "true");
   await expect(page).toHaveURL(/\/recruiter\/candidates(?:\?.*)?$/);
   await expect(page.getByPlaceholder("name / email / phone / app id")).toBeVisible();
   await expect(page.locator("[data-nextjs-dialog]")).toHaveCount(0);
+});
+
+test("legacy result metadata and candidate multi-track guidance are clear", async ({ page }) => {
+  await signIn(page, "recruiter@portal.com");
+  await page.goto(`${baseUrl}/recruiter/candidates`);
+  const row = page.locator("tbody > tr").filter({ hasText: "candidate1@portal.com" });
+  await row.getByRole("button", { name: "Carol Candidate" }).click();
+  await page.getByRole("button", { name: "CCAT / IQ" }).click();
+
+  const details = page.locator("div.card.p-5").filter({ has: page.getByRole("heading", { name: "CCAT / IQ — Details" }) });
+  await expect(details).toContainText("Questions assigned");
+  await expect(details).toContainText("80");
+  await expect(details).toContainText("Final attempt");
+  await expect(details).toContainText("#1");
+
+  await page.getByRole("button", { name: /Sign out/i }).click();
+  await signIn(page, "candidate1@portal.com");
+  await expect(page.getByText(/recruitment-assigned tracks · complete each active track separately/i)).toBeVisible();
+  await expect(page.getByText(/Waiting for the recruitment team to release the next action/i).first()).toBeVisible();
 });
 
 test("legacy MTT bank opens without a server runtime error", async ({ page }) => {

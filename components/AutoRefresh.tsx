@@ -10,15 +10,16 @@ export function AutoRefresh({ intervalMs = 10000 }: { intervalMs?: number }) {
 
   useEffect(() => {
     let cancelled = false;
+    const isPaused = () => Boolean(document.querySelector('[data-auto-refresh-pause="true"]'));
     async function check() {
-      if (checking.current || document.visibilityState !== "visible") return;
+      if (checking.current || document.visibilityState !== "visible" || isPaused()) return;
       checking.current = true;
       try {
         const response = await fetch("/api/updates", { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
         if (cancelled) return;
-        if (watermark.current && watermark.current !== data.watermark) router.refresh();
+        if (watermark.current && watermark.current !== data.watermark && !isPaused()) router.refresh();
         watermark.current = data.watermark;
       } catch {
         // Temporary connectivity loss is retried on the next interval/focus.

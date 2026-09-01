@@ -197,7 +197,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
   }
 
   return (
-    <>
+    <div data-auto-refresh-pause={openId ? "true" : undefined}>
       {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
       <Card2>
         <table className="w-full min-w-0 max-w-full table-fixed text-sm">
@@ -332,7 +332,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
           <button className="btn-ghost whitespace-nowrap" disabled={busy} onClick={() => setSelected([])}>Clear</button>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

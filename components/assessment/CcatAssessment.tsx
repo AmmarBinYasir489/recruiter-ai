@@ -45,7 +45,8 @@ export function CcatAssessment({
 
       {questions.map((item, index) => (
         <fieldset key={item.number} className={index === current ? "card" : "hidden"} aria-hidden={index !== current}>
-          <legend className="text-lg font-semibold leading-7 text-ink-900">{item.text}</legend>
+          <legend className="sr-only">Question {index + 1}: {item.text}</legend>
+          <p className="text-lg font-semibold leading-7 text-ink-900">{item.text}</p>
           {(item.localImagePath || item.imageUrl) && (
             <img src={item.localImagePath || item.imageUrl || ""} alt="Question diagram" className="my-5 max-h-80 w-auto rounded-xl border border-slate-200 object-contain" />
           )}
