@@ -23,6 +23,8 @@ test("recruiter sees one candidate row and switches funnel tracks inline", async
   const secondTrack = page.getByRole("button", { name: /New Funnel ·/i });
   await secondTrack.click();
   await expect(secondTrack).toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("button", { name: "Add another funnel" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Move to funnel" })).toBeVisible();
   await expect(page).toHaveURL(/\/recruiter\/candidates(?:\?.*)?$/);
   await expect(page.getByPlaceholder("name / email / phone / app id")).toBeVisible();
   await expect(page.locator("[data-nextjs-dialog]")).toHaveCount(0);
@@ -44,7 +46,7 @@ test("legacy result metadata and candidate multi-track guidance are clear", asyn
   await page.getByRole("button", { name: /Sign out/i }).click();
   await signIn(page, "candidate1@portal.com");
   await expect(page.getByText(/recruitment-assigned tracks · complete each active track separately/i)).toBeVisible();
-  await expect(page.getByText(/Waiting for the recruitment team to release the next action/i).first()).toBeVisible();
+  await expect(page.getByText(/Action available|Waiting for the recruitment team to release the next action/i).first()).toBeVisible();
 });
 
 test("legacy MTT bank opens without a server runtime error", async ({ page }) => {

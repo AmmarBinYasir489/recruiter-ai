@@ -118,7 +118,8 @@ export function collapseCandidateTracks(records: CandidateRecord[]): CandidateRe
   }
 
   return [...groups.values()].map((tracks) => {
-    const representative = tracks.find((track) => track.isPrimaryTrack) || tracks[0];
+    const activeTracks = tracks.filter((track) => track.status !== "ARCHIVED");
+    const representative = activeTracks.find((track) => track.isPrimaryTrack) || activeTracks[0] || tracks.find((track) => track.isPrimaryTrack) || tracks[0];
     const groupRefreshKey = representative.groupRefreshKey || tracks
       .map((track) => [track.id, track.status, track.currentStage, track.latestResultId, JSON.stringify(track.scores || {})].join(":"))
       .sort()

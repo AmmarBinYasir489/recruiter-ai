@@ -105,11 +105,13 @@ export function CandidateWorkspace({
   expanded,
   onToggleExpand,
   onSelectTrack,
+  onUpdated,
 }: {
   view: AnyObj;
   expanded?: boolean;
   onToggleExpand?: () => void;
   onSelectTrack?: (applicationId: string) => void;
+  onUpdated?: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState<Open>({ kind: "profile" });
   const stages = deriveStages(view);
@@ -144,12 +146,13 @@ export function CandidateWorkspace({
         finalStatus={finalStatus}
         finalBadgeCls={finalBadgeCls}
         onSelectTrack={onSelectTrack}
+        onUpdated={onUpdated}
       />
       {isExpanded && (
         <>
           {open.kind === "profile" && <ProfileSection view={view} onClose={() => setOpen({ kind: "none" })} />}
           {open.kind === "stage" && activeStage && (
-            <StageSection view={view} stage={activeStage} onClose={() => setOpen({ kind: "none" })} />
+            <StageSection view={view} stage={activeStage} onClose={() => setOpen({ kind: "none" })} onUpdated={onUpdated} />
           )}
         </>
       )}
@@ -165,6 +168,7 @@ function CandidateCard({
   finalStatus,
   finalBadgeCls,
   onSelectTrack,
+  onUpdated,
 }: {
   view: AnyObj;
   nameClick: () => void;
@@ -173,11 +177,39 @@ function CandidateCard({
   finalStatus: StageStatus;
   finalBadgeCls: Record<StageStatus, string>;
   onSelectTrack?: (applicationId: string) => void;
+  onUpdated?: () => void | Promise<void>;
 }) {
+  const router = useRouter();
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
+  const [assignmentFeedback, setAssignmentFeedback] = useState<ActionFeedback | null>(null);
   const stages = deriveStages(view);
   const availableFunnels = (view.funnelOptions || []).filter((funnel: AnyObj) => funnel.id !== view.application.funnelId);
+  async function assignFunnel(formData: FormData) {
+    setAssignmentBusy(true);
+    setAssignmentFeedback(null);
+    try {
+      const result = await assignCandidateFunnelAction(view.application.id, formData);
+      if (result && "error" in result) throw new Error(String(result.error || "Funnel assignment failed."));
+      const moved = formData.get("assignmentMode") === "MOVE";
+      setAssignmentFeedback({
+        kind: "success",
+        message: moved
+          ? "Candidate moved to the selected funnel. The previous track is now staff-only history."
+          : view.application.funnelId
+            ? "A separate active funnel track was added for the candidate."
+            : "Candidate assigned to the selected funnel and notified.",
+      });
+      await onUpdated?.();
+      router.refresh();
+    } catch (error) {
+      setAssignmentFeedback({ kind: "error", message: error instanceof Error ? error.message : "Funnel assignment failed." });
+    } finally {
+      setAssignmentBusy(false);
+    }
+  }
   return (
     <div className="card p-5">
+      {assignmentFeedback && <ActionFeedbackDialog feedback={assignmentFeedback} onClose={() => setAssignmentFeedback(null)} />}
       <div className="flex items-start justify-between gap-4">
         <div>
           <button
@@ -195,14 +227,21 @@ function CandidateCard({
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <span className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white">Total score: {view.application.overallScore}/100</span>
             {!view.application.overallComplete && <span className="text-xs text-amber-700">Provisional until all weighted assessments are graded</span>}
-            {view.canManage && availableFunnels.length > 0 && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
-              <form action={assignCandidateFunnelAction.bind(null, view.application.id)} className="flex items-center gap-2">
+            {view.canManage && view.application.status !== "ARCHIVED" && availableFunnels.length > 0 && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
+              <form action={assignFunnel} className="flex flex-wrap items-center gap-2" aria-busy={assignmentBusy}>
                 <label className="sr-only" htmlFor={`funnel-${view.application.id}`}>Assign funnel</label>
                 <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue="" required>
                   <option value="" disabled>Select assessment funnel</option>
                   {availableFunnels.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
                 </select>
-                <button className="btn-outline whitespace-nowrap">{view.application.funnelId ? "Add separate funnel track" : "Select & release test"}</button>
+                {view.application.funnelId ? (
+                  <>
+                    <button name="assignmentMode" value="ADD" disabled={assignmentBusy} className="btn-primary whitespace-nowrap">Add another funnel</button>
+                    <button name="assignmentMode" value="MOVE" disabled={assignmentBusy} className="btn-outline whitespace-nowrap">Move to funnel</button>
+                  </>
+                ) : (
+                  <button name="assignmentMode" value="ADD" disabled={assignmentBusy} className="btn-primary whitespace-nowrap">Select &amp; release test</button>
+                )}
               </form>
             ) : view.application.funnelName ? <span className="text-xs text-slate-500">Assigned path: {view.application.funnelName}</span> : view.canManage && view.application.currentStage === "CV_SCREENING" ? <span className="text-xs text-amber-700">Drive applicant pool · not assigned to a funnel</span> : null}
           </div>
@@ -219,7 +258,7 @@ function CandidateCard({
                     aria-current={track.id === view.application.id ? "true" : undefined}
                     className={track.id === view.application.id ? "badge-info" : "badge-muted hover:bg-slate-200"}
                   >
-                    {track.funnelName} · {track.currentStage || "Review"}
+                    {track.funnelName} · {track.currentStage || "Review"}{track.archived ? " · History" : ""}
                   </button>
                 ) : (
                   <Link
@@ -228,7 +267,7 @@ function CandidateCard({
                     aria-current={track.id === view.application.id ? "page" : undefined}
                     className={track.id === view.application.id ? "badge-info" : "badge-muted hover:bg-slate-200"}
                   >
-                    {track.funnelName} · {track.currentStage || "Review"}
+                    {track.funnelName} · {track.currentStage || "Review"}{track.archived ? " · History" : ""}
                   </Link>
                 )
               ))}
@@ -344,7 +383,7 @@ function ProfileSection({ view, onClose }: { view: AnyObj; onClose: () => void }
   );
 }
 
-function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; onClose: () => void }) {
+function StageSection({ view, stage, onClose, onUpdated }: { view: AnyObj; stage: AnyObj; onClose: () => void; onUpdated?: () => void | Promise<void> }) {
   const router = useRouter();
   const [actionBusy, setActionBusy] = useState(false);
   const canRetest = !stage.isCv && !stage.isFinal && !["ONSITE", "FINAL"].includes(stage.type)
@@ -357,6 +396,7 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
       const result = await action();
       if (result && "error" in result) throw new Error(String(result.error || "Action failed."));
       setActionFeedback({ kind: "success", message: successMessage });
+      await onUpdated?.();
       router.refresh();
     } catch (error) {
       setActionFeedback({ kind: "error", message: error instanceof Error ? error.message : "Action failed." });
@@ -524,7 +564,7 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
       </Section>
 
       {/* Recruiter actions */}
-      {view.canManage && (
+      {view.canManage && view.application.status !== "ARCHIVED" && (
         <>
           <hr className="my-4 border-slate-100" />
           <Section title="Recruiter Actions">
@@ -543,7 +583,7 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
               </form>}
               {stage.type === view.application.currentStage && (
                 <>
-                  <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => manualPassAction(view.application.id), "Candidate passed manually and was moved to the next stage. The candidate has been notified.")} className="btn-primary whitespace-nowrap">Manual Pass</button>
+                  <button type="button" disabled={actionBusy || !finalResult} title={!finalResult ? "Manual Pass requires a submitted result. Use Move to Next Stage to skip this assessment." : undefined} onClick={() => runRecruiterAction(() => manualPassAction(view.application.id), "Candidate passed manually and was moved to the next stage. The candidate has been notified.")} className="btn-primary whitespace-nowrap">Manual Pass</button>
                   <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => advanceApplicationAction(view.application.id), "Candidate was moved to the next stage and notified.")} className="btn-outline whitespace-nowrap">Move to Next Stage</button>
                   <form action={rejectApplicationAction.bind(null, view.application.id)}>
                     <button className="btn-danger whitespace-nowrap">Reject</button>
@@ -557,7 +597,9 @@ function StageSection({ view, stage, onClose }: { view: AnyObj; stage: AnyObj; o
             </div>
             <p className="mt-2 text-[11px] text-slate-400">
               {stage.type === view.application.currentStage
-                ? <>A retest creates a <strong>new assessment attempt</strong> — the previous attempt is kept for comparison.</>
+                ? finalResult
+                  ? <>A retest creates a <strong>new assessment attempt</strong> — the previous attempt is kept for comparison.</>
+                  : <>Manual Pass requires a submitted result. Use <strong>Move to Next Stage</strong> to intentionally skip an unattempted assessment.</>
                 : <>This is a completed stage. Progression controls are available on the current stage; an onsite comparison creates a separate attempt without replacing this result.</>}
             </p>
           </Section>

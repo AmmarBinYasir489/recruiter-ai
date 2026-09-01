@@ -152,6 +152,7 @@ export async function getCandidateView(applicationId: string, user: any) {
     funnelName: track.funnel?.name || "Drive application",
     currentStage: track.currentStage,
     status: track.status,
+    archived: track.status === "ARCHIVED",
   }));
   if (qRows.length) {
     for (const q of qRows) {

@@ -10,7 +10,7 @@ export default async function CandidateDashboard() {
   if (!user) return null;
   const [apps, notifications] = await Promise.all([
     prisma.application.findMany({
-      where: { candidateId: user.id },
+      where: { candidateId: user.id, status: { not: "ARCHIVED" } },
       include: { drive: true, funnel: true },
       orderBy: { createdAt: "desc" },
     }),

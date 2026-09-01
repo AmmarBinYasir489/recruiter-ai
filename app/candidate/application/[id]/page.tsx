@@ -21,7 +21,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
     where: { id: params.id },
     include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } }, onsiteInvites: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
-  if (!app || app.candidateId !== user.id) return <Card>Application not found.</Card>;
+  if (!app || app.candidateId !== user.id || app.status === "ARCHIVED") return <Card>Application not found.</Card>;
 
   const [notes, siblingTracks] = await Promise.all([
     prisma.notification.findMany({
@@ -30,7 +30,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
       take: 8,
     }),
     prisma.application.findMany({
-      where: { candidateId: user.id, driveId: app.driveId },
+      where: { candidateId: user.id, driveId: app.driveId, status: { not: "ARCHIVED" } },
       include: { funnel: true },
       orderBy: { createdAt: "asc" },
     }),

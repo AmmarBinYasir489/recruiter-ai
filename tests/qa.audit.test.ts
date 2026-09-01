@@ -27,6 +27,7 @@ import {
   issueNextPhaseAction,
   requestRetestAction,
   manualPassAction,
+  advanceApplicationAction,
   assignCandidateFunnelAction,
 } from "@/app/recruiter/actions";
 import { gradeAssessmentAction } from "@/app/reviewer/actions";
@@ -475,6 +476,7 @@ describe("7b. Independent multi-funnel tracks", () => {
         stages: j([
           { id: "track-cv", order: 1, type: "CV_SCREENING", enabled: true, passScore: 60, durationMin: 0, gradingMode: "AUTO", passAction: "NEXT", failAction: "HOLD" },
           { id: "track-mtt", order: 2, type: "MTT", enabled: true, passScore: 55, durationMin: 20, gradingMode: "AUTO", passAction: "NEXT", failAction: "HOLD" },
+          { id: "track-final", order: 3, type: "FINAL", enabled: true, passScore: 0, durationMin: 0, gradingMode: "MANUAL", passAction: "HOLD", failAction: "HOLD" },
         ]),
       },
     });
@@ -520,6 +522,36 @@ describe("7b. Independent multi-funnel tracks", () => {
     const duplicate = await assignCandidateFunnelAction(original.id, fd({ funnelId: secondFunnel.id }));
     expect((duplicate as any).error).toContain("already has a separate track");
     expect(await prisma.application.count({ where: { candidateId: "c-track", driveId: ctx.driveA.id } })).toBe(2);
+
+    const skipped = await advanceApplicationAction(newTrack!.id);
+    expect((skipped as any).ok).toBe(true);
+    expect(await prisma.application.findUnique({ where: { id: newTrack!.id } })).toMatchObject({ currentStage: "FINAL", status: "HOLD" });
+
+    const moveFunnel = await prisma.funnel.create({
+      data: {
+        driveId: ctx.driveA.id,
+        name: "Replacement funnel",
+        version: 1,
+        published: true,
+        stages: j([
+          { id: "move-cv", order: 1, type: "CV_SCREENING", enabled: true, passScore: 60, durationMin: 0, gradingMode: "AUTO", passAction: "NEXT", failAction: "HOLD" },
+          { id: "move-essay", order: 2, type: "ESSAY", enabled: true, passScore: 55, durationMin: 20, gradingMode: "MANUAL", passAction: "NEXT", failAction: "HOLD" },
+          { id: "move-final", order: 3, type: "FINAL", enabled: true, passScore: 0, durationMin: 0, gradingMode: "MANUAL", passAction: "HOLD", failAction: "HOLD" },
+        ]),
+      },
+    });
+    await prisma.assessmentAttempt.create({ data: { applicationId: original.id, type: "CODING", status: "READY", attemptNumber: 1 } });
+    const moved = await assignCandidateFunnelAction(original.id, fd({ funnelId: moveFunnel.id, assignmentMode: "MOVE" }));
+    expect(moved).toMatchObject({ ok: true, movedTrack: true });
+    expect(await prisma.application.findUnique({ where: { id: original.id } })).toMatchObject({ status: "ARCHIVED", phaseReleased: false });
+    expect(await prisma.assessmentAttempt.findFirst({ where: { applicationId: original.id, type: "CODING" } })).toMatchObject({ status: "CANCELLED" });
+
+    const movedTrackId = (moved as any).applicationId as string;
+    expect(await prisma.application.findUnique({ where: { id: movedTrackId } })).toMatchObject({ funnelId: moveFunnel.id, currentStage: "ESSAY", status: "IN_PROGRESS" });
+    await prisma.assessmentResult.create({ data: { applicationId: movedTrackId, type: "ESSAY", rawScore: 20, maxScore: 100, normalized: 20, status: "PENDING" } });
+    const passed = await manualPassAction(movedTrackId);
+    expect((passed as any).ok).toBe(true);
+    expect(await prisma.application.findUnique({ where: { id: movedTrackId } })).toMatchObject({ currentStage: "FINAL", status: "HOLD" });
   });
 });
 

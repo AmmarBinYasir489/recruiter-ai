@@ -35,7 +35,7 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
   if (!user) return null;
   const { applicationId, type } = params;
   const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app || app.candidateId !== user.id) return <Card>Not found.</Card>;
+  if (!app || app.candidateId !== user.id || app.status === "ARCHIVED") return <Card>Not found.</Card>;
   if (!STAGE_LABEL[type]) return <Card>Unknown stage.</Card>;
   const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
   const stage = funnel?.stages.find((item) => item.type === type);

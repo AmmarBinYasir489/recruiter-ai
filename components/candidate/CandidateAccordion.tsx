@@ -64,20 +64,27 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const toggleAll = () => setSelected((s) => (s.length === allIds.length ? [] : allIds));
   const selectedViews = views.filter((view) => selected.includes(view.application.id));
+  const selectedApplicationIds = selected.map((rowId) => activeTrackByRow[rowId] || rowId);
+  const selectedTrackViews = selected.map((rowId) => {
+    const trackId = activeTrackByRow[rowId] || rowId;
+    return detailViews[trackId] || views.find((view) => view.application.id === rowId);
+  }).filter(Boolean);
   const selectedDriveIds = new Set(selectedViews.map((view) => view.application.driveId));
-  const canBulkAssign = selectedViews.length > 0 && selectedDriveIds.size === 1 && selectedViews.every((view) => ["PASS", "FAIL"].includes(view.application.cvResult));
+  const selectedTracksMutable = selectedTrackViews.length > 0 && selectedTrackViews.every((view) => view.application.status !== "ARCHIVED");
+  const canBulkAssign = selectedViews.length > 0 && selectedTracksMutable && selectedDriveIds.size === 1 && selectedViews.every((view) => ["PASS", "FAIL"].includes(view.application.cvResult));
   const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
-  const canMoveNext = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId && !["ONSITE", "FINAL"].includes(view.application.currentStage));
-  const canIssueTest = selectedViews.length > 0 && selectedViews.every((view) => view.application.funnelId);
-  const validBulkRetest = bulkTestMode === "ONSITE" || selectedViews.every((view) => view.application.currentStage === bulkTestType);
-  const canInviteOnsite = selectedViews.length > 0 && selectedViews.every((view) => view.application.currentStage === "ONSITE");
+  const allSelectedAssigned = selectedTracksMutable && selectedTrackViews.every((view) => view.application.funnelId);
+  const canMoveNext = selectedTracksMutable && selectedTrackViews.every((view) => view.application.funnelId && !["ONSITE", "FINAL"].includes(view.application.currentStage));
+  const canIssueTest = selectedTracksMutable && selectedTrackViews.every((view) => view.application.funnelId);
+  const validBulkRetest = bulkTestMode === "ONSITE" || selectedTrackViews.every((view) => view.application.currentStage === bulkTestType);
+  const canInviteOnsite = selectedTracksMutable && selectedTrackViews.every((view) => view.application.currentStage === "ONSITE");
 
   async function runIssue() {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await advanceSelectedAction(selected);
+      const result = await advanceSelectedAction(selectedApplicationIds);
       if ("error" in result) throw new Error(result.error);
       setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} moved to the next phase. No test result was changed.` });
       setSelected([]);
@@ -94,7 +101,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await rejectSelectedAction(selected);
+      const result = await rejectSelectedAction(selectedApplicationIds);
       if (result && "error" in result) throw new Error(String(result.error || "Could not reject the selected candidates."));
       setFeedback({ kind: "success", message: `${selected.length} candidate${selected.length === 1 ? "" : "s"} rejected.` });
       setSelected([]);
@@ -111,7 +118,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await offerSelectedAction(selected);
+      const result = await offerSelectedAction(selectedApplicationIds);
       if (result && "error" in result) throw new Error(String(result.error || "Could not update the selected candidates."));
       setFeedback({ kind: "success", message: `${selected.length} candidate${selected.length === 1 ? "" : "s"} marked as offered.` });
       setSelected([]);
@@ -128,7 +135,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await requestRetestsAction(selected, bulkTestType, bulkTestMode);
+      const result = await requestRetestsAction(selectedApplicationIds, bulkTestType, bulkTestMode);
       if ("error" in result) throw new Error(String(result.error || "Could not reissue the selected tests."));
       setFeedback({ kind: "success", message: `${result.count} ${bulkTestMode.toLowerCase()} test${result.count === 1 ? "" : "s"} prepared. Timers start when candidates begin.` });
       setSelected([]);
@@ -145,7 +152,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await sendBulkNotificationAction(selected, message);
+      const result = await sendBulkNotificationAction(selectedApplicationIds, message);
       if ("error" in result) throw new Error(String(result.error || "Could not send the notification."));
       setFeedback({ kind: "success", message: `Notification sent to ${result.count} candidate${result.count === 1 ? "" : "s"}.` });
       setMessage("");
@@ -158,14 +165,19 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     }
   }
 
-  async function runAssignFunnel() {
+  async function runAssignFunnel(mode: "ADD" | "MOVE") {
     if (!validBulkFunnel) return;
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await assignSelectedFunnelAction(selected, bulkFunnelId);
+      const result = await assignSelectedFunnelAction(selectedApplicationIds, bulkFunnelId, mode);
       if ("error" in result) throw new Error(result.error);
-      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} assigned. Opening-time notifications were sent.` });
+      setFeedback({
+        kind: "success",
+        message: mode === "MOVE"
+          ? `${result.count} candidate${result.count === 1 ? "" : "s"} moved. Previous tracks remain staff-only history.`
+          : `${result.count} candidate${result.count === 1 ? "" : "s"} assigned an additional funnel track.`,
+      });
       setSelected([]);
       setBulkFunnelId("");
       router.refresh();
@@ -181,7 +193,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await sendOnsiteInvitesAction(selected, { scheduledAt: new Date(onsiteDate).toISOString(), location: onsiteLocation });
+      const result = await sendOnsiteInvitesAction(selectedApplicationIds, { scheduledAt: new Date(onsiteDate).toISOString(), location: onsiteLocation });
       if ("error" in result) throw new Error(result.error);
       const warning = result.emailFailures ? ` ${result.emailFailures} email${result.emailFailures === 1 ? "" : "s"} failed, but portal notifications were saved.` : "";
       setFeedback({ kind: result.emailFailures ? "error" : "success", message: `${result.count} onsite invitation${result.count === 1 ? "" : "s"} prepared.${warning}` });
@@ -263,7 +275,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
                       <td colSpan={8} className="p-0 w-full min-w-0 max-w-0 overflow-hidden">
                         <div className="p-4 bg-slate-50/60 min-w-0">
                           {detailViews[activeTrackId]
-                            ? <CandidateWorkspace
+                              ? <CandidateWorkspace
                                 view={detailViews[activeTrackId]}
                                 expanded
                                 onToggleExpand={() => setOpenId(null)}
@@ -271,6 +283,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
                                   setActiveTrackByRow((current) => ({ ...current, [id]: trackId }));
                                   if (!detailViews[trackId]) void loadDetail(trackId);
                                 }}
+                                onUpdated={() => loadDetail(activeTrackId)}
                               />
                             : detailError[activeTrackId]
                               ? <div className="card text-sm text-rose-700">{detailError[activeTrackId]} <button type="button" className="ml-2 font-semibold underline" onClick={() => void loadDetail(activeTrackId)}>Retry</button></div>
@@ -292,12 +305,20 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
       {selected.length > 0 && (
         <div className="sticky bottom-4 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-lg" aria-label="Bulk candidate actions">
           <span className="text-sm font-semibold text-ink-900">{selected.length} selected</span>
+          {!selectedTracksMutable && <span className="text-xs font-medium text-amber-700">Historical funnel tracks are read-only. Select an active track to use bulk actions.</span>}
           {canBulkAssign && <>
             <select className="input min-w-52" aria-label="Funnel for selected applicants" value={bulkFunnelId} onChange={(event) => setBulkFunnelId(event.target.value)}>
               <option value="">Choose funnel</option>
               {funnelOptions.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
             </select>
-            <button className="btn-primary whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={runAssignFunnel}>Assign funnel &amp; release test</button>
+            {allSelectedAssigned ? (
+              <>
+                <button className="btn-primary whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={() => runAssignFunnel("ADD")}>Add another funnel</button>
+                <button className="btn-outline whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={() => runAssignFunnel("MOVE")}>Move to funnel</button>
+              </>
+            ) : (
+              <button className="btn-primary whitespace-nowrap" disabled={busy || !validBulkFunnel} onClick={() => runAssignFunnel("ADD")}>Assign funnel &amp; release test</button>
+            )}
           </>}
           {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
           {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened applicants from the same drive.</span>}
@@ -307,7 +328,7 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
             <input className="input min-w-48" aria-label="Onsite screening location" placeholder="Onsite location" value={onsiteLocation} onChange={(event) => setOnsiteLocation(event.target.value)} />
             <button className="btn-primary whitespace-nowrap" disabled={busy || !onsiteDate} onClick={runOnsiteInvites}>Send onsite invitations</button>
           </>}
-          <button className="btn-outline whitespace-nowrap" disabled={busy} onClick={runOffer}>Offer</button>
+          <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runOffer}>Offer</button>
           {canIssueTest && <>
             <select className="input min-w-40" aria-label="Bulk assessment type" value={bulkTestType} onChange={(event) => setBulkTestType(event.target.value)}>
               <option value="CCAT">CCAT / IQ</option>
@@ -326,9 +347,9 @@ export function CandidateAccordion({ views }: { views: AnyObj[] }) {
             </button>
             {!validBulkRetest && <span className="text-xs text-amber-700">Online reissue must match every selected track’s current stage.</span>}
           </>}
-          <button className="btn-danger whitespace-nowrap" disabled={busy} onClick={runReject}>Reject</button>
-          <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" />
-          <button className="btn-outline whitespace-nowrap" disabled={busy || !message.trim()} onClick={runNotify}>Send notification</button>
+          <button className="btn-danger whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runReject}>Reject</button>
+          <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" disabled={!selectedTracksMutable} />
+          <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable || !message.trim()} onClick={runNotify}>Send notification</button>
           <button className="btn-ghost whitespace-nowrap" disabled={busy} onClick={() => setSelected([])}>Clear</button>
         </div>
       )}
