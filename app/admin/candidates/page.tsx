@@ -159,7 +159,7 @@ export default async function AdminCandidatesPage({ searchParams: searchParamsPr
         </Card>
 
         <div className="min-w-0 w-full overflow-hidden">
-          <CandidateAccordion views={views} />
+          <CandidateAccordion views={views} initialApplicationId={str(searchParams.open)} />
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
             <span>Page {page.page} · {page.total} total · filtering runs on the full database.</span>
             <div className="flex gap-2">

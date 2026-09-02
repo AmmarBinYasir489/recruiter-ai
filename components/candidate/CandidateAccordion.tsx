@@ -17,9 +17,9 @@ import {
 
 type AnyObj = Record<string, any>;
 
-export function CandidateAccordion({ views }: { views: AnyObj[] }) {
+export function CandidateAccordion({ views, initialApplicationId }: { views: AnyObj[]; initialApplicationId?: string }) {
   const router = useRouter();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(() => initialApplicationId && views.some((view) => view.application.id === initialApplicationId) ? initialApplicationId : null);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");

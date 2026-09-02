@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { Card, SectionTitle, statusBadge, decisionBadge, Pill } from "@/components/ui";
+import { Card, SectionTitle, statusBadge } from "@/components/ui";
 import { buildLeaderboard } from "@/lib/engine/leaderboard";
 import { requireRole } from "@/lib/auth";
 
@@ -11,16 +11,30 @@ const STAGE_LABEL: Record<string, string> = {
   PROMPT: "Prompt", GAMES: "Games", RAT: "RAT", MANUAL_REVIEW: "Review", ONSITE: "Onsite",
 };
 
-export default async function DriveScores({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+type SP = { funnelId?: string | string[] };
+
+export default async function DriveScores({ params: paramsPromise, searchParams: searchParamsPromise }: { params: Promise<{ id: string }>; searchParams: Promise<SP> }) {
   const params = await paramsPromise;
+  const searchParams = await searchParamsPromise;
   const user = await requireRole("recruiter", "admin");
   const drive = await prisma.drive.findUnique({
     where: { id: params.id },
-    include: { applications: { include: { candidate: true } } },
+    include: {
+      funnels: { orderBy: { createdAt: "desc" } },
+      applications: { include: { candidate: true } },
+    },
   });
   if (!drive || (user.role === "recruiter" && drive.ownerId !== user.id)) return <Card>Drive not found.</Card>;
 
-  const rows = buildLeaderboard(drive, drive.applications);
+  const requestedFunnelId = Array.isArray(searchParams.funnelId) ? searchParams.funnelId[0] : searchParams.funnelId;
+  const selectedFunnel = drive.funnels.find((funnel) => funnel.id === requestedFunnelId)
+    || drive.funnels.find((funnel) => funnel.id === drive.defaultFunnelId)
+    || drive.funnels[0]
+    || null;
+  const selectedApplications = drive.applications.filter((application) =>
+    application.status !== "ARCHIVED" && (selectedFunnel ? application.funnelId === selectedFunnel.id : application.funnelId === null),
+  );
+  const rows = buildLeaderboard(drive, selectedApplications);
   const stageCols = rows[0] ? Object.keys(rows[0].scores) : [];
 
   return (
@@ -29,7 +43,18 @@ export default async function DriveScores({ params: paramsPromise }: { params: P
         <h1 className="text-2xl font-bold text-ink-900">Weighted leaderboard</h1>
         <Link href={`/recruiter/drives/${drive.id}`} className="btn-ghost text-sm">← Drive</Link>
       </div>
-      <p className="text-slate-500 mb-6">Total = weighted sum of stage scores using this drive's TCI weights (higher is better).</p>
+      <p className="text-slate-500 mb-4">Candidates are ranked inside one funnel at a time so separate assessment tracks are never counted as duplicate people.</p>
+      <form method="get" className="mb-6 flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+        <div className="min-w-64">
+          <label htmlFor="leaderboard-funnel" className="label">Assessment funnel</label>
+          <select id="leaderboard-funnel" name="funnelId" className="input" defaultValue={selectedFunnel?.id || ""} aria-describedby="leaderboard-funnel-help">
+            {drive.funnels.map((funnel) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
+            {drive.funnels.length === 0 && <option value="">Applicant pool</option>}
+          </select>
+        </div>
+        <button className="btn-primary">View leaderboard</button>
+        <p id="leaderboard-funnel-help" className="text-xs text-slate-500">Scores and totals shown below belong only to <strong>{selectedFunnel?.name || "the applicant pool"}</strong>.</p>
+      </form>
 
       <SectionTitle>Candidates ({rows.length})</SectionTitle>
       <Card className="overflow-x-auto">
@@ -50,6 +75,7 @@ export default async function DriveScores({ params: paramsPromise }: { params: P
                 <td className="py-2 pr-3">
                   <Link href={`/recruiter/candidates/${r.applicationId}`} className="font-medium text-ink-900 hover:underline">{r.candidateName}</Link>
                   <div className="text-xs text-slate-400">{r.candidateEmail}</div>
+                  <div className="text-xs font-medium text-brand-700">{selectedFunnel?.name || "Applicant pool"} · {r.applicationId.slice(0, 8).toUpperCase()}</div>
                 </td>
                 <td className="py-2 pr-3">{statusBadge(r.status)}</td>
                 {stageCols.map((c) => (
