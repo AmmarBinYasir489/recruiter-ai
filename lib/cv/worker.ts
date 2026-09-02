@@ -1,6 +1,7 @@
 import { prisma, j, uj } from "@/lib/db";
-import { parseCv, parseCvDocument, scoreParsedCv, extractSkillRequirementsFromJd } from "@/lib/ai/parseCv";
+import { parseCv, scoreParsedCv, extractSkillRequirementsFromJd } from "@/lib/ai/parseCv";
 import { extractTextFromBuffer } from "@/lib/cv/extract";
+import { ocrCvDocument } from "@/lib/cv/ocr";
 import { readCvFile } from "@/lib/cv/storage";
 import { createNotification } from "@/lib/notifications";
 import { DEFAULT_CGPA } from "@/lib/engine/cgpa";
@@ -25,7 +26,8 @@ export async function processCvJob(jobId: string) {
 
   try {
     const buf = await readCvFile(job.storagePath);
-    const text = await extractTextFromBuffer(buf, job.fileName, job.fileType);
+    const nativeText = await extractTextFromBuffer(buf, job.fileName, job.fileType);
+    const ocr = await ocrCvDocument(buf, job.fileType, nativeText);
     const app = job.application;
     const submitted = uj<Record<string, any>>(app.extractedCv) || {};
     const requirements = extractSkillRequirementsFromJd(app.drive.jobDescription);
@@ -33,10 +35,10 @@ export async function processCvJob(jobId: string) {
     const fallbackText = [submitted.name, submitted.email, submitted.phone, submitted.university, submitted.degree, submitted.screening]
       .filter(Boolean)
       .join("\n");
-    const parserText = text.trim() || fallbackText;
-    const parsed = text.trim() || job.fileType === "application/pdf"
-      ? await parseCvDocument(buf, job.fileType, parserText, required)
-      : await parseCv(parserText, required, []);
+    const parserText = ocr.text.trim() || fallbackText;
+    // Stage 1 produces a faithful text transcription; stage 2 converts that
+    // text into validated structured evidence for scoring.
+    const parsed = await parseCv(parserText, required, requirements.preferred);
     const hydrated = {
       ...parsed,
       name: parsed.name || submitted.name,
@@ -73,7 +75,8 @@ export async function processCvJob(jobId: string) {
       preferredSkills: requirements.preferred,
       matched: hydrated.matchedSkills,
       missing: hydrated.missingSkills,
-      extractionState: hydrated.extractionMethod || (text.trim() ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK"),
+      extractionState: hydrated.extractionMethod || (parserText ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK"),
+      textExtractionMethod: ocr.text.trim() ? ocr.method : "APPLICATION_FIELDS_FALLBACK",
       scoringState: "AUTOMATIC_THRESHOLD_APPLIED",
       threshold,
     };
@@ -100,7 +103,7 @@ export async function processCvJob(jobId: string) {
           scores: j({ ...(uj<Record<string, number>>(app.scores || "{}")), CV_SCREENING: cvScore }),
         },
       });
-      await tx.cvJob.update({ where: { id: jobId }, data: { status: "COMPLETED", extractedText: text } });
+      await tx.cvJob.update({ where: { id: jobId }, data: { status: "COMPLETED", extractedText: parserText } });
       await createNotification(
         {
           userId: app.candidateId,
