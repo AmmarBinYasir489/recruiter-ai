@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCvLocally, scoreParsedCv } from "../ai/parseCv";
+import { extractSkillRequirementsFromJd, parseCvLocally, scoreParsedCv } from "../ai/parseCv";
 
 describe("structured CV parser", () => {
   const cv = `
@@ -49,5 +49,27 @@ Data Structures, Artificial Intelligence
     expect(scored.components.experience).toBe(0);
     expect(scored.components.skills).toBe(0);
     expect(scored.cvScore).toBeLessThan(50);
+  });
+
+  it("separates labelled required and preferred drive skills", () => {
+    const requirements = extractSkillRequirementsFromJd(
+      "Strong AI background. Required: Python, PyTorch, NLP. Preferred: LangChain, AWS, Computer Vision.",
+    );
+    expect(requirements.required).toHaveLength(3);
+    expect(requirements.required).toEqual(expect.arrayContaining(["python", "pytorch", "nlp"]));
+    expect(requirements.preferred).toHaveLength(3);
+    expect(requirements.preferred).toEqual(expect.arrayContaining(["langchain", "aws", "computer vision"]));
+  });
+
+  it("gives zero evidence points and zero skills points when none were extracted", () => {
+    const parsed = parseCvLocally("Candidate Name\ncandidate@example.com");
+    const scored = scoreParsedCv(
+      { ...parsed, skills: [], matchedSkills: [], missingSkills: [], candidateQualityScore: 0, fitSummary: "" },
+      { requiredSkills: [], preferredSkills: [] },
+    );
+    expect(scored.components.skills).toBe(0);
+    expect(scored.components.projects).toBe(0);
+    expect(scored.components.experience).toBe(0);
+    expect(scored.components.other).toBe(0);
   });
 });

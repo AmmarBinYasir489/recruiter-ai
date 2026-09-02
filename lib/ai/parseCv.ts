@@ -155,9 +155,31 @@ async function llmParse(text: string, document?: { mime: string; base64: string 
   } catch { return null }
 }
 
+function requirementsList(sectionText: string) {
+  const lower = sectionText.toLowerCase();
+  return unique([
+    ...SKILL_KEYWORDS.filter((skill) => lower.includes(skill)),
+    ...sectionText
+      .split(/,|\||•|;/)
+      .map((item) => item.trim().replace(/[.\s]+$/, ""))
+      .filter((item) => item.length > 1 && item.length < 60),
+  ]);
+}
+export function extractSkillRequirementsFromJd(jd: string) {
+  const requiredSection = jd.match(/\b(?:required(?: skills?)?|requirements?)\s*:\s*([\s\S]*?)(?=\bpreferred(?: skills?)?\s*:|$)/i)?.[1] || "";
+  const preferredSection = jd.match(/\bpreferred(?: skills?)?\s*:\s*([\s\S]*?)$/i)?.[1] || "";
+  if (requiredSection || preferredSection) {
+    return {
+      required: requirementsList(requiredSection),
+      preferred: requirementsList(preferredSection),
+    };
+  }
+  // Older drives may have an unstructured description. Treat detected skill
+  // terms as requirements, but never treat an empty description as a match.
+  return { required: SKILL_KEYWORDS.filter((skill) => jd.toLowerCase().includes(skill)), preferred: [] };
+}
 export function extractRequiredFromJd(jd: string) {
-  const lower = jd.toLowerCase(); const labelled = jd.match(/(?:required skills?|requirements?)\s*:?([^\n]{1,300})/i)?.[1] || "";
-  return unique([...SKILL_KEYWORDS.filter((skill) => lower.includes(skill)), ...labelled.split(/,|\||•/).filter((item) => item.trim().length > 1 && item.trim().length < 60)]);
+  return extractSkillRequirementsFromJd(jd).required;
 }
 export async function parseCv(text: string, requiredSkills: string[] = [], _preferredSkills: string[] = []): Promise<CvParseResult> {
   return completeParse(await llmParse(text) || heuristicParse(text), requiredSkills);
@@ -170,7 +192,7 @@ export async function parseCvDocument(buffer: Buffer, mime: string, extractedTex
 function completeParse(parsed: ParsedCv, requiredSkills: string[]): CvParseResult {
   const have = new Set(parsed.skills.map((skill) => skill.toLowerCase()));
   const matchedSkills = requiredSkills.filter((skill) => have.has(skill.toLowerCase())); const missingSkills = requiredSkills.filter((skill) => !have.has(skill.toLowerCase()));
-  const ratio = requiredSkills.length ? matchedSkills.length / requiredSkills.length : 1;
+  const ratio = requiredSkills.length ? matchedSkills.length / requiredSkills.length : 0;
   const evidence = Math.min(100, parsed.projectDetails.length * 15 + parsed.experience.length * 20 + parsed.certifications.length * 5);
   const candidateQualityScore = Math.round(ratio * 60 + evidence * .25 + parsed.extractionConfidence * .15);
   const fitSummary = requiredSkills.length ? `${matchedSkills.length} of ${requiredSkills.length} required skills matched. ${missingSkills.length ? `Missing evidence for: ${missingSkills.join(", ")}.` : "All detected requirements are represented."} ${parsed.projectDetails.length} project(s) and ${parsed.experience.length} work experience entries were verified from the CV.` : `No explicit drive skills were detected. Review ${parsed.projectDetails.length} project(s) and ${parsed.experience.length} experience entries manually.`;

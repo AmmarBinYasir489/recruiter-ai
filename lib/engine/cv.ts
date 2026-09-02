@@ -48,7 +48,7 @@ export function scoreSkills(
       ? reqScore
       : preferred.length
         ? prefScore
-        : 1;
+        : 0;
   const score = Math.round(clamp(combined * 100));
   return {
     required,
@@ -109,7 +109,12 @@ export function cvComponents(input: CvInput): CvComponentScores {
   const tier = input.universityScoreOverride ?? universityScore(input.university).score;
   const deg = degreeRelevance(input.degree);
   // University & Degree relevance blends the institution tier with degree fit.
-  const universityDegree = Math.round((tier + deg) / 2);
+  // This component represents two pieces of extracted evidence. Do not award
+  // partial points from a university tier or a degree guess when either field
+  // is absent.
+  const universityDegree = input.university?.trim() && input.degree?.trim()
+    ? Math.round((tier + deg) / 2)
+    : 0;
   const skills =
     input.skills !== undefined
       ? clamp(input.skills)

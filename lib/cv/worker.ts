@@ -1,5 +1,5 @@
 import { prisma, j, uj } from "@/lib/db";
-import { parseCv, parseCvDocument, scoreParsedCv, extractRequiredFromJd } from "@/lib/ai/parseCv";
+import { parseCv, parseCvDocument, scoreParsedCv, extractSkillRequirementsFromJd } from "@/lib/ai/parseCv";
 import { extractTextFromBuffer } from "@/lib/cv/extract";
 import { readCvFile } from "@/lib/cv/storage";
 import { createNotification } from "@/lib/notifications";
@@ -28,7 +28,8 @@ export async function processCvJob(jobId: string) {
     const text = await extractTextFromBuffer(buf, job.fileName, job.fileType);
     const app = job.application;
     const submitted = uj<Record<string, any>>(app.extractedCv) || {};
-    const required = extractRequiredFromJd(app.drive.jobDescription);
+    const requirements = extractSkillRequirementsFromJd(app.drive.jobDescription);
+    const required = requirements.required;
     const fallbackText = [submitted.name, submitted.email, submitted.phone, submitted.university, submitted.degree, submitted.screening]
       .filter(Boolean)
       .join("\n");
@@ -56,7 +57,7 @@ export async function processCvJob(jobId: string) {
     }) : undefined;
     const { components, cvScore } = scoreParsedCv(hydrated, {
       requiredSkills: required,
-      preferredSkills: [],
+      preferredSkills: requirements.preferred,
       universityScoreOverride: configuredTier?.score,
     });
     // CV screening belongs to the drive intake pool, not to a funnel. A PASS
@@ -69,6 +70,7 @@ export async function processCvJob(jobId: string) {
       components,
       cvScore,
       requiredSkills: required,
+      preferredSkills: requirements.preferred,
       matched: hydrated.matchedSkills,
       missing: hydrated.missingSkills,
       extractionState: hydrated.extractionMethod || (text.trim() ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK"),

@@ -200,17 +200,24 @@ async function main() {
       university: "LUMS",
       degree: "Computer Science",
       requiredSkills: ["python", "pytorch", "nlp"],
-      preferredSkills: ["machine learning"],
+      preferredSkills: ["langchain", "aws", "computer vision"],
       candidateSkills: ["python", "pytorch", "nlp", "machine learning"],
-      projects: 80,
-      experience: 40,
-      other: 50,
+      // Seeded CVs must obey the same evidence rule as uploaded CVs. This
+      // fixture contains no extracted project, employment, or other evidence.
+      projects: 0,
+      experience: 0,
+      other: 0,
     });
     const cvScore = computeCvScore(components);
     const parsed = {
       name: "Carol Candidate", email: "candidate1@portal.com", phone: "+92 300 1112222",
       university: "LUMS", degree: "Computer Science", gradYear: 2026, gpa: 3.6, gpaScale: 4,
-      skills: ["python", "pytorch", "nlp", "machine learning"], experienceYears: 2, projects: 4,
+      skills: ["python", "pytorch", "nlp", "machine learning"],
+      matched: ["python", "pytorch", "nlp"], missing: [],
+      requiredSkills: ["python", "pytorch", "nlp"],
+      preferredSkills: ["langchain", "aws", "computer vision"],
+      experience: [], experienceYears: undefined, projects: 0, projectDetails: [],
+      certifications: [], coursework: [], links: [],
       summary: "AI Engineer candidate with ML and Python experience.",
       components,
       cvScore,

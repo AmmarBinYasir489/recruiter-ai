@@ -27,8 +27,8 @@ describe("CV skills scoring", () => {
     expect(s.missing).toContain("react");
   });
 
-  it("empty required/preferred means fully satisfied", () => {
-    expect(scoreSkills([], [], []).score).toBe(100);
+  it("does not award skill points when the drive has no requirements", () => {
+    expect(scoreSkills([], [], ["python"]).score).toBe(0);
   });
 });
 
@@ -53,6 +53,11 @@ describe("CV component build", () => {
   it("degree relevance boosts unrelated vs relevant", () => {
     expect(degreeRelevance("Computer Science")).toBe(100);
     expect(degreeRelevance("Mechanical Engineering")).toBeLessThan(100);
+  });
+
+  it("does not award university and degree points without both fields", () => {
+    expect(cvComponents({ university: "LUMS", degree: undefined }).universityDegree).toBe(0);
+    expect(cvComponents({ university: undefined, degree: "Computer Science" }).universityDegree).toBe(0);
   });
 
   it("weights sum to 100", () => {
