@@ -5,6 +5,7 @@ import { ocrCvDocument } from "@/lib/cv/ocr";
 import { readCvFile } from "@/lib/cv/storage";
 import { createNotification } from "@/lib/notifications";
 import { DEFAULT_CGPA } from "@/lib/engine/cgpa";
+import { cleanSkills } from "@/lib/jobSkills";
 
 const MAX_RETRIES = 3;
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -30,7 +31,8 @@ export async function processCvJob(jobId: string) {
     const ocr = await ocrCvDocument(buf, job.fileType, nativeText);
     const app = job.application;
     const submitted = uj<Record<string, any>>(app.extractedCv) || {};
-    const requirements = extractSkillRequirementsFromJd(app.drive.jobDescription);
+    const approved = uj<{ cvSkills?: { required: string[]; preferred: string[] } }>(app.drive.rubricConfig)?.cvSkills;
+    const requirements = approved ? { required: cleanSkills(approved.required), preferred: cleanSkills(approved.preferred) } : extractSkillRequirementsFromJd(app.drive.jobDescription);
     const required = requirements.required;
     const parserText = ocr.text.trim();
     if (parserText.length < 40) {
@@ -53,7 +55,8 @@ export async function processCvJob(jobId: string) {
       const name = tier.name.toLowerCase();
       return university === name || university.includes(name) || name.includes(university);
     }) : undefined;
-    const { components, cvScore } = scoreParsedCv(hydrated, {
+    const { components, cvScore, relevance } = scoreParsedCv(hydrated, {
+      jobTitle: app.drive.name,
       requiredSkills: required,
       preferredSkills: requirements.preferred,
       universityScoreOverride: configuredTier?.score,
@@ -66,6 +69,9 @@ export async function processCvJob(jobId: string) {
       ...submitted,
       ...hydrated,
       components,
+      relevance,
+      candidateQualityScore: Math.round((components.skills * 30 + components.projects * 25 + components.experience * 15 + components.other * 10) / 80),
+      fitSummary: `${hydrated.fitSummary} Role relevance: ${relevance.projects.filter((item) => item.relevance > 0).length} project(s) and ${relevance.experience.filter((item) => item.relevance > 0).length} work entries contain matching evidence. Unrelated entries receive no evidence credit.`,
       cvScore,
       requiredSkills: required,
       preferredSkills: requirements.preferred,

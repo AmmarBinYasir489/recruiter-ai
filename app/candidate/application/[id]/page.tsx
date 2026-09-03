@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { signCvToken } from "@/lib/cv/access";
 import { resultForCurrentStage } from "@/lib/candidateStage";
 import { candidateSafeNotification } from "@/lib/candidatePrivacy";
+import { trackLabel } from "@/lib/onsiteTrack";
+import { markNotificationsReadAction } from "@/app/candidate/actions";
 import { Card, SectionTitle, decisionBadge, statusBadge, LinkButton } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
     prisma.notification.findMany({
       where: { userId: user.id, relatedAppId: app.id },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 8,
+      take: 3,
     }),
     prisma.application.findMany({
       where: { candidateId: user.id, driveId: app.driveId, status: { not: "ARCHIVED" } },
@@ -55,7 +57,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
           <p className="text-sm font-medium text-brand-600">Your application</p>
           <h1 className="text-2xl font-bold text-ink-900">{app.drive.name}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {app.funnel?.name ? `${app.funnel.name} · ` : ""}Reference {app.id.slice(0, 8).toUpperCase()}
+            {app.funnel?.name ? `${trackLabel(app.funnel.name, app.trackKey)} · ` : ""}Reference {app.id.slice(0, 8).toUpperCase()}
           </p>
         </div>
         {statusBadge(app.status)}
@@ -79,7 +81,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
                   href={`/candidate/application/${track.id}`}
                   className={active ? "btn-primary justify-start" : "btn-outline justify-start"}
                 >
-                  {track.funnel?.name || "Drive application"} · {STAGE_LABEL[track.currentStage || ""] || track.currentStage || "Review"}
+                  {trackLabel(track.funnel?.name || "Drive application", track.trackKey)} · {STAGE_LABEL[track.currentStage || ""] || track.currentStage || "Review"}
                 </LinkButton>
               );
             })}
@@ -141,7 +143,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         </div>
       </Card>
 
-      <SectionTitle>Latest updates</SectionTitle>
+      <SectionTitle action={<form action={markNotificationsReadAction}><button className="btn-ghost text-sm">Mark all read</button></form>}>Latest updates</SectionTitle>
       <div className="space-y-2" aria-live="polite">
         {notes.length === 0 ? (
           <Card className="text-sm text-slate-500">No updates yet. This page refreshes automatically.</Card>
@@ -155,6 +157,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
           </Card>
         ))}
       </div>
+      <div className="mt-3"><LinkButton href="/candidate/notifications" className="btn-ghost">View notification history</LinkButton></div>
     </div>
   );
 }

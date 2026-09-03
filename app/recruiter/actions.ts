@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma, j, uj, getFunnel } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { onsiteNext } from "@/lib/onsiteTrack";
+import { cleanSkills } from "@/lib/jobSkills";
 import { onsiteInviteEmail } from "@/lib/email";
 import {
   managedApplicationIds,
@@ -54,16 +56,20 @@ async function assignApplicationToFunnel(
   applicationId: string,
   funnelId: string,
   mode: FunnelAssignmentMode = "ADD",
+  delivery: "ONLINE" | "ONSITE" = "ONLINE",
 ) {
   const app = await requireManagedApplication(user, applicationId);
+  if (app.status === "ARCHIVED") return { error: "Historical tracks are read-only. Select an active application." };
   const funnelRow = await prisma.funnel.findFirst({ where: { id: funnelId, driveId: app.driveId, published: true } });
   if (!funnelRow) return { error: "Select a published funnel for this drive." };
   if (app.cvResult !== "PASS" && app.cvResult !== "FAIL") return { error: "Wait for CV screening to finish before assigning a funnel." };
   const funnel = await getFunnel(funnelId);
   if (!funnel) return { error: "Funnel not found." };
-  if (app.funnelId === funnelId) return { error: `This candidate already has a track in ${funnelRow.name}.` };
+  const onsite = delivery === "ONSITE";
+  const trackKey = onsite ? `ONSITE:${funnelId}` : funnelId;
+  if (!onsite && app.funnelId === funnelId) return { error: `This candidate already has a track in ${funnelRow.name}.` };
   const existingTrack = await prisma.application.findFirst({
-    where: { candidateId: app.candidateId, driveId: app.driveId, funnelId },
+    where: { candidateId: app.candidateId, driveId: app.driveId, ...(onsite ? { trackKey } : { funnelId, NOT: { trackKey: { startsWith: "ONSITE:" } } }) },
     select: { id: true, status: true },
   });
   if (existingTrack) {
@@ -71,13 +77,15 @@ async function assignApplicationToFunnel(
       ? `This candidate already has historical progress in ${funnelRow.name}. Choose a different funnel.`
       : `This candidate already has a separate track in ${funnelRow.name}.` };
   }
-  const firstAssessment = firstAssessmentStage(funnel);
+  const onsiteStart = onsite ? onsiteNext(funnel) : null;
+  const firstAssessment = onsiteStart ? funnel.stages.find((stage) => stage.type === onsiteStart.currentStage) : firstAssessmentStage(funnel);
   if (!firstAssessment) return { error: "This funnel has no assessment after CV screening." };
+  if (onsite && onsiteStart?.currentStage === "FINAL") return { error: "Choose a funnel containing at least one enabled test." };
   const reachingFinal = firstAssessment.type === "FINAL";
   const reachingOnsite = firstAssessment.type === "ONSITE";
   const opensAt = firstAssessment.opensAt ? new Date(firstAssessment.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
-  const createSeparateTrack = Boolean(app.funnelId);
+  const createSeparateTrack = onsite || Boolean(app.funnelId);
   const movingTrack = createSeparateTrack && mode === "MOVE";
   const sourceApplicationId = app.sourceApplicationId || app.id;
   const sourceScores = uj<Record<string, number>>(app.scores) || {};
@@ -109,7 +117,7 @@ async function assignApplicationToFunnel(
           candidateId: app.candidateId,
           driveId: app.driveId,
           sourceApplicationId,
-          trackKey: funnelId,
+          trackKey,
           ...trackState,
           cvScore: app.cvScore,
           cvResult: app.cvResult,
@@ -159,7 +167,7 @@ async function assignApplicationToFunnel(
       data: {
         actorId: user.id,
         action: movingTrack ? "FUNNEL_TRACK_MOVED" : createSeparateTrack ? "FUNNEL_TRACK_CREATED" : "FUNNEL_ASSIGNED",
-        meta: j({ sourceApplicationId, applicationId: targetApplicationId, archivedApplicationId: movingTrack ? applicationId : null, assignmentMode: mode, fromFunnelId: app.funnelId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }),
+        meta: j({ sourceApplicationId, applicationId: targetApplicationId, archivedApplicationId: movingTrack ? applicationId : null, assignmentMode: mode, delivery, fromFunnelId: app.funnelId, funnelId, version: funnelRow.version, cvResult: app.cvResult, firstStage: firstAssessment.type }),
       },
     });
     const trackPrefix = movingTrack
@@ -167,7 +175,7 @@ async function assignApplicationToFunnel(
       : createSeparateTrack
         ? `A new assessment track was created for ${funnelRow.name}. `
         : `You were selected for ${funnelRow.name}. `;
-    const message = reachingFinal
+    const message = onsite ? `Your onsite assessment session for ${funnelRow.name} is ready. ${releaseMessage} Complete each test in sequence; the recruitment team reviews your results afterward.` : reachingFinal
       ? `${trackPrefix}The recruitment team will contact you about the final step.`
       : reachingOnsite
         ? `${trackPrefix}Date and location details for onsite screening will be emailed by the recruitment team.`
@@ -175,6 +183,25 @@ async function assignApplicationToFunnel(
     await createNotification({ userId: app.candidateId, type: "FUNNEL_ASSIGNED", message, relatedAppId: targetApplicationId }, tx);
   });
   return { ok: true, applicationId: targetApplicationId, createdTrack: createSeparateTrack, movedTrack: movingTrack };
+}
+
+export async function assignOnsiteFunnelAction(applicationIds: string[], funnelId: string) {
+  const user = await requireRole("recruiter", "admin");
+  const ids = await managedApplicationIds(user, applicationIds);
+  if (!ids.length) return { error: "Select at least one applicant you can manage.", count: 0 };
+  const seen = new Set<string>();
+  let count = 0;
+  const errors: string[] = [];
+  for (const id of ids) {
+    const app = await requireManagedApplication(user, id);
+    const key = `${app.candidateId}:${app.driveId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const result = await assignApplicationToFunnel(user, id, funnelId, "ADD", "ONSITE");
+    if ("error" in result) errors.push(result.error!); else count++;
+  }
+  revalidateCandidateRoutes();
+  return errors.length ? { error: `${count} onsite sessions assigned. ${errors.join(" ")}`, count } : { ok: true, count };
 }
 
 export async function assignCandidateFunnelAction(applicationId: string, formData: FormData) {
@@ -207,6 +234,8 @@ export async function createDriveAction(formData: FormData) {
   const cvPassThreshold = Math.max(0, Math.min(100, Number(formData.get("cvPassThreshold") || 60)));
   const location = String(formData.get("location") || "");
   const jobDescription = String(formData.get("jobDescription") || "");
+  const requiredSkills = cleanSkills(formData.get("requiredSkills"));
+  const preferredSkills = cleanSkills(formData.get("preferredSkills")).filter((skill) => !requiredSkills.includes(skill));
   const deadlineRaw = String(formData.get("deadline") || "");
   const deadline = new Date(deadlineRaw);
   if (!deadlineRaw || isNaN(deadline.getTime())) return { error: "A valid deadline is required." };
@@ -241,7 +270,7 @@ export async function createDriveAction(formData: FormData) {
         status: "OPEN",
         cvPassThreshold,
         tciWeights: j({ CV_SCREENING: 10, GAMES: 10, CCAT: 15, MTT: 15, ESSAY: 10, CODING: 25, PROMPT: 15 }),
-        rubricConfig: j({ ccat: { threshold: 55 }, mtt: { threshold: 55 } }),
+        rubricConfig: j({ ccat: { threshold: 55 }, mtt: { threshold: 55 }, ...(formData.has("requiredSkills") ? { cvSkills: { required: requiredSkills, preferred: preferredSkills } } : {}) }),
         thresholdHistory: j([]),
         ownerId: user.id,
       },

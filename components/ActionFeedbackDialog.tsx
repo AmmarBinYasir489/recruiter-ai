@@ -28,7 +28,8 @@ export function ActionFeedbackDialog({ feedback, onClose }: { feedback: ActionFe
         event.preventDefault();
         onClose();
       }}
-      onClose={onClose}
+      // Dismiss through the button/cancel handlers only. Strict Mode's effect
+      // cleanup calls close(); its native event must not erase new feedback.
       className="fixed inset-0 m-auto w-[min(92vw,34rem)] rounded-3xl border-0 bg-white p-0 shadow-2xl backdrop:bg-slate-950/70"
     >
       <div className={`border-t-8 px-7 py-8 text-center ${failed ? "border-rose-500" : "border-emerald-500"}`} role={failed ? "alert" : "status"} aria-live="assertive">

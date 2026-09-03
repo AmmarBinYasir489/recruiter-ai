@@ -4,6 +4,7 @@ import { prisma, j, uj } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { reviewerCanGrade } from "@/lib/reviewerAccess";
 import { createNotification } from "@/lib/notifications";
+import { isOnsiteTrack } from "@/lib/onsiteTrack";
 import { scoreCodingByRubric } from "@/lib/engine/coding";
 import { scoreEssayByRubric } from "@/lib/engine/essay";
 import { scorePromptByRubric } from "@/lib/engine/prompt";
@@ -86,7 +87,8 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
     await tx.application.update({
       where: { id: app.id },
       data: {
-        scores: j(scores), currentStage: result.type, phaseReleased: false, status: "IN_PROGRESS",
+        scores: j(scores),
+        ...(!isOnsiteTrack(app.trackKey) && app.currentStage === result.type ? { phaseReleased: false, status: "IN_PROGRESS" } : {}),
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: result.type, status, at: new Date().toISOString(), note: `Graded by reviewer: ${normalized}/100` }]),
       },
     });

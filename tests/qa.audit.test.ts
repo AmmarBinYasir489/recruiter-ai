@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { prisma, j } from "@/lib/db";
-import { applyAction, submitAutoTestAction, startAssessmentAction, getAssessmentAttemptAction } from "@/app/candidate/actions";
+import { applyAction, submitAutoTestAction, submitSubjectiveAction, submitGameAction, startAssessmentAction, getAssessmentAttemptAction } from "@/app/candidate/actions";
 import { processDueCvJobs, processCvJob } from "@/lib/cv/worker";
 import { signCvToken, verifyCvToken, authorizeCvAccess } from "@/lib/cv/access";
 import {
@@ -29,6 +29,7 @@ import {
   manualPassAction,
   advanceApplicationAction,
   assignCandidateFunnelAction,
+  assignOnsiteFunnelAction,
 } from "@/app/recruiter/actions";
 import { gradeAssessmentAction } from "@/app/reviewer/actions";
 import { summarizeAssessmentIntegrity } from "@/lib/integrity";
@@ -52,6 +53,50 @@ const fakeFile = (name: string, text: string, type = "text/plain") =>
   new File([Buffer.from(text)], name, { type });
 
 const ctx: any = {};
+
+describe("onsite bulk session", () => {
+  it("preserves online scores, runs through failed and subjective tests, and never rewinds on review", async () => {
+    const funnel = await prisma.funnel.create({ data: {
+      driveId: ctx.driveA.id, name: "QA onsite session", published: true, version: 1,
+      stages: j(["CV_SCREENING", "CCAT", "CODING", "GAMES", "ONSITE", "FINAL"].map((type, order) => ({ id: type, name: type, type, order, enabled: true, passScore: 99, durationMin: 20, failAction: "REJECT", assignedReviewers: ["qa-rev"] }))),
+    } });
+    const online = await prisma.application.create({ data: { candidateId: "c12", driveId: ctx.driveA.id, funnelId: funnel.id, trackKey: `QA:${funnel.id}`, cvResult: "PASS", cvScore: 70, currentStage: "FINAL", scores: j({ CCAT: 90, CV_SCREENING: 70 }) } });
+    let onsiteId: string | undefined;
+    try {
+      authState.user = { id: "qa-rec", role: "recruiter" };
+      expect(await assignOnsiteFunnelAction([online.id, online.id], funnel.id)).toMatchObject({ ok: true, count: 1 });
+      const onsite = await prisma.application.findFirstOrThrow({ where: { candidateId: "c12", driveId: ctx.driveA.id, trackKey: `ONSITE:${funnel.id}` } });
+      onsiteId = onsite.id;
+      expect(onsite.currentStage).toBe("CCAT");
+      expect(await assignOnsiteFunnelAction([online.id], funnel.id)).toMatchObject({ count: 0 });
+      authState.user = { id: "c12", role: "candidate" };
+      await startAssessmentAction(onsite.id, "CCAT");
+      await act(submitAutoTestAction(onsite.id, "CCAT", new FormData()));
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "CODING", phaseReleased: true });
+      const coding = await startAssessmentAction(onsite.id, "CODING");
+      await act(submitSubjectiveAction(onsite.id, "CODING", fd({ attemptId: (coding as any).attempt.id, answer: "A synthetic QA answer" })));
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "GAMES", phaseReleased: true });
+      const pending = await prisma.assessmentResult.findFirstOrThrow({ where: { applicationId: onsite.id, type: "CODING" } });
+      authState.user = { id: "qa-rev", role: "reviewer" };
+      const answers = JSON.parse(pending.answers || "{}");
+      const grades = fd(Object.fromEntries((answers.items || []).map((item: any) => [`questionScore_${item.number}`, "1"])));
+      await gradeAssessmentAction(pending.id, grades);
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "GAMES", phaseReleased: true });
+      authState.user = { id: "c12", role: "candidate" };
+      const games = await startAssessmentAction(onsite.id, "GAMES");
+      await act(submitGameAction(onsite.id, fd({ attemptId: (games as any).attempt.id })));
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "FINAL", phaseReleased: false, status: "HOLD" });
+      const results = await prisma.assessmentResult.findMany({ where: { applicationId: onsite.id } });
+      expect(results).toHaveLength(3);
+      expect(results.every((result) => result.mode === "ONSITE")).toBe(true);
+      expect(await prisma.application.findUnique({ where: { id: online.id } })).toMatchObject({ currentStage: "FINAL", scores: online.scores });
+    } finally {
+      if (onsiteId) await prisma.application.delete({ where: { id: onsiteId } });
+      await prisma.application.delete({ where: { id: online.id } });
+      await prisma.funnel.delete({ where: { id: funnel.id } });
+    }
+  });
+});
 
 beforeAll(async () => {
   await prisma.application.deleteMany();

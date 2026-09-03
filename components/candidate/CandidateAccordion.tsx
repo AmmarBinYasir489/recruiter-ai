@@ -12,6 +12,7 @@ import {
   requestRetestsAction,
   sendBulkNotificationAction,
   assignSelectedFunnelAction,
+  assignOnsiteFunnelAction,
   sendOnsiteInvitesAction,
 } from "@/app/recruiter/actions";
 
@@ -131,6 +132,20 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   }
 
   async function runRetest() {
+    if (bulkTestMode === "ONSITE") {
+      if (!validBulkFunnel) return;
+      setBusy(true);
+      try {
+        const result = await assignOnsiteFunnelAction(selectedApplicationIds, bulkFunnelId);
+        if ("error" in result) throw new Error(result.error);
+        setFeedback({ kind: "success", message: `${result.count} onsite funnel session(s) assigned. All enabled tests will run in sequence; online results remain unchanged.` });
+        setSelected([]);
+        router.refresh();
+      } catch (error) {
+        setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not assign onsite sessions." });
+      } finally { setBusy(false); }
+      return;
+    }
     if (!window.confirm(`Issue ${bulkTestType} in ${bulkTestMode.toLowerCase()} mode for ${selected.length} selected candidate(s)? Their present funnel position will be restored after this additional attempt.`)) return;
     setBusy(true);
     setFeedback(null);
@@ -330,21 +345,22 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
           </>}
           <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runOffer}>Offer</button>
           {canIssueTest && <>
-            <select className="input min-w-40" aria-label="Bulk assessment type" value={bulkTestType} onChange={(event) => setBulkTestType(event.target.value)}>
+            {bulkTestMode === "ONLINE" && <select className="input min-w-40" aria-label="Bulk assessment type" value={bulkTestType} onChange={(event) => setBulkTestType(event.target.value)}>
               <option value="CCAT">CCAT / IQ</option>
               <option value="MTT">Math Thinking</option>
               <option value="CODING">Coding</option>
               <option value="ESSAY">Essay</option>
               <option value="PROMPT">Prompt Engineering</option>
               <option value="GAMES">Games</option>
-            </select>
+            </select>}
             <select className="input min-w-40" aria-label="Bulk test delivery mode" value={bulkTestMode} onChange={(event) => setBulkTestMode(event.target.value as "ONLINE" | "ONSITE")}>
               <option value="ONLINE">Test: Online</option>
-              <option value="ONSITE">Test: Onsite</option>
+              <option value="ONSITE">Onsite: Full funnel</option>
             </select>
-            <button className="btn-outline whitespace-nowrap" disabled={busy || !validBulkRetest} onClick={runRetest}>
-              {bulkTestMode === "ONSITE" ? "Issue onsite comparison" : "Reissue current online test"}
+            <button className="btn-outline whitespace-nowrap" disabled={busy || (bulkTestMode === "ONSITE" ? !canBulkAssign || !validBulkFunnel : !validBulkRetest)} onClick={runRetest}>
+              {bulkTestMode === "ONSITE" ? "Assign onsite funnel" : "Reissue current online test"}
             </button>
+            {bulkTestMode === "ONSITE" && <p className="w-full text-sm text-slate-600">Choose the funnel above. A separate onsite session runs every enabled test in order, then waits for staff review. Existing online progress and scores are preserved.</p>}
             {!validBulkRetest && <span className="text-xs text-amber-700">Online reissue must match every selected track’s current stage.</span>}
           </>}
           <button className="btn-danger whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runReject}>Reject</button>

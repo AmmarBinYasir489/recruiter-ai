@@ -114,7 +114,7 @@ model Application {
   onsiteInvites      OnsiteInvite[]
   ratSubmissions     RatSubmission[]
 
-  @@unique([candidateId, driveId, funnelId])
+  // Separate online and onsite sessions may use the same funnel.
   @@unique([candidateId, driveId, trackKey])
   @@index([sourceApplicationId])
   @@index([candidateId, driveId])

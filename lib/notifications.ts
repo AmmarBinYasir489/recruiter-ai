@@ -11,11 +11,18 @@ type NotificationInput = {
 type DbClient = PrismaClient | Prisma.TransactionClient;
 
 export async function createNotification(input: NotificationInput, db: DbClient = prisma) {
+  const message = input.message.trim().slice(0, 1000);
+  // Suppress rapid identical retries without deleting notification history.
+  const recent = await db.notification.findFirst({ where: {
+    userId: input.userId, type: input.type, relatedAppId: input.relatedAppId || null,
+    message, createdAt: { gte: new Date(Date.now() - 60000) },
+  }, orderBy: { createdAt: "desc" } });
+  if (recent) return recent;
   return db.notification.create({
     data: {
       userId: input.userId,
       type: input.type,
-      message: input.message.trim().slice(0, 1000),
+      message,
       relatedAppId: input.relatedAppId || null,
     },
   });

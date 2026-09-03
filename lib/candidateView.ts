@@ -1,4 +1,5 @@
 import { prisma, uj } from "@/lib/db";
+import { trackLabel } from "@/lib/onsiteTrack";
 import { authorizeCvAccess, signCvToken } from "@/lib/cv/access";
 import { computeApplicationTotal } from "@/lib/engine/leaderboard";
 import type { CandidateRecord } from "@/lib/engine/search";
@@ -47,7 +48,7 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
     application: {
       id: app.id,
       funnelId: app.funnelId,
-      funnelName: app.funnel?.name || null,
+      funnelName: app.funnel ? trackLabel(app.funnel.name, app.trackKey) : null,
       status: app.status,
       appliedAt: (app.appliedAt ?? app.createdAt).toISOString(),
       currentStage: app.currentStage,
@@ -149,7 +150,7 @@ export async function getCandidateView(applicationId: string, user: any) {
   ]);
   view.siblingTracks = siblingTracks.map((track) => ({
     id: track.id,
-    funnelName: track.funnel?.name || "Drive application",
+    funnelName: trackLabel(track.funnel?.name || "Drive application", track.trackKey),
     currentStage: track.currentStage,
     status: track.status,
     archived: track.status === "ARCHIVED",

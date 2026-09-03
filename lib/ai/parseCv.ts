@@ -4,6 +4,7 @@ import { DEFAULT_CGPA } from "../engine/cgpa";
 import { getAiRuntimeConfig } from "@/lib/ai/config";
 import { generateAiText, testAiProvider } from "@/lib/ai/client";
 import { normalizeAiModel, normalizeAiProvider } from "@/lib/ai/providers";
+import { cleanSkills, evidenceMatches, roleTerms } from "@/lib/jobSkills";
 
 export type CvLinkKind = "LINKEDIN" | "GITHUB" | "PORTFOLIO" | "HUGGINGFACE" | "OTHER";
 export interface CvProject { name: string; description?: string; technologies: string[]; url?: string }
@@ -203,10 +204,28 @@ export async function testProvider(providerValue: string, apiKey: string, modelV
   const model = normalizeAiModel(provider, modelValue);
   return testAiProvider({ provider, model, apiKey, fallbackApiKey: "" });
 }
-export function scoreParsedCv(parsed: CvParseResult, config: { requiredSkills: string[]; preferredSkills: string[]; universityScoreOverride?: number }) {
-  const projects = parsed.projectDetails.length ? Math.min(100, parsed.projectDetails.reduce((sum, project) => sum + 12 + Math.min(8, project.technologies.length * 2) + (project.description ? 5 : 0) + (project.url ? 5 : 0), 0)) : 0;
-  const months = parsed.experience.reduce((sum, item) => sum + (item.durationMonths || 0), 0); const experience = months ? Math.min(100, Math.round(months / 36 * 100)) : 0;
-  const other = Math.min(100, parsed.certifications.length * 15 + parsed.coursework.length * 3 + parsed.links.length * 5);
+export function scoreParsedCv(parsed: CvParseResult, config: { requiredSkills: string[]; preferredSkills: string[]; universityScoreOverride?: number; jobTitle?: string }) {
+  const terms = cleanSkills([...config.requiredSkills, ...config.preferredSkills, ...roleTerms(config.jobTitle)]);
+  const projectEvidence = parsed.projectDetails.map((project) => {
+    const matched = evidenceMatches([project.name, project.description, ...project.technologies].filter(Boolean).join(" "), terms);
+    const relevance = Math.min(1, matched.length / 2);
+    const base = 12 + Math.min(8, project.technologies.length * 2) + (project.description ? 5 : 0) + (project.url ? 5 : 0);
+    return { name: project.name, matched, relevance, points: Math.round(base * relevance * 10) / 10 };
+  });
+  const experienceEvidence = parsed.experience.map((item) => {
+    const matched = evidenceMatches([item.title, item.description].filter(Boolean).join(" "), terms);
+    const relevance = Math.min(1, matched.length / 2);
+    return { name: [item.title, item.company].filter(Boolean).join(" · "), matched, relevance, creditedMonths: Math.max(0, item.durationMonths || 0) * relevance };
+  });
+  const projects = Math.min(100, projectEvidence.reduce((sum, item) => sum + item.points, 0));
+  const months = experienceEvidence.reduce((sum, item) => sum + item.creditedMonths, 0);
+  const experience = Math.min(100, Math.round(months / 36 * 100));
+  const certifications = parsed.certifications.filter((item) => evidenceMatches(item, terms).length);
+  const coursework = parsed.coursework.filter((item) => evidenceMatches(item, terms).length);
+  // A profile link alone is not evidence of role-relevant work.
+  const other = Math.min(100, certifications.length * 15 + coursework.length * 3);
   const components = cvComponents({ cgpa: parsed.gpa, cgpaScale: parsed.gpaScale, university: parsed.university, universityScoreOverride: config.universityScoreOverride, degree: parsed.degree, requiredSkills: config.requiredSkills, preferredSkills: config.preferredSkills, candidateSkills: parsed.skills, projects, experience, other });
-  return { components, cvScore: computeCvScore(components) };
+  const relevance = { jobTitle: config.jobTitle || "Drive requirements", terms, projects: projectEvidence, experience: experienceEvidence, certifications, coursework,
+    explanation: "Evidence must match the role vocabulary or recruiter-approved skills. No matches earn 0; one distinct match earns 50% credit; two or more earn full evidence credit. Project credit is capped at 100, experience at 36 relevant months. Links alone earn no points. Academic/GPA and institution weights are unchanged." };
+  return { components, cvScore: computeCvScore(components), relevance };
 }

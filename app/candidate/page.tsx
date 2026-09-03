@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { trackLabel } from "@/lib/onsiteTrack";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, StatCard, SectionTitle, statusBadge, LinkButton, EmptyState } from "@/components/ui";
@@ -67,7 +68,7 @@ export default async function CandidateDashboard() {
                 <Card key={track.id} hover>
                   <Link href={`/candidate/application/${track.id}`} className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-ink-900">{track.funnel?.name || "Drive application"}</p>
+                      <p className="font-semibold text-ink-900">{trackLabel(track.funnel?.name || "Drive application", track.trackKey)}</p>
                       <p className="text-sm text-slate-500">
                         Current step: <b>{track.currentStage || "—"}</b> · Reference {track.id.slice(0, 8).toUpperCase()}
                       </p>

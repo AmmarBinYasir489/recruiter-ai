@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createDriveAction } from "@/app/recruiter/actions";
+import { suggestDriveSkillsAction } from "@/app/recruiter/skillActions";
 import { Card, LinkButton } from "@/components/ui";
 
 const PHASES = [
@@ -20,6 +21,26 @@ const PHASES = [
 type PhaseState = { type: string; name: string; enabled: boolean; locked?: boolean; passScore: number; durationMin: number };
 
 export function DriveCreationForm({ today, backHref }: { today: string; backHref: string }) {
+  const [title, setTitle] = useState("");
+  const [requiredSkills, setRequiredSkills] = useState("");
+  const [preferredSkills, setPreferredSkills] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [skillMessage, setSkillMessage] = useState("");
+  const lastSuggestedTitle = useRef("");
+  async function suggestSkills() {
+    if (suggesting) return;
+    lastSuggestedTitle.current = title;
+    setSuggesting(true);
+    setSkillMessage("");
+    try {
+      const result = await suggestDriveSkillsAction(title);
+      if ("error" in result) { setSkillMessage(result.error || "Suggestions unavailable."); return; }
+      setRequiredSkills(result.required.join(", "));
+      setPreferredSkills(result.preferred.join(", "));
+      setSkillMessage("AI draft ready. Review, add or remove skills before creating the drive.");
+    } catch { setSkillMessage("Unable to request suggestions. You can still enter skills manually."); }
+    finally { setSuggesting(false); }
+  }
   const [withDefaultFunnel, setWithDefaultFunnel] = useState(true);
   const [phases, setPhases] = useState<PhaseState[]>(PHASES.map((phase) => ({ ...phase })));
   const configuredStages = useMemo(() => phases.filter((phase) => phase.enabled).map((phase, index) => ({
@@ -39,7 +60,8 @@ export function DriveCreationForm({ today, backHref }: { today: string; backHref
       <form action={createDriveAction} className="space-y-5">
         <div>
           <label className="label" htmlFor="drive-name">Title</label>
-          <input id="drive-name" name="name" className="input" required placeholder="AI Engineer — August 2026" />
+          <input id="drive-name" name="name" className="input" required maxLength={160} value={title} onChange={(event) => setTitle(event.target.value)} onBlur={() => { if (title.trim().length >= 3 && title !== lastSuggestedTitle.current && !requiredSkills && !preferredSkills) void suggestSkills(); }} disabled={suggesting} aria-describedby="drive-title-help" placeholder="AI Engineer — August 2026" />
+          <p id="drive-title-help" className="mt-1 text-xs text-slate-500">After entering a title, AI drafts skills if both lists are empty. Your existing edits are never replaced automatically.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -54,8 +76,16 @@ export function DriveCreationForm({ today, backHref }: { today: string; backHref
         <div>
           <label className="label" htmlFor="drive-description">Job description</label>
           <textarea id="drive-description" name="jobDescription" className="input" rows={5} required placeholder="Describe the role and required skills (Python, ML, ...)" />
-          <p className="mt-1 text-xs text-slate-400">Required skills are detected from this text for CV matching.</p>
+          <p className="mt-1 text-xs text-slate-500">Set the exact CV matching criteria below. Job description provides context.</p>
         </div>
+        <fieldset className="space-y-3 rounded-xl border border-slate-200 p-4" disabled={suggesting}>
+          <legend className="px-1 font-semibold">Skills for CV matching</legend>
+          <button type="button" className="btn-outline" disabled={suggesting || title.trim().length < 3} onClick={suggestSkills}>{suggesting ? "Suggesting skills…" : "Suggest skills from job title"}</button>
+          <p className="text-sm text-slate-600">AI uses the provider selected by your admin. Suggestions are editable, not mandatory. Separate skills with commas; remove any that do not apply.</p>
+          <div><label className="label" htmlFor="required-skills">Required skills</label><textarea id="required-skills" name="requiredSkills" className="input" rows={2} value={requiredSkills} onChange={(event) => setRequiredSkills(event.target.value)} placeholder="React, JavaScript, HTML, CSS" /></div>
+          <div><label className="label" htmlFor="preferred-skills">Preferred skills</label><textarea id="preferred-skills" name="preferredSkills" className="input" rows={2} value={preferredSkills} onChange={(event) => setPreferredSkills(event.target.value)} placeholder="TypeScript, Next.js" /></div>
+        </fieldset>
+        <p role="status" className="text-sm text-slate-600">{suggesting ? "Generating an editable skill draft…" : skillMessage}</p>
         <div>
           <label className="label" htmlFor="drive-cv-threshold">CV pass threshold (0–100)</label>
           <input id="drive-cv-threshold" name="cvPassThreshold" type="number" min={0} max={100} defaultValue={60} className="input w-32" />
@@ -96,7 +126,7 @@ export function DriveCreationForm({ today, backHref }: { today: string; backHref
         </section>
 
         <input type="hidden" name="defaultFunnelStages" value={withDefaultFunnel ? JSON.stringify(configuredStages) : "[]"} />
-        <button className="btn-primary w-full">{withDefaultFunnel ? "Create drive with default funnel" : "Create drive"}</button>
+        <button className="btn-primary w-full" disabled={suggesting}>{withDefaultFunnel ? "Create drive with default funnel" : "Create drive"}</button>
       </form>
     </Card>
     <div className="mt-4"><LinkButton href={backHref} className="btn-ghost">← Back to drives</LinkButton></div>

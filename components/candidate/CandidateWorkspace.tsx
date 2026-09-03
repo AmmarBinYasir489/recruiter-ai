@@ -805,6 +805,14 @@ function CvScreeningSection({ view, onClose }: { view: AnyObj; onClose: () => vo
       </Section>
       {cv.components && (
         <>
+          {cv.relevance && <Section title="Role-relevant evidence (staff only)">
+            <p className="text-sm text-slate-600">{cv.relevance.explanation}</p>
+            <p className="mt-2 text-sm"><strong>Role:</strong> {cv.relevance.jobTitle}</p>
+            <ul className="mt-2 space-y-2 text-sm">
+              {(cv.relevance.projects || []).map((item: AnyObj, index: number) => <li key={`p-${index}`}><strong>{item.name}:</strong> {item.points} project points — {item.matched.length ? `evidence: ${item.matched.join(", ")}` : "no role-relevant evidence; no credit"}</li>)}
+              {(cv.relevance.experience || []).map((item: AnyObj, index: number) => <li key={`e-${index}`}><strong>{item.name}:</strong> {item.creditedMonths} relevant months — {item.matched.length ? `evidence: ${item.matched.join(", ")}` : "no role-relevant evidence; no credit"}</li>)}
+            </ul>
+          </Section>}
           <hr className="my-4 border-slate-100" />
           <Section title="Scoring breakdown (staff only)">
             <div className="overflow-x-auto">

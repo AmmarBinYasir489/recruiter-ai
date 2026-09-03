@@ -1,4 +1,5 @@
 import { prisma, uj } from "./db";
+import { trackLabel } from "./onsiteTrack";
 import type { CandidateRecord } from "./engine/search";
 
 export async function getCandidateRecords(driveId?: string, ownerId?: string): Promise<CandidateRecord[]> {
@@ -11,6 +12,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       id: true,
       candidateId: true,
       sourceApplicationId: true,
+      trackKey: true,
       driveId: true,
       status: true,
       funnelId: true,
@@ -66,7 +68,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       driveName: a.drive.name,
       status: a.status,
       funnelId: a.funnelId ?? undefined,
-      funnelName: a.funnel?.name ?? undefined,
+      funnelName: a.funnel ? trackLabel(a.funnel.name, a.trackKey) : undefined,
       trackCount: trackCounts.get(`${a.candidateId}:${a.driveId}`) || 1,
       phaseReleased: a.phaseReleased,
       scores,

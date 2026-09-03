@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { randomUUID } from "crypto";
 import { prisma, j, uj, getFunnel } from "@/lib/db";
 import { requireRole, getCurrentUser } from "@/lib/auth";
@@ -15,6 +16,7 @@ import { createNotification } from "@/lib/notifications";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
 import { driveApplicationError } from "@/lib/driveApplications";
+import { isOnsiteTrack, onsiteNext, onsiteUpdateMessage } from "@/lib/onsiteTrack";
 import {
   ENGLISH_SPEAKING_MAX_BYTES,
   ENGLISH_SPEAKING_MAX_SECONDS,
@@ -161,6 +163,7 @@ export async function startAssessmentAction(applicationId: string, type: string)
   if (!app || app.candidateId !== user.id) return { error: "Not found." };
   const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
   const stage = funnel?.stages.find((item) => item.type === type);
+  if (["ARCHIVED", "REJECTED", "OFFERED", "HIRED"].includes(app.status)) return { error: "This assessment track is closed." };
   const opensAt = stage?.opensAt ? new Date(stage.opensAt) : null;
   const scheduledReleaseReady = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
   if (app.currentStage !== type || (!app.phaseReleased && !scheduledReleaseReady)) return { error: "This phase is not available yet." };
@@ -201,6 +204,7 @@ export async function startAssessmentAction(applicationId: string, type: string)
       applicationId,
       type,
       attemptNumber,
+      mode: isOnsiteTrack(app.trackKey) ? "ONSITE" : "ONLINE",
       startedAt: now,
       deadlineAt,
       status: "ACTIVE",
@@ -342,6 +346,8 @@ export async function submitSubjectiveAction(applicationId: string, type: string
   }
   const integrity = readIntegrity(formData, chk.attempt);
   const returnState = supplementalReturnState(chk.attempt.idempotencyKey);
+  const onsiteFunnel = isOnsiteTrack(app.trackKey) && app.funnelId ? await getFunnel(app.funnelId) : null;
+  const onsiteTransition = onsiteFunnel ? onsiteNext(onsiteFunnel, type) : null;
   // AI may provide a reviewer aid, but subjective assessments remain manual.
   // An AI suggestion never changes the result state or advances a candidate.
   let aiScored = false;
@@ -393,7 +399,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        scores: j(scores), currentStage: returnState?.stage ?? type, phaseReleased: returnState?.phaseReleased ?? false, status: returnState?.status ?? "IN_PROGRESS",
+        scores: j(scores), currentStage: returnState?.stage ?? onsiteTransition?.currentStage ?? type, phaseReleased: returnState?.phaseReleased ?? onsiteTransition?.phaseReleased ?? false, status: returnState?.status ?? onsiteTransition?.applicationStatus ?? "IN_PROGRESS",
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: type, status: "MANUAL_REVIEW", at: nowIso(), note: aiScored ? "AI score prepared as a reviewer aid; human review required" : "Submitted for reviewer grading" }]),
       },
     });
@@ -401,7 +407,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await createNotification({
       userId: app.candidateId,
       type: "SUBMISSION_RECEIVED",
-      message: `Your ${type} submission was received and is awaiting review.`,
+      message: onsiteTransition ? onsiteUpdateMessage(onsiteTransition) : `Your ${type} submission was received and is awaiting review.`,
       relatedAppId: app.id,
     }, tx);
     await tx.auditLog.create({ data: { actorId: user.id, action: "AI_REVIEW_AID", meta: j({ applicationId, type, outcome: aiScored ? "SCORED" : "FALLBACK_TO_HUMAN", normalized: aiScore }) } });
@@ -433,6 +439,8 @@ export async function submitEnglishSpeakingAction(applicationId: string, formDat
   const { data: objects, error: storageError } = await getSupabaseAdmin().storage.from(bucket).list(prefix, { search: fileName, limit: 1 });
   if (storageError || !objects?.some((object) => object.name === fileName)) return { error: "The uploaded recording could not be verified." };
 
+  const onsiteFunnel = isOnsiteTrack(app.trackKey) && app.funnelId ? await getFunnel(app.funnelId) : null;
+  const onsiteTransition = onsiteFunnel ? onsiteNext(onsiteFunnel, "ENGLISH_SPEAKING") : null;
   const integrity = readIntegrity(formData, chk.attempt);
   const result = await prisma.$transaction(async (tx) => {
     const created = await tx.assessmentResult.create({
@@ -452,13 +460,13 @@ export async function submitEnglishSpeakingAction(applicationId: string, formDat
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        currentStage: "ENGLISH_SPEAKING",
-        phaseReleased: false,
-        status: "IN_PROGRESS",
+        currentStage: onsiteTransition?.currentStage ?? "ENGLISH_SPEAKING",
+        phaseReleased: onsiteTransition?.phaseReleased ?? false,
+        status: onsiteTransition?.applicationStatus ?? "IN_PROGRESS",
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: "ENGLISH_SPEAKING", status: "MANUAL_REVIEW", at: nowIso(), note: "Voice note submitted for human review" }]),
       },
     });
-    await createNotification({ userId: app.candidateId, type: "SUBMISSION_RECEIVED", message: "Your English speaking voice note was received and is awaiting human review.", relatedAppId: app.id }, tx);
+    await createNotification({ userId: app.candidateId, type: "SUBMISSION_RECEIVED", message: onsiteTransition ? onsiteUpdateMessage(onsiteTransition) : "Your English speaking voice note was received and is awaiting human review.", relatedAppId: app.id }, tx);
     return created;
   });
   await prisma.auditLog.create({ data: { actorId: user.id, action: "ENGLISH_SPEAKING_SUBMITTED", meta: j({ applicationId, resultId: result.id, durationSeconds }) } });
@@ -531,7 +539,7 @@ type IntegrityPayload = {
 };
 
 async function storeResult(
-  app: { id: string; driveId: string; currentStage?: string | null; scores: string | null; stageHistory: string; candidateId: string },
+  app: { id: string; driveId: string; trackKey?: string; currentStage?: string | null; scores: string | null; stageHistory: string; candidateId: string },
   candidateId: string,
   type: string,
   raw: number,
@@ -544,9 +552,10 @@ async function storeResult(
 ) {
   const isAutomatic = type === "CCAT" || type === "MTT";
   const decision = _suggestedResult === "PASS" ? "PASS" : "FAIL";
-  const transition = isAutomatic && !integrity.returnState
+  const onsiteTransition = isOnsiteTrack(app.trackKey) && !integrity.returnState ? onsiteNext(funnel, type) : null;
+  const transition = onsiteTransition ?? (isAutomatic && !integrity.returnState
     ? automaticStageTransition(funnel, type as "CCAT" | "MTT", decision)
-    : null;
+    : null);
   const nextIsOnsite = transition?.currentStage === "ONSITE";
   const scores = uj<Record<string, number>>(app.scores) || {};
   scores[type] = normalized;
@@ -581,7 +590,7 @@ async function storeResult(
     await createNotification({
       userId: candidateId,
       type: "SCORE_READY",
-      message: isAutomatic
+      message: onsiteTransition ? onsiteUpdateMessage(onsiteTransition) : isAutomatic
         ? `Your ${type} result is ${decision} (${normalized}/100).${transition?.nextStageName ? nextIsOnsite ? " You have been selected for onsite screening; date and location details will be emailed by the recruitment team." : ` ${transition.nextStageName} is now available.` : ""}`
         : `Your ${type} assessment was submitted. The recruitment team will review it and notify you about the next step.`,
       relatedAppId: app.id,
@@ -592,4 +601,5 @@ async function storeResult(
 export async function markNotificationsReadAction() {
   const user = await requireRole("candidate");
   await prisma.notification.updateMany({ where: { userId: user.id, read: false }, data: { read: true } });
+  revalidatePath("/candidate", "layout");
 }
