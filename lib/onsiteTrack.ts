@@ -3,7 +3,7 @@ import { enabledStages, type Funnel, type AutomaticStageTransition } from "@/lib
 export function isOnsiteTrack(trackKey?: string | null) { return Boolean(trackKey?.startsWith("ONSITE:")); }
 export function trackLabel(name: string, trackKey?: string | null) { return `${name}${isOnsiteTrack(trackKey) ? " · Onsite" : ""}`; }
 
-// An onsite assessment session completes every test, independent of scores.
+// Determine the next test when staff explicitly approves an onsite phase.
 // CV is reused; invitation-only stages are not tests; hiring remains manual.
 export function onsiteNext(funnel: Funnel, afterType?: string): AutomaticStageTransition {
   const stages = enabledStages(funnel).filter((stage) => !["CV_SCREENING", "ONSITE", "FINAL"].includes(stage.type));
@@ -11,7 +11,7 @@ export function onsiteNext(funnel: Funnel, afterType?: string): AutomaticStageTr
   const next = afterType && index < 0 ? undefined : stages[index + 1];
   if (!next) return { currentStage: "FINAL", phaseReleased: false, applicationStatus: "HOLD" };
   const scheduled = Boolean(next.opensAt && new Date(next.opensAt).getTime() > Date.now());
-  return { currentStage: next.type, phaseReleased: !scheduled, applicationStatus: scheduled ? "HOLD" : "IN_PROGRESS", nextStageName: next.name || next.type };
+  return { currentStage: next.type, phaseReleased: true, applicationStatus: "IN_PROGRESS", nextStageName: next.name || next.type };
 }
 
 export function onsiteUpdateMessage(next: AutomaticStageTransition) {

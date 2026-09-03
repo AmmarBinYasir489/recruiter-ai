@@ -1,13 +1,18 @@
 "use client";
 
+import { CandidateNotes } from "@/components/candidate/CandidateNotes";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatProfileValue } from "@/lib/cv/profileDisplay";
 import Link from "next/link";
 import { ActionFeedbackDialog, type ActionFeedback } from "@/components/ActionFeedbackDialog";
 import {
   advanceApplicationAction,
   rejectApplicationAction,
   manualPassAction,
+  holdApplicationAction,
+  decideCandidateAction,
+  offerSelectedAction,
   requestRetestAction,
   sendNotificationAction,
   updateResultScoreAction,
@@ -15,6 +20,8 @@ import {
   sendOnsiteInviteAction,
 } from "@/app/recruiter/actions";
 import { CV_RUBRIC } from "@/lib/engine/cv";
+import { StaffDecisionControls } from "@/components/StaffDecisionControls";
+import { CandidateTrackSummary, TrackComparison } from "@/components/candidate/CandidateTrackSummary";
 
 type AnyObj = Record<string, any>;
 
@@ -45,7 +52,8 @@ function IntegrityBadge({ level }: { level?: string | null }) {
 }
 
 function deriveStages(view: AnyObj) {
-  const configured: AnyObj[] = view.funnelStages.filter((s: AnyObj) => s.enabled !== false && s.type !== "MANUAL_REVIEW").map((s: AnyObj) => ({
+  const source = view.funnelStages.length ? view.funnelStages : [{ type: "CV_SCREENING", name: "CV Screening", enabled: true }];
+  const configured: AnyObj[] = source.filter((s: AnyObj) => s.enabled !== false && s.type !== "MANUAL_REVIEW").map((s: AnyObj) => ({
       type: s.type,
       name: s.name,
       passScore: s.passScore,
@@ -78,11 +86,12 @@ function deriveStages(view: AnyObj) {
       const r = view.application.cvResult;
       if (r === "PASS") status = "PASSED";
       else if (r === "FAIL") status = "FAILED";
-      else if (r === "PROCESSING" || r === "PENDING") status = "PENDING";
+      else if (r === "PROCESSING" || r === "PENDING" || r === "HOLD") status = "PENDING";
       else if (view.application.currentStage === "CV_SCREENING") status = "ACTIVE";
       score = view.application.cvScore ?? null;
     } else {
-      const latest = resultsForType[resultsForType.length - 1];
+      const selectedMode = (view.application.scoreMode || "Online").toUpperCase();
+      const latest = resultsForType.filter((result: AnyObj) => (result.mode || "ONLINE") === selectedMode).at(-1);
       if (latest) {
         status = latest.status === "PASS" ? "PASSED" : latest.status === "FAIL" ? "FAILED" : "PENDING";
         score = latest.normalized ?? null;
@@ -211,40 +220,20 @@ function CandidateCard({
     <div className="card p-5">
       {assignmentFeedback && <ActionFeedbackDialog feedback={assignmentFeedback} onClose={() => setAssignmentFeedback(null)} />}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <button
-            onClick={nameClick}
-            className="text-2xl font-bold text-ink-900 hover:text-brand-700 underline-offset-4 hover:underline text-left"
-          >
-            {view.candidate.name}
-          </button>
+        <div className="min-w-0">
+          <button onClick={nameClick} className="text-left text-2xl font-bold text-ink-900 hover:text-brand-700 hover:underline underline-offset-4">{view.candidate.name}</button>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
-            <span><span className="text-slate-400">ID:</span> {view.application.id}</span>
-            <span><span className="text-slate-400">Position:</span> {view.application.driveName}</span>
+            <span className="break-all"><span className="text-slate-400">ID:</span> {view.application.id}</span>
             <span><span className="text-slate-400">Drive:</span> {view.application.driveName}</span>
             <span><span className="text-slate-400">Applied:</span> {new Date(view.application.appliedAt).toLocaleDateString()}</span>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <span className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-bold text-white">Total score: {view.application.overallScore}/100</span>
-            {!view.application.overallComplete && <span className="text-xs text-amber-700">Provisional until all weighted assessments are graded</span>}
-            {view.canManage && view.application.status !== "ARCHIVED" && availableFunnels.length > 0 && ["PASS", "FAIL"].includes(view.application.cvResult) ? (
-              <form action={assignFunnel} className="flex flex-wrap items-center gap-2" aria-busy={assignmentBusy}>
-                <label className="sr-only" htmlFor={`funnel-${view.application.id}`}>Assign funnel</label>
-                <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 min-w-48" defaultValue="" required>
-                  <option value="" disabled>Select assessment funnel</option>
-                  {availableFunnels.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
-                </select>
-                {view.application.funnelId ? (
-                  <>
-                    <button name="assignmentMode" value="ADD" disabled={assignmentBusy} className="btn-primary whitespace-nowrap">Add another funnel</button>
-                    <button name="assignmentMode" value="MOVE" disabled={assignmentBusy} className="btn-outline whitespace-nowrap">Move to funnel</button>
-                  </>
-                ) : (
-                  <button name="assignmentMode" value="ADD" disabled={assignmentBusy} className="btn-primary whitespace-nowrap">Select &amp; release test</button>
-                )}
-              </form>
-            ) : view.application.funnelName ? <span className="text-xs text-slate-500">Assigned path: {view.application.funnelName}</span> : view.canManage && view.application.currentStage === "CV_SCREENING" ? <span className="text-xs text-amber-700">Drive applicant pool · not assigned to a funnel</span> : null}
-          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={finalBadgeCls[finalStatus]}>{view.application.status.replaceAll("_", " ")}</span>
+          {collapse && <button onClick={collapse} className="rounded-full px-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Collapse">▲</button>}
+        </div>
+      </div>
+      <CandidateTrackSummary application={view.application} phase={view.funnelStages.find((stage: AnyObj) => stage.type === view.application.currentStage)?.name || view.application.currentStage || "CV screening"} />
           {view.siblingTracks?.length > 1 && (
             <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Candidate funnel tracks">
               <span className="text-xs font-semibold text-slate-600">{view.siblingTracks.length} separate tracks:</span>
@@ -273,17 +262,32 @@ function CandidateCard({
               ))}
             </div>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <span className={finalBadgeCls[finalStatus]}>{view.application.status.replace("_", " ")}</span>
-          {collapse && (
-            <button onClick={collapse} className="rounded-full px-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Collapse">▲</button>
-          )}
-        </div>
+
+      <div className="mt-5" aria-label="Funnel assignment controls">
+            {view.canManage && view.application.status !== "ARCHIVED" && availableFunnels.length > 0 && view.application.cvScore != null && !["PROCESSING", "FAILED"].includes(view.application.cvResult) ? (
+              <form action={assignFunnel} className="flex flex-wrap items-end gap-3" aria-busy={assignmentBusy}>
+                <div className="w-full min-w-0 sm:w-80"><label className="mb-1 block text-xs font-medium text-slate-600" htmlFor={`funnel-${view.application.id}`}>Funnel assignment</label>
+                <select id={`funnel-${view.application.id}`} name="funnelId" className="input h-10 w-full" defaultValue="" required>
+                  <option value="" disabled>Select assessment funnel</option>
+                  {availableFunnels.map((funnel: AnyObj) => <option key={funnel.id} value={funnel.id}>{funnel.name}</option>)}
+                </select></div>
+                {view.application.funnelId ? (
+                  <>
+                    <button name="assignmentMode" value="ADD" disabled={assignmentBusy} className="btn-primary whitespace-nowrap">Add another funnel</button>
+                    <button name="assignmentMode" value="MOVE" disabled={assignmentBusy} className="btn-outline whitespace-nowrap">Move to funnel</button>
+                  </>
+                ) : (
+                  <button name="assignmentMode" value="ADD" disabled={assignmentBusy} className="btn-primary whitespace-nowrap">Select &amp; release test</button>
+                )}
+              </form>
+            ) : view.application.funnelName ? <span className="text-xs text-slate-500">Assigned path: {view.application.funnelName}</span> : view.canManage && view.application.currentStage === "CV_SCREENING" ? <span className="text-xs text-amber-700">Drive applicant pool · not assigned to a funnel</span> : null}
+
       </div>
+      {view.application.funnelId && <TrackComparison key={view.application.funnelId} funnelName={view.application.funnelDisplayName} rows={view.trackComparison || []} />}
 
       {/* ---- Horizontal recruitment funnel ---- */}
-        <div className="mt-5 w-full min-w-0 max-w-full overflow-x-auto overflow-y-hidden">
+        <p className="mt-5 text-xs text-slate-500">Stage scores below show this {view.application.scoreMode.toLowerCase()} track. Open a stage to review all attempts and retests.</p>
+        <div className="mt-3 w-full min-w-0 max-w-full overflow-x-auto overflow-y-hidden">
           <div className="flex w-max min-w-max gap-3">
           {stages.map((stage: AnyObj) => {
             const st = STATUS_STYLE[stage.status as StageStatus];
@@ -368,7 +372,7 @@ function ProfileSection({ view, onClose }: { view: AnyObj; onClose: () => void }
         {rows.map(([label, val]) => (
           <div key={label} className="border-b border-slate-100 pb-2">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{label}</div>
-            <div className="text-sm text-ink-900">{Array.isArray(val) ? val.join(", ") : val ? String(val) : "—"}</div>
+            <div className="text-sm text-ink-900">{formatProfileValue(val)}</div>
           </div>
         ))}
       </div>
@@ -410,7 +414,7 @@ function StageSection({ view, stage, onClose, onUpdated }: { view: AnyObj; stage
 
   const results = stage.resultsForType || [];
   const attempts = stage.attemptsForType || [];
-  const finalResult = results[results.length - 1] || null;
+  const finalResult = [...results].reverse().find((result: AnyObj) => (result.mode || "ONLINE") === String(view.application.scoreMode || "Online").toUpperCase()) || null;
   const finalAnswers = parse(finalResult?.answers);
   const assignedQuestionCount = Array.isArray(finalAnswers?.items)
     ? finalAnswers.items.length
@@ -439,15 +443,15 @@ function StageSection({ view, stage, onClose, onUpdated }: { view: AnyObj; stage
         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
           <Field label="Assessment" value={stage.name} />
           <Field label="Type" value={stage.type} />
-          <Field label="Final score" value={finalResult ? `${finalResult.normalized}%` : "—"} />
-          <Field label="Raw score" value={finalResult ? `${finalResult.rawScore}/${finalResult.maxScore}` : "—"} />
+          <Field label="Latest score" value={finalResult ? finalResult.normalized == null ? "Awaiting grading" : `${finalResult.normalized}%` : "—"} />
+          <Field label="Raw score" value={finalResult?.rawScore != null && finalResult?.maxScore != null ? `${finalResult.rawScore}/${finalResult.maxScore}` : "—"} />
           <Field label="Questions assigned" value={assignedQuestionCount ?? "—"} />
           <Field label="Pass threshold" value={stage.passScore != null ? `${stage.passScore}%` : "—"} />
           <Field
             label="Result"
             value={finalResult ? <span className={finalResult.status === "PASS" ? "badge-pass" : finalResult.status === "FAIL" ? "badge-fail" : "badge-pending"}>{finalResult.status}</span> : "—"}
           />
-          <Field label="Final attempt" value={finalResult ? `#${finalResult.attemptNumber ?? results.length}` : "—"} />
+          <Field label="Latest attempt" value={finalResult ? `#${finalResult.attemptNumber ?? results.length}` : "—"} />
           <Field label="Mode" value={finalResult?.mode ?? "—"} />
           {finalResult && !finalResult.attemptId && <Field label="Attempt metadata" value="Legacy result · detailed timing was not recorded" />}
           {finalResult?.attemptStartedAt && <Field label="Start" value={new Date(finalResult.attemptStartedAt).toLocaleString()} />}
@@ -476,9 +480,9 @@ function StageSection({ view, stage, onClose, onUpdated }: { view: AnyObj; stage
                   <span className="font-semibold">Attempt {r.attemptNumber ?? i + 1}{r.attemptMode === "ONSITE" ? " — RETEST" : ""}</span>
                   <span className="badge-info">{r.attemptMode}</span>
                   <span className={r.status === "PASS" ? "badge-pass" : r.status === "FAIL" ? "badge-fail" : "badge-pending"}>{r.status}</span>
-                  <span className="text-slate-500">Score: {r.normalized}%</span>
+                  <span className="text-slate-500">{r.normalized == null ? "Awaiting grading" : `Score: ${r.normalized}%`}</span>
                   <IntegrityBadge level={r.integrityLevel} />
-                  {isFinal && <span className="badge bg-brand-100 text-brand-700">✓ Final / Accepted</span>}
+                  {isFinal && <span className="badge bg-brand-100 text-brand-700">Latest attempt</span>}
                   {r.createdAt && <span className="text-xs text-slate-400">{new Date(r.createdAt).toLocaleString()}</span>}
                 </div>
 
@@ -583,23 +587,19 @@ function StageSection({ view, stage, onClose, onUpdated }: { view: AnyObj; stage
               </form>}
               {stage.type === view.application.currentStage && (
                 <>
-                  <button type="button" disabled={actionBusy || !finalResult} title={!finalResult ? "Manual Pass requires a submitted result. Use Move to Next Stage to skip this assessment." : undefined} onClick={() => runRecruiterAction(() => manualPassAction(view.application.id), "Candidate passed manually and was moved to the next stage. The candidate has been notified.")} className="btn-primary whitespace-nowrap">Manual Pass</button>
-                  <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => advanceApplicationAction(view.application.id), "Candidate was moved to the next stage and notified.")} className="btn-outline whitespace-nowrap">Move to Next Stage</button>
-                  <form action={rejectApplicationAction.bind(null, view.application.id)}>
-                    <button className="btn-danger whitespace-nowrap">Reject</button>
-                  </form>
+                  <button type="button" disabled={actionBusy || !finalResult} title={!finalResult ? "Pass requires a completed and scored assessment." : undefined} onClick={() => runRecruiterAction(() => manualPassAction(view.application.id, stage.type), "Candidate passed manually and was moved to the next stage. The candidate has been notified.")} className="btn-primary whitespace-nowrap">Pass</button>
+                  <button type="button" disabled={actionBusy} onClick={() => runRecruiterAction(() => holdApplicationAction(view.application.id, stage.type), "Candidate held for review.")} className="btn-outline whitespace-nowrap">Hold</button>
+                  <button type="button" disabled={actionBusy} className="btn-danger" onClick={() => { if (window.confirm("Fail this candidate and stop this assessment path?")) runRecruiterAction(() => decideCandidateAction(view.application.id, "FAIL", stage.type), "Candidate marked Fail."); }}>Fail</button>
                 </>
               )}
-              <form action={sendNotificationAction.bind(null, view.application.id)} className="flex items-center gap-2">
-                <input name="message" className="input h-10 !w-56" placeholder="Add recruiter note…" required />
-                <button className="btn-ghost whitespace-nowrap">Add Note</button>
-              </form>
+
             </div>
+            <CandidateNotes key={view.application.id} applicationId={view.application.id} notes={view.staffNotes} onUpdated={onUpdated} />
             <p className="mt-2 text-[11px] text-slate-400">
               {stage.type === view.application.currentStage
                 ? finalResult
                   ? <>A retest creates a <strong>new assessment attempt</strong> — the previous attempt is kept for comparison.</>
-                  : <>Manual Pass requires a submitted result. Use <strong>Move to Next Stage</strong> to intentionally skip an unattempted assessment.</>
+                  : <>Pass requires a completed, scored assessment. Hold keeps this phase pending; Fail stops this assessment path.</>
                 : <>This is a completed stage. Progression controls are available on the current stage; an onsite comparison creates a separate attempt without replacing this result.</>}
             </p>
           </Section>
@@ -748,6 +748,7 @@ function CvScreeningSection({ view, onClose }: { view: AnyObj; onClose: () => vo
   return (
     <div className="card p-5">
       <SectionHeader title="CV Screening — Details" onClose={onClose} />
+      {view.canManage && app.currentStage === "CV_SCREENING" && !["ARCHIVED", "REJECTED", "OFFERED", "HIRED"].includes(app.status) && <StaffDecisionControls applicationId={app.id} stage="CV_SCREENING" />}
       <Section title="Screening Summary">
         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
           <Field label="CV score" value={app.cvScore != null ? `${app.cvScore}%` : "—"} />
@@ -869,16 +870,7 @@ function FinalDecisionSection({ view, onClose }: { view: AnyObj; onClose: () => 
       ) : (
         <p className="text-sm text-slate-400">No final decision recorded yet.</p>
       )}
-      {view.canManage && (
-        <div className="mt-4 flex gap-2">
-          <form action={advanceApplicationAction.bind(null, view.application.id)}>
-            <button className="btn-outline">Move to Next Stage</button>
-          </form>
-          <form action={rejectApplicationAction.bind(null, view.application.id)}>
-            <button className="btn-danger">Reject</button>
-          </form>
-        </div>
-      )}
+      {view.canManage && view.application.currentStage === "FINAL" && !["ARCHIVED", "REJECTED", "OFFERED", "HIRED"].includes(view.application.status) && <StaffDecisionControls applicationId={view.application.id} stage="FINAL" />}
     </div>
   );
 }

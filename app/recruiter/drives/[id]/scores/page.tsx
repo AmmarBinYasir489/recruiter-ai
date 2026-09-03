@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { prisma } from "@/lib/db";
+import { prisma, uj } from "@/lib/db";
 import { Card, SectionTitle, statusBadge } from "@/components/ui";
 import { buildLeaderboard } from "@/lib/engine/leaderboard";
 import { requireRole } from "@/lib/auth";
@@ -11,7 +11,7 @@ const STAGE_LABEL: Record<string, string> = {
   PROMPT: "Prompt", GAMES: "Games", RAT: "RAT", MANUAL_REVIEW: "Review", ONSITE: "Onsite",
 };
 
-type SP = { funnelId?: string | string[] };
+type SP = { funnelId?: string | string[]; mode?: string };
 
 export default async function DriveScores({ params: paramsPromise, searchParams: searchParamsPromise }: { params: Promise<{ id: string }>; searchParams: Promise<SP> }) {
   const params = await paramsPromise;
@@ -21,7 +21,7 @@ export default async function DriveScores({ params: paramsPromise, searchParams:
     where: { id: params.id },
     include: {
       funnels: { orderBy: { createdAt: "desc" } },
-      applications: { include: { candidate: true } },
+      applications: { include: { candidate: true, results: true } },
     },
   });
   if (!drive || (user.role === "recruiter" && drive.ownerId !== user.id)) return <Card>Drive not found.</Card>;
@@ -31,10 +31,11 @@ export default async function DriveScores({ params: paramsPromise, searchParams:
     || drive.funnels.find((funnel) => funnel.id === drive.defaultFunnelId)
     || drive.funnels[0]
     || null;
+  const mode = searchParams.mode === "ONSITE" ? "ONSITE" : "ONLINE";
   const selectedApplications = drive.applications.filter((application) =>
-    application.status !== "ARCHIVED" && (selectedFunnel ? application.funnelId === selectedFunnel.id : application.funnelId === null),
+    application.status !== "ARCHIVED" && (application.trackKey.startsWith("ONSITE:") ? "ONSITE" : "ONLINE") === mode && (selectedFunnel ? application.funnelId === selectedFunnel.id : application.funnelId === null),
   );
-  const rows = buildLeaderboard(drive, selectedApplications);
+  const rows = buildLeaderboard(drive, selectedApplications, selectedFunnel ? (uj<any[]>(selectedFunnel.stages) || []).filter((stage) => stage.enabled !== false).map((stage) => stage.type) : ["CV_SCREENING"]);
   const stageCols = rows[0] ? Object.keys(rows[0].scores) : [];
 
   return (
@@ -52,6 +53,7 @@ export default async function DriveScores({ params: paramsPromise, searchParams:
             {drive.funnels.length === 0 && <option value="">Applicant pool</option>}
           </select>
         </div>
+        <div><label htmlFor="leaderboard-mode" className="label">Delivery mode</label><select id="leaderboard-mode" name="mode" className="input" defaultValue={mode}><option value="ONLINE">Online</option><option value="ONSITE">Onsite</option></select></div>
         <button className="btn-primary">View leaderboard</button>
         <p id="leaderboard-funnel-help" className="text-xs text-slate-500">Scores and totals shown below belong only to <strong>{selectedFunnel?.name || "the applicant pool"}</strong>.</p>
       </form>
@@ -63,7 +65,7 @@ export default async function DriveScores({ params: paramsPromise, searchParams:
             <tr className="text-left text-slate-500 border-b border-slate-200">
               <th className="py-2 pr-3">#</th>
               <th className="py-2 pr-3">Candidate</th>
-              <th className="py-2 pr-3">Status</th>
+              <th className="py-2 pr-3">Status / current phase</th>
               {stageCols.map((c) => <th key={c} className="py-2 pr-3 text-right">{STAGE_LABEL[c] || c}</th>)}
               <th className="py-2 pr-3 text-right">Total</th>
             </tr>
@@ -77,12 +79,12 @@ export default async function DriveScores({ params: paramsPromise, searchParams:
                   <div className="text-xs text-slate-400">{r.candidateEmail}</div>
                   <div className="text-xs font-medium text-brand-700">{selectedFunnel?.name || "Applicant pool"} · {r.applicationId.slice(0, 8).toUpperCase()}</div>
                 </td>
-                <td className="py-2 pr-3">{statusBadge(r.status)}</td>
+                <td className="py-2 pr-3">{statusBadge(r.status)}<p className="mt-1 text-xs">{STAGE_LABEL[r.currentStage || ""] || r.currentStage}</p></td>
                 {stageCols.map((c) => (
                   <td key={c} className="py-2 pr-3 text-right tabular-nums">{r.scores[c] ?? 0}</td>
                 ))}
                 <td className="py-2 pr-3 text-right">
-                  <span className="font-black text-ink-900">{r.hasScores ? r.total : "—"}</span>
+                  <span className="font-black text-ink-900">{r.total}/100</span><p className="text-xs text-slate-500">{r.gradedCount}/{r.assessmentCount} graded{!r.complete ? " · provisional" : ""}</p>
                 </td>
               </tr>
             ))}

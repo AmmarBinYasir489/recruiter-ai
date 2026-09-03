@@ -93,7 +93,7 @@ export function ProctorMonitor({
         }
       }
     } catch {
-      localStorage.removeItem(draftKey);
+      try { localStorage.removeItem(draftKey); } catch { /* Storage is optional. */ }
     }
 
     let timer: number | undefined;
@@ -106,10 +106,10 @@ export function ProctorMonitor({
           if (name === "integrityEvents" || typeof value !== "string") continue;
           (draft[name] ||= []).push(value);
         }
-        localStorage.setItem(draftKey, JSON.stringify(draft));
+        try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* Storage may be blocked or full. */ }
       }, 250);
     };
-    const clear = () => localStorage.removeItem(draftKey);
+    const clear = () => { try { localStorage.removeItem(draftKey); } catch { /* Storage is optional. */ } };
     form.addEventListener("input", save);
     form.addEventListener("change", save);
     form.addEventListener("submit", clear);
@@ -149,7 +149,7 @@ export function ProctorMonitor({
       )}
       {!isFullscreen && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 py-8 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="fullscreen-title">
-          <section className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
+          <section className="w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl sm:p-8">
             <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-100 text-brand-700" aria-hidden="true">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3 5 6v5c0 4.6 2.8 8.4 7 10 4.2-1.6 7-5.4 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>
             </div>

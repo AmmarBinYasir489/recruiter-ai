@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WordSearchAssessment } from "@/components/games/WordSearchAssessment";
+import type { WordSearchPuzzle } from "@/lib/games/wordSearch";
 
 const SUDOKU = [
   [5,3,0,0,7,0,0,0,0], [6,0,0,1,9,5,0,0,0], [0,9,8,0,0,0,0,6,0],
@@ -11,7 +12,7 @@ const SUDOKU = [
 const CROSSWORD_CELLS = new Set(["2,1", "2,2", "2,3", "2,4", "3,3", "4,3", "5,3", "5,4"]);
 const CROSSWORD_NUMBERS: Record<string, number> = { "2,1": 1, "2,3": 2, "5,3": 3 };
 
-export function GamesAssessment() {
+export function GamesAssessment({ puzzle, attemptId }: { puzzle: WordSearchPuzzle; attemptId: string }) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const started = Date.now();
@@ -23,7 +24,7 @@ export function GamesAssessment() {
     <input type="hidden" name="games_elapsed_seconds" value={elapsed} />
     <section aria-labelledby="word-search-title">
       <h3 id="word-search-title" className="mb-2 text-lg font-bold text-ink-900">1. Word search</h3>
-      <WordSearchAssessment />
+      <WordSearchAssessment puzzle={puzzle} attemptId={attemptId} />
     </section>
     <section aria-labelledby="sudoku-title" className="border-t border-slate-100 pt-6">
       <h3 id="sudoku-title" className="text-lg font-bold text-ink-900">2. Sudoku</h3>
@@ -40,11 +41,11 @@ export function GamesAssessment() {
       <h3 id="crossword-title" className="text-lg font-bold text-ink-900">3. Technical crossword</h3>
       <p className="mb-3 text-sm text-slate-500">Fill the intersecting grid using the across and down clues.</p>
       <div className="grid gap-5 lg:grid-cols-[auto_1fr]">
-        <div className="grid w-fit grid-cols-7 border-2 border-slate-700 bg-slate-700" role="grid" aria-label="Technical crossword">
+        <div className="grid w-full max-w-[312px] grid-cols-7 border-2 border-slate-700 bg-slate-700" role="grid" aria-label="Technical crossword">
           {Array.from({ length: 49 }, (_, index) => {
             const r = Math.floor(index / 7), c = index % 7, key = `${r},${c}`;
-            if (!CROSSWORD_CELLS.has(key)) return <div key={key} className="h-11 w-11 border border-slate-700 bg-slate-800" aria-hidden="true" />;
-            return <div key={key} className="relative h-11 w-11 border border-slate-400 bg-white">
+            if (!CROSSWORD_CELLS.has(key)) return <div key={key} className="aspect-square min-w-0 border border-slate-700 bg-slate-800" aria-hidden="true" />;
+            return <div key={key} className="relative aspect-square min-w-0 border border-slate-400 bg-white">
               {CROSSWORD_NUMBERS[key] && <span className="pointer-events-none absolute left-1 top-0 text-[9px] font-bold text-slate-500">{CROSSWORD_NUMBERS[key]}</span>}
               <input name={`crossword_${r}_${c}`} maxLength={1} pattern="[A-Za-z]" aria-label={`Crossword row ${r + 1}, column ${c + 1}`} className="h-full w-full bg-transparent pt-1 text-center text-lg font-black uppercase outline-none focus:bg-brand-50 focus:ring-2 focus:ring-brand-500" autoComplete="off" />
             </div>;

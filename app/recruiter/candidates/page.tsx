@@ -1,3 +1,4 @@
+import { CandidateFilters } from "@/components/CandidateFilters";
 import { prisma } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { collapseCandidateTracks, getCandidateRecords } from "@/lib/data";
@@ -86,72 +87,75 @@ export default async function CandidatesPage({ searchParams: searchParamsPromise
   return (
     <div>
       <AutoRefresh intervalMs={5000} />
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-ink-900">Candidates</h1>
         <span className="text-sm text-slate-500">{filtered.length} of {candidateTotal} match</span>
         <a href={`/api/recruiter/candidates?${qs.toString()}`} className="btn-ghost">Export CSV</a>
+        <a href={`/api/recruiter/candidates?${qs.toString()}&tracks=all`} className="btn-outline">Export all tracks</a>
       </div>
 
-      <div className="grid md:grid-cols-[260px_minmax(0,1fr)] gap-6">
+      <div className="grid xl:grid-cols-[260px_minmax(0,1fr)] gap-6">
         {/* Left filter panel */}
         <Card className="h-fit">
+          <CandidateFilters>
+            <summary className="cursor-pointer font-semibold mb-3">Filters · {Object.entries(searchParams).filter(([key, value]) => !["open", "page", "sortBy", "dir"].includes(key) && Boolean(value)).length} active</summary>
           <form className="space-y-3" method="get" action="/recruiter/candidates">
             <div>
-              <label className="label">Search</label>
-              <input name="search" className="input" placeholder="name / email / phone / app id" defaultValue={str(searchParams.search) || ""} />
+              <label className="label" htmlFor="filter-search">Search</label>
+              <input id="filter-search" name="search" className="input" placeholder="name / email / phone / app id" defaultValue={str(searchParams.search) || ""} />
             </div>
             <div>
-              <label className="label">Drive</label>
-              <select name="driveId" className="input" defaultValue={str(searchParams.driveId) || ""}>
+              <label className="label" htmlFor="filter-driveId">Drive</label>
+              <select id="filter-driveId" name="driveId" className="input" defaultValue={str(searchParams.driveId) || ""}>
                 <option value="">All drives</option>
                 {drives.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Status</label>
-              <select name="status" className="input" defaultValue={str(searchParams.status) || ""}>
+              <label className="label" htmlFor="filter-status">Status</label>
+              <select id="filter-status" name="status" className="input" defaultValue={str(searchParams.status) || ""}>
                 <option value="">Any</option>
                 {["HOLD", "SUBMITTED", "IN_PROGRESS", "REJECTED", "ARCHIVED", "OFFERED", "HIRED"].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Current stage</label>
-              <select name="stage" className="input" defaultValue={str(searchParams.stage) || ""}>
+              <label className="label" htmlFor="filter-stage">Current stage</label>
+              <select id="filter-stage" name="stage" className="input" defaultValue={str(searchParams.stage) || ""}>
                 <option value="">Any</option>
                 {["CV_SCREENING", "CCAT", "MTT", "CODING", "ESSAY", "PROMPT", "GAMES", "ONSITE", "FINAL"].map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <div><label className="label">University contains</label><input name="university" aria-label="University contains" className="input" defaultValue={str(searchParams.university) || ""} placeholder="e.g. NUST" /></div>
-            <div><label className="label">Degree contains</label><input name="degree" aria-label="Degree contains" className="input" defaultValue={str(searchParams.degree) || ""} placeholder="e.g. Computer Science" /></div>
+            <div><label className="label" htmlFor="filter-university">University contains</label><input id="filter-university" name="university" aria-label="University contains" className="input" defaultValue={str(searchParams.university) || ""} placeholder="e.g. NUST" /></div>
+            <div><label className="label" htmlFor="filter-degree">Degree contains</label><input id="filter-degree" name="degree" aria-label="Degree contains" className="input" defaultValue={str(searchParams.degree) || ""} placeholder="e.g. Computer Science" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="label">Grad year from</label><input name="gradYearMin" type="number" className="input" defaultValue={str(searchParams.gradYearMin) || ""} /></div>
-              <div><label className="label">Grad year to</label><input name="gradYearMax" type="number" className="input" defaultValue={str(searchParams.gradYearMax) || ""} /></div>
+              <div><label className="label" htmlFor="filter-gradYearMin">Grad year from</label><input id="filter-gradYearMin" name="gradYearMin" type="number" className="input" defaultValue={str(searchParams.gradYearMin) || ""} /></div>
+              <div><label className="label" htmlFor="filter-gradYearMax">Grad year to</label><input id="filter-gradYearMax" name="gradYearMax" type="number" className="input" defaultValue={str(searchParams.gradYearMax) || ""} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div><label className="label">GPA min</label><input name="gpaMin" type="number" step="0.01" className="input" defaultValue={str(searchParams.gpaMin) || ""} /></div>
-              <div><label className="label">GPA max</label><input name="gpaMax" type="number" step="0.01" className="input" defaultValue={str(searchParams.gpaMax) || ""} /></div>
-              <div><label className="label">CV min</label><input name="cvMin" type="number" className="input" defaultValue={str(searchParams.cvMin) || ""} /></div>
-              <div><label className="label">CV max</label><input name="cvMax" type="number" className="input" defaultValue={str(searchParams.cvMax) || ""} /></div>
-              <div><label className="label">CCAT min</label><input name="ccatMin" type="number" className="input" defaultValue={str(searchParams.ccatMin) || ""} /></div>
-              <div><label className="label">CCAT max</label><input name="ccatMax" type="number" className="input" defaultValue={str(searchParams.ccatMax) || ""} /></div>
-              <div><label className="label">MTT min</label><input name="mttMin" type="number" className="input" defaultValue={str(searchParams.mttMin) || ""} /></div>
-              <div><label className="label">MTT max</label><input name="mttMax" type="number" className="input" defaultValue={str(searchParams.mttMax) || ""} /></div>
+              <div><label className="label" htmlFor="filter-gpaMin">GPA min</label><input id="filter-gpaMin" name="gpaMin" type="number" step="0.01" className="input" defaultValue={str(searchParams.gpaMin) || ""} /></div>
+              <div><label className="label" htmlFor="filter-gpaMax">GPA max</label><input id="filter-gpaMax" name="gpaMax" type="number" step="0.01" className="input" defaultValue={str(searchParams.gpaMax) || ""} /></div>
+              <div><label className="label" htmlFor="filter-cvMin">CV min</label><input id="filter-cvMin" name="cvMin" type="number" className="input" defaultValue={str(searchParams.cvMin) || ""} /></div>
+              <div><label className="label" htmlFor="filter-cvMax">CV max</label><input id="filter-cvMax" name="cvMax" type="number" className="input" defaultValue={str(searchParams.cvMax) || ""} /></div>
+              <div><label className="label" htmlFor="filter-ccatMin">CCAT min</label><input id="filter-ccatMin" name="ccatMin" type="number" className="input" defaultValue={str(searchParams.ccatMin) || ""} /></div>
+              <div><label className="label" htmlFor="filter-ccatMax">CCAT max</label><input id="filter-ccatMax" name="ccatMax" type="number" className="input" defaultValue={str(searchParams.ccatMax) || ""} /></div>
+              <div><label className="label" htmlFor="filter-mttMin">MTT min</label><input id="filter-mttMin" name="mttMin" type="number" className="input" defaultValue={str(searchParams.mttMin) || ""} /></div>
+              <div><label className="label" htmlFor="filter-mttMax">MTT max</label><input id="filter-mttMax" name="mttMax" type="number" className="input" defaultValue={str(searchParams.mttMax) || ""} /></div>
             </div>
             <div>
-              <label className="label">Game result</label>
-              <select name="gameStatus" aria-label="Game result" className="input" defaultValue={str(searchParams.gameStatus) || ""}><option value="">Any</option><option value="PASS">Pass</option><option value="FAIL">Fail</option><option value="PENDING">Pending</option></select>
+              <label className="label" htmlFor="filter-gameStatus">Game result</label>
+              <select id="filter-gameStatus" name="gameStatus" aria-label="Game result" className="input" defaultValue={str(searchParams.gameStatus) || ""}><option value="">Any</option><option value="PASS">Pass</option><option value="FAIL">Fail</option><option value="PENDING">Pending</option></select>
             </div>
             <div>
-              <label className="label">Manual review</label>
-              <select name="manualReviewStatus" aria-label="Manual review" className="input" defaultValue={str(searchParams.manualReviewStatus) || ""}><option value="">Any</option><option value="MANUAL_REVIEW">Awaiting reviewer</option><option value="PENDING">Scored, decision pending</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select>
+              <label className="label" htmlFor="filter-manualReviewStatus">Manual review</label>
+              <select id="filter-manualReviewStatus" name="manualReviewStatus" aria-label="Manual review" className="input" defaultValue={str(searchParams.manualReviewStatus) || ""}><option value="">Any</option><option value="MANUAL_REVIEW">Awaiting reviewer</option><option value="PENDING">Scored, decision pending</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select>
             </div>
             <div>
-              <label className="label">Onsite RSVP</label>
-              <select name="onsiteRsvp" aria-label="Onsite RSVP" className="input" defaultValue={str(searchParams.onsiteRsvp) || ""}><option value="">Any</option><option value="PENDING">Pending</option><option value="ACCEPTED">Accepted</option><option value="DECLINED">Declined</option></select>
+              <label className="label" htmlFor="filter-onsiteRsvp">Onsite RSVP</label>
+              <select id="filter-onsiteRsvp" name="onsiteRsvp" aria-label="Onsite RSVP" className="input" defaultValue={str(searchParams.onsiteRsvp) || ""}><option value="">Any</option><option value="PENDING">Pending</option><option value="ACCEPTED">Accepted</option><option value="DECLINED">Declined</option></select>
             </div>
             <div>
-              <label className="label">Final decision</label>
-              <select name="finalDecision" className="input" defaultValue={str(searchParams.finalDecision) || ""}>
+              <label className="label" htmlFor="filter-finalDecision">Final decision</label>
+              <select id="filter-finalDecision" name="finalDecision" className="input" defaultValue={str(searchParams.finalDecision) || ""}>
                 <option value="">Any</option>
                 <option value="PASS">Pass</option>
                 <option value="FAIL">Fail</option>
@@ -160,12 +164,15 @@ export default async function CandidatesPage({ searchParams: searchParamsPromise
             </div>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="integrityFlag" value="true" defaultChecked={!!searchParams.integrityFlag} /> Integrity flag only</label>
             <button className="btn-primary w-full">Apply filters</button>
+            <Link href="/recruiter/candidates" className="btn-outline w-full">Clear filters</Link>
           </form>
+          </CandidateFilters>
         </Card>
 
         {/* Candidate workspace (inline expansion, no navigation) */}
         <div className="min-w-0 w-full overflow-hidden">
-          <CandidateAccordion views={views} />
+          <CandidateAccordion views={views} initialApplicationId={str(searchParams.open)} />
+          {views.length === 0 && <Link href="/recruiter/candidates" className="btn-outline mt-3">Clear filters</Link>}
           <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
             <span>Page {page.page} · {page.total} total · filtering runs on the full database.</span>
             <div className="flex gap-2">

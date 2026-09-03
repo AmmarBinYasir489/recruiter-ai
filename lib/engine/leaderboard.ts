@@ -1,3 +1,4 @@
+import { scoresForMode } from "@/lib/scoreModes";
 import type { Drive, Application, User } from "@prisma/client";
 import { computeTci, TCI_DEFAULT_WEIGHTS } from "./tci";
 import type { TciComponent } from "./types";
@@ -13,26 +14,31 @@ export interface LeaderboardRow {
   weights: Record<string, number>;
   total: number;
   hasScores: boolean;
+  complete: boolean;
+  gradedCount: number;
+  assessmentCount: number;
 }
 
-export function computeApplicationTotal(scoresValue: unknown, weightsValue: unknown): { total: number; complete: boolean } {
+export function computeApplicationTotal(scoresValue: unknown, weightsValue: unknown, enabledTypes?: string[]): { total: number; complete: boolean; gradedCount: number; assessmentCount: number } {
   const readMap = (value: unknown): Record<string, number> => {
     if (value && typeof value === "object") return value as Record<string, number>;
     return uj<Record<string, number>>(typeof value === "string" ? value : null) || {};
   };
   const weights = { ...TCI_DEFAULT_WEIGHTS, ...readMap(weightsValue) };
   const scores = readMap(scoresValue);
-  const stageTypes = Object.keys(weights).filter((type) => Number(weights[type]) > 0);
+  const stageTypes = Object.keys(weights).filter((type) => Number(weights[type]) > 0 && (!enabledTypes || enabledTypes.includes(type)));
   const components = stageTypes.map((type) => ({
     type: type as TciComponent["type"],
     label: type,
-    score: Number.isFinite(Number(scores[type])) ? Number(scores[type]) : 0,
+    score: scores[type] != null && Number.isFinite(Number(scores[type])) ? Number(scores[type]) : 0,
     weight: Number(weights[type]),
     enabled: true,
   }));
   return {
     total: computeTci(components),
-    complete: stageTypes.length > 0 && stageTypes.every((type) => Number.isFinite(Number(scores[type]))),
+    gradedCount: stageTypes.filter((type) => scores[type] != null && Number.isFinite(Number(scores[type]))).length,
+    assessmentCount: stageTypes.length,
+    complete: stageTypes.length > 0 && stageTypes.every((type) => scores[type] != null && Number.isFinite(Number(scores[type]))),
   };
 }
 
@@ -41,10 +47,11 @@ export function computeApplicationTotal(scoresValue: unknown, weightsValue: unkn
 // using the drive's tciWeights (falling back to TCI_DEFAULT_WEIGHTS).
 export function buildLeaderboard(
   drive: Drive,
-  applications: (Application & { candidate: User })[],
+  applications: (Application & { candidate: User; results?: any[] })[],
+  enabledTypes?: string[],
 ): LeaderboardRow[] {
   const weights = { ...TCI_DEFAULT_WEIGHTS, ...(uj<Record<string, number>>(drive.tciWeights) || {}) };
-  const stageTypes = Object.keys(weights).filter((k) => (weights[k] ?? 0) > 0);
+  const stageTypes = Object.keys(weights).filter((k) => (weights[k] ?? 0) > 0 && (!enabledTypes || enabledTypes.includes(k)));
   const stageLabel: Record<string, string> = {
     CV_SCREENING: "CV", CCAT: "CCAT", MTT: "MTT", CODING: "Coding", ESSAY: "Essay",
     PROMPT: "Prompt", GAMES: "Games", RAT: "RAT", MANUAL_REVIEW: "Review", ONSITE: "Onsite",
@@ -52,8 +59,8 @@ export function buildLeaderboard(
 
   return applications
     .map((app) => {
-      const scores = uj<Record<string, number>>(app.scores) || {};
-      const overall = computeApplicationTotal(app.scores, drive.tciWeights);
+      const scores = scoresForMode(app.scores, app.results || [], app.trackKey.startsWith("ONSITE:") ? "ONSITE" : "ONLINE");
+      const overall = computeApplicationTotal(scores, drive.tciWeights, enabledTypes);
       let hasScores = false;
       const components = stageTypes.map((type) => {
         const raw = Number(scores[type] ?? 0);
@@ -70,6 +77,9 @@ export function buildLeaderboard(
         scores: stageTypes.reduce<Record<string, number>>((m, t) => ((m[t] = scores[t] ?? 0), m), {}),
         weights,
         total: overall.total,
+        complete: overall.complete,
+        gradedCount: overall.gradedCount,
+        assessmentCount: overall.assessmentCount,
         hasScores: hasScores && app.status !== "DRAFT",
       } as LeaderboardRow;
     })

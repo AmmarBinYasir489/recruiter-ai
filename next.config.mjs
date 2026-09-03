@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  devIndicators: false,
+  ...(process.env.PORTAL_BUILD_CHECK === "1" ? { distDir: ".next-build-check" } : {}),
+  ...(process.env.NODE_ENV !== "production" && process.env.PORTAL_QA === "1" ? { distDir: ".next-qa" } : {}),
   // Keep output tracing inside this app when a parent directory also contains
   // a lockfile (common on local Windows development machines).
   outputFileTracingRoot: process.cwd(),

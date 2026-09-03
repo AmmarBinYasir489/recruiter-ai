@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma, uj } from "@/lib/db";
 
@@ -16,8 +17,8 @@ export async function GET() {
   let candidateState: unknown = null;
   let staffState: unknown = null;
   if (user.role === "candidate") {
-    const application = await prisma.application.findFirst({
-      where: { candidateId: user.id },
+    const applications = await prisma.application.findMany({
+      where: { candidateId: user.id, status: { not: "ARCHIVED" } },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -33,16 +34,12 @@ export async function GET() {
         cvJobs: { orderBy: { updatedAt: "desc" }, take: 1, select: { id: true, status: true, updatedAt: true } },
       },
     });
-    const stages = application?.funnel ? uj<any[]>(application.funnel.stages) || [] : [];
-    const current = stages.find((stage) => stage.type === application?.currentStage);
-    const opensAt = current?.opensAt ? new Date(current.opensAt) : null;
-    if (application) {
-      const { funnel: _privateFunnel, ...safeApplication } = application;
-      candidateState = {
-        ...safeApplication,
-        releaseReady: Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now()),
-      };
-    }
+    candidateState = applications.map((application) => {
+      const stages = application.funnel ? uj<any[]>(application.funnel.stages) || [] : [];
+      const current = stages.find((stage) => stage.type === application.currentStage);
+      const opensAt = current?.opensAt ? new Date(current.opensAt) : null;
+      return { ...application, releaseReady: application.phaseReleased && Boolean(opensAt && opensAt.getTime() <= Date.now()) };
+    });
   }
   if (user.role === "recruiter" || user.role === "admin") {
     const applicationScope = user.role === "admin" ? {} : { application: { drive: { ownerId: user.id } } };
@@ -54,6 +51,7 @@ export async function GET() {
     ]);
     staffState = { result, cvJob, attempt };
   }
-  const watermark = JSON.stringify({ notification, candidateState, staffState });
+  // Watermark is opaque: never serialize CV scores or internal data into a candidate response.
+  const watermark = createHash("sha256").update(JSON.stringify({ notification, candidateState, staffState })).digest("hex");
   return NextResponse.json({ watermark }, { headers: { "Cache-Control": "no-store" } });
 }

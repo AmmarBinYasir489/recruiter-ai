@@ -54,13 +54,19 @@ export async function GET(req: NextRequest) {
     return new Response("Forbidden", { status: 403 });
   }
 
-  const records = await getCandidateRecords(filter.driveId);
+  const records = await getCandidateRecords(filter.driveId, user.role === "recruiter" ? user.id : undefined);
   const scopedRecords = ownedDriveIds ? records.filter((record) => ownedDriveIds.includes(record.driveId)) : records;
-  const filtered = sortCandidates(collapseCandidateTracks(filterCandidates(scopedRecords, filter)), "appliedAt", "desc");
+  const matching = filterCandidates(scopedRecords, filter);
+  const filtered = sortCandidates(sp.get("tracks") === "all" ? matching : collapseCandidateTracks(matching), "appliedAt", "desc").map(record => ({
+    ...record, applicationId: record.id, totalScore: record.overall?.total ?? 0,
+    gradedCount: record.overall?.gradedCount ?? 0, assessmentCount: record.overall?.assessmentCount ?? 0,
+    scoreState: record.overall?.complete ? "Complete" : "Provisional",
+  }));
   const csv = toCsv(filtered, [
     "applicationId", "name", "email", "phone", "driveName", "status",
     "currentStage", "university", "degree", "gradYear", "gpa",
-    "cvScore", "ccat", "mtt", "finalDecision",
+    "cvScore", "ccat", "mtt", "finalDecision", "funnelName", "scoreMode", "trackCount",
+    "totalScore", "gradedCount", "assessmentCount", "scoreState",
   ]);
   return new Response(csv, {
     headers: {

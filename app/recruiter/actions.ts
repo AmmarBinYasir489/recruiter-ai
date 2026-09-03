@@ -5,9 +5,11 @@ import { revalidatePath } from "next/cache";
 import { prisma, j, uj, getFunnel } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
 import { createNotification } from "@/lib/notifications";
+import { decideApplication, type StaffDecision } from "@/lib/staffDecision";
 import { onsiteNext } from "@/lib/onsiteTrack";
 import { cleanSkills } from "@/lib/jobSkills";
 import { onsiteInviteEmail } from "@/lib/email";
+import { publicApplyPath } from "@/lib/publicApplications";
 import {
   managedApplicationIds,
   requireManagedApplication,
@@ -38,6 +40,8 @@ const MANUAL_GRADING_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLI
 // so the recruiter UI and the candidate-facing page reflect the change immediately.
 function revalidateCandidateRoutes() {
   try {
+    revalidatePath("/admin", "layout");
+    revalidatePath("/candidate", "layout");
     revalidatePath("/recruiter/candidates");
     revalidatePath("/recruiter/candidates/[id]", "page");
     revalidatePath("/recruiter/drives/[id]", "page");
@@ -62,7 +66,7 @@ async function assignApplicationToFunnel(
   if (app.status === "ARCHIVED") return { error: "Historical tracks are read-only. Select an active application." };
   const funnelRow = await prisma.funnel.findFirst({ where: { id: funnelId, driveId: app.driveId, published: true } });
   if (!funnelRow) return { error: "Select a published funnel for this drive." };
-  if (app.cvResult !== "PASS" && app.cvResult !== "FAIL") return { error: "Wait for CV screening to finish before assigning a funnel." };
+  if (app.cvScore == null || ["PROCESSING", "FAILED"].includes(app.cvResult || "")) return { error: "Wait for CV screening to finish before assigning a funnel." };
   const funnel = await getFunnel(funnelId);
   if (!funnel) return { error: "Funnel not found." };
   const onsite = delivery === "ONSITE";
@@ -107,7 +111,7 @@ async function assignApplicationToFunnel(
       funnelVersion: funnelRow.version,
       status: reachingFinal || reachingOnsite || scheduled ? "HOLD" : "IN_PROGRESS",
       currentStage: firstAssessment.type,
-      phaseReleased: !reachingFinal && !reachingOnsite && !scheduled,
+      phaseReleased: !reachingFinal && !reachingOnsite,
       stageHistory: j(nextHistory),
     };
 
@@ -266,7 +270,7 @@ export async function createDriveAction(formData: FormData) {
         jobDescription,
         location,
         deadline,
-        publicLink: `/apply/${name.toLowerCase().replace(/\s+/g, "-")}`,
+        publicLink: "", // replaced with immutable-ID URL in this transaction
         status: "OPEN",
         cvPassThreshold,
         tciWeights: j({ CV_SCREENING: 10, GAMES: 10, CCAT: 15, MTT: 15, ESSAY: 10, CODING: 25, PROMPT: 15 }),
@@ -275,6 +279,7 @@ export async function createDriveAction(formData: FormData) {
         ownerId: user.id,
       },
     });
+    await tx.drive.update({ where: { id: createdDrive.id }, data: { publicLink: publicApplyPath(createdDrive.id) } });
     let defaultFunnelId: string | null = null;
     if (createDefaultFunnel) {
       const normalized = defaultStages.map((stage, index) => ({
@@ -307,215 +312,66 @@ export async function createDriveAction(formData: FormData) {
 }
 
 // ---- 2-step CV threshold change ----
+async function driveCvCohort(driveId: string, db = prisma as any) {
+  return db.application.findMany({ where: { driveId, currentStage: "CV_SCREENING", cvScore: { not: null }, cvResult: { notIn: ["PROCESSING", "FAILED"] }, status: { in: ["HOLD", "IN_PROGRESS", "SUBMITTED"] } } });
+}
 export async function previewThresholdAction(driveId: string, proposed: number) {
   const user = await requireRole("recruiter", "admin");
   await requireManagedDrive(user, driveId);
-  const drive = await prisma.drive.findUnique({ where: { id: driveId } });
-  if (!drive) return null;
-  const apps = await prisma.application.findMany({
-    where: { driveId, cvScore: { not: null } },
-    select: { id: true, cvScore: true, cvResult: true },
-  });
-  const ta: ThresholdApplication[] = apps.map((a) => ({
-    id: a.id,
-    cvScore: a.cvScore!,
-    cvResult: (a.cvResult as any) || "FAIL",
-  }));
-  return previewThresholdChange(drive.cvPassThreshold, proposed, ta);
+  if (!Number.isFinite(proposed) || proposed < 0 || proposed > 100) throw new Error("Threshold must be between 0 and 100.");
+  const drive = await prisma.drive.findUniqueOrThrow({ where: { id: driveId } });
+  const apps = await driveCvCohort(driveId);
+  return thresholdPreview(drive.cvPassThreshold, proposed, apps.map((a: any) => ({ id: a.id, score: a.cvScore, result: a.cvResult })));
 }
-
 export async function applyThresholdAction(driveId: string, proposed: number, currentSnapshot: number) {
   const user = await requireRole("recruiter", "admin");
   await requireManagedDrive(user, driveId);
-  const drive = await prisma.drive.findUnique({ where: { id: driveId } });
-  if (!drive) return { error: "Drive not found." };
-
-  // Optimistic-concurrency guard.
-  if (drive.cvPassThreshold !== currentSnapshot) {
-    return { error: "The threshold was changed by another recruiter. Please review the latest value before applying." };
-  }
-
-  const apps = await prisma.application.findMany({
-    where: { driveId, cvScore: { not: null } },
-    select: { id: true, cvScore: true, cvResult: true, candidateId: true },
-  });
-  const ta: ThresholdApplication[] = apps.map((a) => ({
-    id: a.id,
-    cvScore: a.cvScore!,
-    cvResult: (a.cvResult as any) || "FAIL",
-  }));
-
-  const changes = applyThresholdToApplications(ta, proposed, user.id, new Date().toISOString());
-
-  // Build updates + notifications inside one transaction.
-  await prisma.$transaction(async (tx) => {
-    await tx.drive.update({
-      where: { id: driveId },
-      data: {
-        cvPassThreshold: proposed,
-        thresholdHistory: j([
-          ...(uj<any[]>(drive.thresholdHistory) || []),
-          {
-            threshold: proposed,
-            changedAt: new Date().toISOString(),
-            actorId: user.id,
-            passToFail: changes.filter((c) => c.changed && c.newResult === "FAIL").length,
-            failToPass: changes.filter((c) => c.changed && c.newResult === "PASS").length,
-            unchanged: changes.filter((c) => !c.changed).length,
-          },
-        ]),
-      },
-    });
-    for (const c of changes) {
-      if (!c.changed) continue;
-      await tx.application.update({
-        where: { id: c.id },
-        data: { cvResult: c.newResult, status: "HOLD", phaseReleased: false },
-      });
-      const app = apps.find((a) => a.id === c.id)!;
-      // Notification only when the candidate's actual result changed.
-      await tx.notification.create({
-        data: {
-          userId: app.candidateId,
-          type: "CV_THRESHOLD",
-          message: "Your CV screening was updated. Your application remains with the recruitment team for assessment-path selection.",
-          relatedAppId: app.id,
-        },
-      });
-    }
-    await tx.auditLog.create({
-      data: {
-        actorId: user.id,
-        action: "CV_THRESHOLD_CHANGED",
-        meta: j({
-          driveId,
-          oldThreshold: currentSnapshot,
-          newThreshold: proposed,
-          affected: changes.length,
-          passToFail: changes.filter((c) => c.changed && c.newResult === "FAIL").length,
-          failToPass: changes.filter((c) => c.changed && c.newResult === "PASS").length,
-          unchanged: changes.filter((c) => !c.changed).length,
-        }),
-      },
-    });
-  });
-
-  redirect(user.role === "admin" ? `/admin/drives/${driveId}?thresholdApplied=${proposed}` : `/recruiter/drives/${driveId}?thresholdApplied=${proposed}`);
+  if (!Number.isFinite(proposed) || proposed < 0 || proposed > 100) return { error: "Threshold must be between 0 and 100." };
+  try {
+    const count = await prisma.$transaction(async (tx) => {
+      const saved = await tx.drive.updateMany({ where: { id: driveId, cvPassThreshold: currentSnapshot }, data: { cvPassThreshold: proposed } });
+      if (saved.count !== 1) throw new Error("The threshold changed. Preview again.");
+      const apps = await driveCvCohort(driveId, tx);
+      for (const app of apps) await decideApplication(tx, app.id, user.id, app.cvScore >= proposed ? "PASS" : "HOLD", "CV_SCREENING");
+      await tx.auditLog.create({ data: { actorId: user.id, action: "CV_THRESHOLD_CHANGED", meta: j({ driveId, oldThreshold: currentSnapshot, newThreshold: proposed, affected: apps.length }) } });
+      return apps.length;
+    }, { timeout: 30000 });
+    revalidateCandidateRoutes();
+    return { ok: true, count };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Could not apply threshold." }; }
 }
 
 // ---- candidate actions ----
-export async function advanceApplicationAction(applicationId: string) {
+export async function decideCandidateAction(applicationId: string, decision: StaffDecision, expectedStage?: string) {
   const user = await requireRole("recruiter", "admin");
   await requireManagedApplication(user, applicationId);
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app) return { error: "Not found." };
-  if (app.status === "ARCHIVED") return { error: "Archived funnel tracks are read-only history." };
-  const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
-  if (!funnel) return { error: "No funnel." };
-  if (!app.currentStage) return { error: "No current stage." };
-  const next = nextEnabledStage(funnel, { type: app.currentStage as StageType });
-  if (!next) return { error: "No next enabled stage is configured." };
-  const nextName = next.name || next.type;
-  const reachingFinal = next.type === "FINAL";
-  const reachingOnsite = next.type === "ONSITE";
-  await prisma.$transaction(async (tx) => {
-    await tx.application.update({
-      where: { id: applicationId },
-      data: {
-        currentStage: next.type,
-        phaseReleased: !reachingFinal && !reachingOnsite,
-        status: reachingFinal || reachingOnsite ? "HOLD" : "IN_PROGRESS",
-        stageHistory: j([
-          ...(uj<any[]>(app.stageHistory) || []),
-          { stage: app.currentStage, status: "ADVANCED", at: new Date().toISOString(), note: `Next phase released: ${nextName}` },
-        ]),
-      },
-    });
-    await createNotification({
-      userId: app.candidateId,
-      type: "PHASE_RELEASED",
-      message: reachingFinal ? "Your assessments are complete. The final decision is pending." : reachingOnsite ? "You have been selected for onsite screening. Date and location details will be emailed by the recruitment team." : `Next phase released: ${nextName}.`,
-      relatedAppId: applicationId,
-    }, tx);
-    await tx.auditLog.create({ data: { actorId: user.id, action: "ADVANCE", meta: j({ applicationId, from: app.currentStage, next: next.type }) } });
-  });
-  revalidateCandidateRoutes();
-  return { ok: true };
+  if (!["HOLD", "PASS", "FAIL"].includes(decision)) return { error: "Invalid decision." };
+  try {
+    const result = await prisma.$transaction((tx) => decideApplication(tx, applicationId, user.id, decision, expectedStage));
+    revalidateCandidateRoutes();
+    return result;
+  } catch (error) { return { error: error instanceof Error ? error.message : "Could not save decision." }; }
 }
 
-// Recruiter/admin approval: preserve the submitted score, mark the latest
-// current-stage result PASS, and release the next stage.
-export async function manualPassAction(applicationId: string) {
-  const user = await requireRole("recruiter", "admin");
-  const app = await prisma.application.findUnique({ where: { id: applicationId }, include: { drive: true, funnel: true } });
-  if (!app) return { error: "Not found." };
-  if (user.role === "recruiter" && app.drive?.ownerId !== user.id) return { error: "Not authorized." };
-  if (app.status === "ARCHIVED") return { error: "Archived funnel tracks are read-only history." };
-  const type = app.currentStage;
-  if (!type) return { error: "No current stage." };
-  const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
-  if (!funnel) return { error: "No funnel." };
-  const next = nextEnabledStage(funnel, { type: type as StageType });
-  if (!next) return { error: "No next enabled stage is configured." };
-  const nextName = next.name || next.type;
-  const reachingFinal = next.type === "FINAL";
-  const reachingOnsite = next.type === "ONSITE";
-  const latest = await prisma.assessmentResult.findFirst({
-    where: { applicationId, type },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-  });
-  if (!latest) return { error: "The candidate has not submitted the current stage." };
-  const scores = uj<Record<string, number>>(app.scores) || {};
-  scores[type] = latest.normalized;
-  await prisma.$transaction(async (tx) => {
-    await tx.assessmentResult.update({
-      where: { id: latest.id },
-      data: { status: "PASS", gradedAt: latest.gradedAt || new Date(), notes: `${latest.notes ? `${latest.notes}\n` : ""}Approved by ${user.role} ${user.id} on ${new Date().toISOString()}.` },
-    });
-    await tx.application.update({
-      where: { id: applicationId },
-      data: {
-        status: reachingFinal || reachingOnsite ? "HOLD" : "IN_PROGRESS", currentStage: next.type, phaseReleased: !reachingFinal && !reachingOnsite, scores: j(scores),
-        stageHistory: j([
-          ...(uj<any[]>(app.stageHistory) ?? []),
-          { stage: type, status: "PASS", at: new Date().toISOString(), manual: true, note: `Manually passed; next phase released: ${nextName}` },
-        ]),
-      },
-    });
-    await createNotification({ userId: app.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? `Your ${type} result is PASS. Your assessments are complete and the final decision is pending.` : reachingOnsite ? `Your ${type} result is PASS. You have been selected for onsite screening; details will be emailed by the recruitment team.` : `Your ${type} result is PASS. Next phase released: ${nextName}.`, relatedAppId: applicationId }, tx);
-    await tx.auditLog.create({
-      data: { actorId: user.id, action: "MANUAL_PASS", meta: j({ applicationId, stage: type, next: next.type }) },
-    });
-  });
-  revalidateCandidateRoutes();
-  return { ok: true };
-}
-
-export async function passSelectedAction(applicationIds: string[]) {
+// Compatibility for stale clients: advancing now requires the same scored approval.
+export async function advanceApplicationAction(applicationId: string) { return manualPassAction(applicationId); }
+export async function manualPassAction(applicationId: string, expectedStage?: string) { return decideCandidateAction(applicationId, "PASS", expectedStage); }
+export async function holdApplicationAction(applicationId: string, expectedStage?: string) { return decideCandidateAction(applicationId, "HOLD", expectedStage); }
+export async function decideSelectedAction(applicationIds: string[], decision: StaffDecision, expectedStage?: string) {
   const user = await requireRole("recruiter", "admin");
   const ids = await managedApplicationIds(user, applicationIds);
   let count = 0;
   const errors: string[] = [];
   for (const id of ids) {
-    const result = await manualPassAction(id);
-    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
-    else count += 1;
+    const result = await decideCandidateAction(id, decision, expectedStage);
+    if ("error" in result) errors.push(result.error);
+    else count++;
   }
-  return errors.length ? { error: `${count} passed. ${errors.join(" ")}`, count } : { ok: true, count };
+  return errors.length ? { error: `${count} updated. ${errors.join(" ")}`, count } : { ok: true, count };
 }
-
-export async function advanceSelectedAction(applicationIds: string[]) {
-  const user = await requireRole("recruiter", "admin");
-  const ids = await managedApplicationIds(user, applicationIds);
-  let count = 0;
-  const errors: string[] = [];
-  for (const id of ids) {
-    const result = await advanceApplicationAction(id);
-    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
-    else count += 1;
-  }
-  return errors.length ? { error: `${count} moved. ${errors.join(" ")}`, count } : { ok: true, count };
-}
+export async function passSelectedAction(applicationIds: string[], expectedStage?: string) { return decideSelectedAction(applicationIds, "PASS", expectedStage); }
+export async function holdSelectedAction(applicationIds: string[], expectedStage?: string) { return decideSelectedAction(applicationIds, "HOLD", expectedStage); }
+export async function advanceSelectedAction(applicationIds: string[]) { return passSelectedAction(applicationIds); }
 
 // Recruiter/admin adjusts a (manual-graded) score without losing the original.
 // The original value is preserved in the result notes as an audit trail;
@@ -554,26 +410,7 @@ export async function updateResultScoreAction(resultId: string, formData: FormDa
   return { ok: true };
 }
 
-export async function rejectApplicationAction(applicationId: string) {
-  const user = await requireRole("recruiter", "admin");
-  await requireManagedApplication(user, applicationId);
-  const app = await prisma.application.findUnique({ where: { id: applicationId } });
-  if (!app) return { error: "Not found." };
-  await prisma.application.update({
-    where: { id: applicationId },
-    data: {
-      status: "REJECTED",
-      stageHistory: j([
-        ...(uj<any[]>(app.stageHistory) || []),
-        { stage: app.currentStage, status: "FAIL", at: new Date().toISOString(), note: "Rejected by recruiter" },
-      ]),
-    },
-  });
-  await createNotification({ userId: app.candidateId, type: "REJECTION", message: "Thank you for applying. We will not be moving forward at this time.", relatedAppId: app.id });
-  await prisma.auditLog.create({ data: { actorId: user.id, action: "REJECT", meta: j({ applicationId }) } });
-  revalidateCandidateRoutes();
-  return { ok: true };
-}
+export async function rejectApplicationAction(applicationId: string) { return decideCandidateAction(applicationId, "FAIL"); }
 
 export async function sendNotificationAction(applicationId: string, formData: FormData) {
   const user = await requireRole("recruiter", "admin");
@@ -584,6 +421,16 @@ export async function sendNotificationAction(applicationId: string, formData: Fo
   if (!app) return { error: "Not found." };
   await createNotification({ userId: app.candidateId, type: "RECRUITER_MSG", message, relatedAppId: app.id });
   await prisma.auditLog.create({ data: { actorId: user.id, action: "NOTIFY", meta: j({ applicationId }) } });
+  return { ok: true };
+}
+
+export async function addStaffNoteAction(applicationId: string, formData: FormData) {
+  const user = await requireRole("recruiter", "admin");
+  await requireManagedApplication(user, applicationId);
+  const message = String(formData.get("message") || "").trim();
+  if (!message || message.length > 4000) return { error: "Enter a note of 1–4,000 characters." };
+  await prisma.auditLog.create({ data: { actorId: user.id, action: "STAFF_NOTE", meta: j({ applicationId, message }) } });
+  revalidateCandidateRoutes();
   return { ok: true };
 }
 
@@ -736,211 +583,73 @@ export async function editFunnelStructureAction(funnelId: string, formData: Form
 }
 
 // ---- Per-phase threshold (read-only preview) ----
-async function getPhaseCohort(funnelId: string, phaseType: string) {
-  const apps = await prisma.application.findMany({
-    where: { funnelId, currentStage: phaseType, phaseReleased: false },
-    select: { id: true, candidateId: true, cvScore: true, cvResult: true, results: { where: { type: phaseType }, orderBy: { createdAt: "desc" }, take: 1 } },
+const waitingStatuses = ["HOLD", "IN_PROGRESS", "SUBMITTED"];
+async function getPhaseCohort(funnelId: string, phaseType: string, db = prisma as any) {
+  const apps = await db.application.findMany({
+    where: { funnelId, currentStage: phaseType, phaseReleased: false, status: { in: waitingStatuses },
+      assessmentAttempts: { none: { type: phaseType, status: { in: ["ACTIVE", "READY"] } } } },
+    include: { results: { where: { type: phaseType }, orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 1 } },
   });
-  const rows = apps
-    .map((a) => {
-      if (phaseType === "CV_SCREENING") {
-        return { id: a.id, candidateId: a.candidateId, score: a.cvScore ?? 0, result: (a.cvResult as any) || "FAIL" };
-      }
-      const r = a.results[0];
-      if (!r) return null; // only include applications that actually have a result for this phase
-      return { id: a.id, candidateId: a.candidateId, score: r.normalized ?? 0, result: (r.status as any) || "PENDING" };
-    })
-    .filter((x): x is { id: string; candidateId: string; score: number; result: any } => x !== null);
-  return rows;
+  return apps.flatMap((app: any) => {
+    if (phaseType === "CV_SCREENING") return app.cvScore == null || ["PROCESSING", "FAILED"].includes(app.cvResult) ? [] : [{ id: app.id, score: app.cvScore, result: app.cvResult || "HOLD" }];
+    const result = app.results[0];
+    if (!result || (result.status === "MANUAL_REVIEW" && !result.gradedAt)) return [];
+    return [{ id: app.id, score: result.normalized, result: result.status }];
+  });
 }
-
+function thresholdPreview(current: number, proposed: number, cohort: Array<{ id: string; score: number; result: string }>) {
+  const details = cohort.map((row) => ({ id: row.id, cvScore: row.score, oldResult: row.result, newResult: row.score >= proposed ? "PASS" : "HOLD", changed: row.result !== (row.score >= proposed ? "PASS" : "HOLD") }));
+  return { currentThreshold: current, proposedThreshold: proposed, eligible: details.length,
+    passing: details.filter((row) => row.newResult === "PASS").length,
+    holding: details.filter((row) => row.newResult === "HOLD").length, details };
+}
 export async function previewPhaseThresholdAction(funnelId: string, phaseType: string, proposed: number) {
   const user = await requireRole("recruiter", "admin");
   await requireManagedFunnel(user, funnelId);
+  if (!Number.isFinite(proposed) || proposed < 0 || proposed > 100) throw new Error("Threshold must be between 0 and 100.");
   const funnel = await getFunnel(funnelId);
   if (!funnel) return null;
-  const current = phaseThreshold(funnel, phaseType as StageType);
-  if (AUTOMATIC_THRESHOLD_TYPES.has(phaseType)) {
-    return { currentThreshold: current, proposedThreshold: proposed, eligible: 0, passToFail: 0, failToPass: 0, unchanged: 0, details: [], futureOnly: true };
-  }
-  const cohort = await getPhaseCohort(funnelId, phaseType);
-  const apps: PhaseApplication[] = cohort.map((c) => ({ id: c.id, score: c.score, result: c.result }));
-  return previewPhaseThreshold(current, proposed, apps);
+  return thresholdPreview(phaseThreshold(funnel, phaseType as StageType), proposed, await getPhaseCohort(funnelId, phaseType));
 }
-
-// Apply a per-phase threshold change: operational (in-place), transactional,
-// optimistic-concurrency guarded, with re-evaluation + notifications only on
-// actual result changes. Scoped strictly to drive+funnel+phase.
-export async function applyPhaseThresholdAction(
-  funnelId: string,
-  phaseType: string,
-  proposed: number,
-  snapshot: number,
-) {
+export async function applyPhaseThresholdAction(funnelId: string, phaseType: string, proposed: number, snapshot: number) {
   const user = await requireRole("recruiter", "admin");
   await requireManagedFunnel(user, funnelId);
-  const funnelRow = await prisma.funnel.findUnique({ where: { id: funnelId } });
-  if (!funnelRow) return { error: "Funnel not found." };
-  const funnel = await getFunnel(funnelId);
-  if (!funnel) return { error: "Funnel not found." };
-
-  const current = phaseThreshold(funnel, phaseType as StageType);
-  if (current !== snapshot) {
-    return { error: "The threshold was changed by another recruiter. Please review the latest value before applying." };
-  }
-
-  if (AUTOMATIC_THRESHOLD_TYPES.has(phaseType)) {
-    await prisma.$transaction(async (tx) => {
-      const stages = uj<FunnelStage[]>(funnelRow.stages);
-      const target = stages.find((stage) => stage.type === phaseType);
-      if (target) target.passScore = Math.max(0, Math.min(100, proposed));
-      await tx.funnel.update({ where: { id: funnelId }, data: { stages: j(stages) } });
-      await tx.thresholdChange.create({ data: { driveId: funnelRow.driveId, funnelId, phaseType, oldThreshold: snapshot, newThreshold: proposed, actorId: user.id, affected: 0 } });
-      await tx.auditLog.create({ data: { actorId: user.id, action: "AUTOMATIC_THRESHOLD_CHANGED", meta: j({ driveId: funnelRow.driveId, funnelId, phaseType, old: snapshot, new: proposed, appliesTo: "future-submissions" }) } });
-    });
-    revalidateCandidateRoutes();
-    redirect(user.role === "admin" ? `/admin/funnel/${funnelId}?thresholdApplied=${proposed}` : `/recruiter/funnel/${funnelId}?thresholdApplied=${proposed}`);
-  }
-
-  const cohort = await getPhaseCohort(funnelId, phaseType);
-  const apps: PhaseApplication[] = cohort.map((c) => ({ id: c.id, score: c.score, result: c.result }));
-  const changes = applyPhaseThreshold(apps, proposed, user.id, new Date().toISOString());
-
-  await prisma.$transaction(async (tx) => {
-    const stages = uj<FunnelStage[]>(funnelRow.stages);
-    const target = stages.find((s) => s.type === phaseType);
-    if (target) target.passScore = proposed;
-    await tx.funnel.update({ where: { id: funnelId }, data: { stages: j(stages) } });
-
-    for (const c of changes) {
-      if (!c.changed) continue;
-      if (phaseType === "CV_SCREENING") {
-        await tx.application.update({ where: { id: c.id }, data: { cvResult: c.newResult, status: "HOLD", phaseReleased: false } });
-      } else {
-        const ar = await tx.assessmentResult.findFirst({ where: { applicationId: c.id, type: phaseType }, orderBy: { createdAt: "desc" } });
-        if (ar) await tx.assessmentResult.update({ where: { id: ar.id }, data: { status: c.newResult } });
-        await tx.application.update({ where: { id: c.id }, data: { status: c.newResult === "PASS" ? "IN_PROGRESS" : "HOLD", phaseReleased: false } });
+  if (!Number.isFinite(proposed) || proposed < 0 || proposed > 100) return { error: "Threshold must be between 0 and 100." };
+  try {
+    const count = await prisma.$transaction(async (tx) => {
+      const row = await tx.funnel.findUniqueOrThrow({ where: { id: funnelId } });
+      const stages = uj<FunnelStage[]>(row.stages);
+      const target = stages.find((stage) => stage.type === phaseType && stage.enabled !== false);
+      if (!target || (target.passScore ?? 0) !== snapshot) throw new Error("The threshold changed. Preview again.");
+      target.passScore = proposed;
+      const saved = await tx.funnel.updateMany({ where: { id: funnelId, stages: row.stages }, data: { stages: j(stages) } });
+      if (saved.count !== 1) throw new Error("The funnel changed. Preview again.");
+      const cohort = await getPhaseCohort(funnelId, phaseType, tx);
+      for (const candidate of cohort) {
+        await decideApplication(tx, candidate.id, user.id, candidate.score >= proposed ? "PASS" : "HOLD", phaseType);
       }
-      const cand = cohort.find((a) => a.id === c.id)!;
-      await tx.notification.create({
-        data: {
-          userId: cand.candidateId,
-          type: "PHASE_THRESHOLD",
-          message: phaseType === "CV_SCREENING" ? "Your CV screening was updated. Your application remains with the recruitment team." : `Your ${phaseType} result was re-evaluated and is now: ${c.newResult}.`,
-          relatedAppId: cand.id,
-        },
-      });
-    }
-    await tx.thresholdChange.create({
-      data: {
-        driveId: funnelRow.driveId,
-        funnelId,
-        phaseType,
-        oldThreshold: snapshot,
-        newThreshold: proposed,
-        actorId: user.id,
-        passToFail: changes.filter((c) => c.changed && c.newResult === "FAIL").length,
-        failToPass: changes.filter((c) => c.changed && c.newResult === "PASS").length,
-        affected: changes.length,
-      },
-    });
-    await tx.auditLog.create({
-      data: { actorId: user.id, action: "PHASE_THRESHOLD_CHANGED", meta: j({ driveId: funnelRow.driveId, funnelId, phaseType, old: snapshot, new: proposed }) },
-    });
-  });
-
-  const preselectParam = buildPreselectParam(changes, phaseType, proposed);
-
-  redirect(user.role === "admin" ? `/admin/funnel/${funnelId}?thresholdApplied=${proposed}${preselectParam}` : `/recruiter/funnel/${funnelId}?thresholdApplied=${proposed}${preselectParam}`);
+      await tx.thresholdChange.create({ data: { driveId: row.driveId, funnelId, phaseType, oldThreshold: snapshot, newThreshold: proposed, actorId: user.id, affected: cohort.length, failToPass: cohort.filter((c: any) => c.score >= proposed).length } });
+      await tx.auditLog.create({ data: { actorId: user.id, action: "PHASE_THRESHOLD_CHANGED", meta: j({ funnelId, phaseType, snapshot, proposed, affected: cohort.length }) } });
+      return cohort.length;
+    }, { timeout: 30000 });
+    revalidateCandidateRoutes();
+    return { ok: true, count };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Could not apply threshold." }; }
 }
 
-// Inside applyPhaseThresholdAction, before redirect:
-function buildPreselectParam(changes: { changed: boolean; newResult: string; id: string }[], phaseType: string, proposed: number) {
-  const ids = changes.filter((c) => c.changed && c.newResult === "PASS").map((c) => c.id);
-  return ids.length ? `&phase=${phaseType}&preselect=${ids.join(",")}` : "";
-}
-
-// ---- Cohort issuance (gated next stage) ----
-export async function issueNextPhaseAction(
-  funnelId: string,
-  phaseType: string,
-  applicationIds: string[],
-  mode: "passing" | "selected",
-) {
+// Older clients cannot bypass scored approval via phase issuance.
+export async function issueNextPhaseAction(funnelId: string, phaseType: string, applicationIds: string[], mode: "passing" | "selected") {
   const user = await requireRole("recruiter", "admin");
   await requireManagedFunnel(user, funnelId);
-  if (AUTOMATIC_THRESHOLD_TYPES.has(phaseType)) {
-    return { error: `${phaseType} applies its threshold and releases the next phase automatically.` };
-  }
-  const funnel = await getFunnel(funnelId);
-  if (!funnel) return { error: "Funnel not found." };
-  const next = nextEnabledStage(funnel, { type: phaseType as StageType });
-  if (!next) return { error: "No next phase configured after this stage." };
-  const nextName = next.name || next.type;
-  const reachingFinal = next.type === "FINAL";
-  const reachingOnsite = next.type === "ONSITE";
-
   const cohort = await getPhaseCohort(funnelId, phaseType);
-  let targetIds = applicationIds;
-  if (mode === "passing") {
-    targetIds = cohort.filter((c) => c.result === "PASS").map((c) => c.id);
-  } else {
-    const cohortIds = new Set(cohort.map((candidate) => candidate.id));
-    targetIds = applicationIds.filter((id) => cohortIds.has(id));
-  }
-  if (targetIds.length === 0) return { ok: true, count: 0 };
-
-  let releasedCount = 0;
-  await prisma.$transaction(async (tx) => {
-    for (const id of targetIds) {
-      const prev = await tx.application.findUnique({ where: { id }, select: { stageHistory: true, candidateId: true, currentStage: true, phaseReleased: true } });
-      if (!prev || prev.currentStage !== phaseType || prev.phaseReleased) continue;
-      const updated = await tx.application.updateMany({
-        where: { id, funnelId, currentStage: phaseType, phaseReleased: false },
-        data: {
-          currentStage: next.type,
-          phaseReleased: !reachingFinal && !reachingOnsite,
-          status: reachingFinal || reachingOnsite ? "HOLD" : "IN_PROGRESS",
-          stageHistory: j([
-            ...(uj<any[]>(prev?.stageHistory) || []),
-            { stage: phaseType, status: "ISSUED", at: new Date().toISOString(), note: `Next phase released: ${nextName}` },
-          ]),
-        },
-      });
-      if (updated.count !== 1) continue;
-      releasedCount += 1;
-      await createNotification({ userId: prev.candidateId, type: "PHASE_RELEASED", message: reachingFinal ? "Your assessments are complete. The final decision is pending." : reachingOnsite ? "You have been selected for onsite screening. Date and location details will be emailed by the recruitment team." : `Next phase released: ${nextName}.`, relatedAppId: id }, tx);
-    }
-    await tx.auditLog.create({
-      data: { actorId: user.id, action: "ISSUE_NEXT_PHASE", meta: j({ funnelId, phaseType, next: next.type, count: releasedCount, mode }) },
-    });
-  });
-  revalidateCandidateRoutes();
-  return { ok: true, count: releasedCount };
+  const ids = cohort.filter((row: any) => mode === "passing" ? row.result === "PASS" : applicationIds.includes(row.id)).map((row: any) => row.id);
+  return passSelectedAction(ids, phaseType);
 }
 
 export async function rejectSelectedAction(applicationIds: string[], formData?: FormData) {
-  const user = await requireRole("recruiter", "admin");
   let ids = applicationIds;
-  if (formData) {
-    const raw = String(formData.get("ids") || "[]");
-    try {
-      ids = JSON.parse(raw);
-    } catch {
-      ids = [];
-    }
-  }
-  ids = await managedApplicationIds(user, ids);
-  for (const id of ids) {
-    const app = await prisma.application.findUnique({ where: { id }, select: { candidateId: true } });
-    if (!app) continue;
-    await prisma.application.update({ where: { id }, data: { status: "REJECTED" } });
-    await prisma.notification.create({
-      data: { userId: app.candidateId, type: "REJECTION", message: "Thank you for applying. We will not be moving forward at this time." },
-    });
-  }
-  await prisma.auditLog.create({ data: { actorId: user.id, action: "REJECT_BATCH", meta: j({ count: ids.length }) } });
-  return { ok: true };
+  if (formData) { try { ids = JSON.parse(String(formData.get("ids") || "[]")); } catch { return { error: "Invalid selection." }; } }
+  return decideSelectedAction(ids, "FAIL");
 }
 
 export async function offerSelectedAction(applicationIds: string[], formData?: FormData) {
@@ -955,16 +664,19 @@ export async function offerSelectedAction(applicationIds: string[], formData?: F
     }
   }
   ids = await managedApplicationIds(user, ids);
-  for (const id of ids) {
-    const app = await prisma.application.findUnique({ where: { id }, select: { candidateId: true } });
-    if (!app) continue;
-    await prisma.application.update({ where: { id }, data: { status: "OFFERED" } });
-    await prisma.notification.create({
-      data: { userId: app.candidateId, type: "OFFER", message: "Congratulations! We would like to offer you the position." },
+  try {
+    await prisma.$transaction(async (tx) => {
+      const apps = await tx.application.findMany({ where: { id: { in: ids } } });
+      if (apps.some((app) => app.currentStage !== "FINAL" || ["ARCHIVED", "REJECTED", "OFFERED", "HIRED"].includes(app.status))) throw new Error("Only candidates awaiting a final decision can be selected.");
+      for (const app of apps) {
+        await tx.application.update({ where: { id: app.id }, data: { status: "OFFERED", phaseReleased: false, stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: "FINAL", status: "OFFERED", actorId: user.id, at: new Date().toISOString() }]) } });
+        await createNotification({ userId: app.candidateId, type: "OFFER", relatedAppId: app.id, message: "Congratulations! You have been selected. The recruitment team will contact you with the next details." }, tx);
+      }
+      await tx.auditLog.create({ data: { actorId: user.id, action: "OFFER_BATCH", meta: j({ applicationIds: ids, count: ids.length }) } });
     });
-  }
-  await prisma.auditLog.create({ data: { actorId: user.id, action: "OFFER_BATCH", meta: j({ count: ids.length }) } });
-  return { ok: true };
+    revalidateCandidateRoutes();
+    return { ok: true, count: ids.length };
+  } catch (error) { return { error: error instanceof Error ? error.message : "Could not record selection." }; }
 }
 
 export async function sendOnsiteInviteAction(applicationId: string, formData: FormData) {

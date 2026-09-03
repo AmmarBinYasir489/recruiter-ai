@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import { createHash, randomBytes } from "crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { getSupabaseAuth } from "./supabase/authServer";
+import { useSupabaseAuth } from "./supabase/authConfig";
+import { redirect } from "next/navigation";
+import { hasStaffMfa, staffMfaRequired } from "./staffMfa";
 
 const SESSION_COOKIE = "rp_session";
 const SESSION_DAYS = 7;
@@ -26,6 +30,7 @@ export async function verifyPassword(pw: string, hash: string): Promise<boolean>
 }
 
 export async function createSession(userId: string): Promise<string> {
+  if (useSupabaseAuth()) throw new Error("Supabase sign-in is required.");
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_DAYS * 864e5);
   // Only a one-way digest is stored, so a database read cannot be turned into
@@ -42,6 +47,11 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 export async function destroySession() {
+  if (useSupabaseAuth()) {
+    const supabase = await getSupabaseAuth();
+    const { error } = await supabase.auth.signOut({ scope: "local" });
+    if (error) throw new Error("Sign-out could not be completed. Please retry.");
+  }
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (token) {
@@ -50,7 +60,21 @@ export async function destroySession() {
   }
 }
 
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export async function getCurrentUser(options: { allowMfaSetup?: boolean } = {}): Promise<SessionUser | null> {
+  if (useSupabaseAuth()) {
+    const supabase = await getSupabaseAuth();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return null;
+    // Never link by email or trust user-editable JWT metadata for staff access.
+    const user = await prisma.user.findUnique({
+      where: { authId: data.user.id },
+      select: { id: true, email: true, name: true, role: true },
+    });
+    // Central enforcement protects both page reads and action/API writes.
+    // Only the dedicated MFA setup actions/page may use the setup exception.
+    if (user && !options.allowMfaSetup && staffMfaRequired(user.role) && !(await hasStaffMfa())) redirect("/security/mfa");
+    return user;
+  }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const digest = sessionDigest(token);

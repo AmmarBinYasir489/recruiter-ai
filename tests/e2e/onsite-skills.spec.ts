@@ -69,7 +69,8 @@ test("bulk onsite requires a funnel and candidate sees a separate onsite session
     await page.getByRole("button", { name: "Sign out", exact: true }).first().click();
     await login(page, "candidate");
     await page.goto(`/candidate/application/${onsite.id}`);
-    await expect(page.getByText("QA complete session · Onsite", { exact: false }).first()).toBeVisible();
+    await expect(page.getByText("QA complete session", { exact: false })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Onsite · CCAT / IQ" })).toBeVisible();
     await expect(page.getByRole("link", { name: "View notification history" })).toBeVisible();
     expect(await page.getByText(/^QA onsite update/).count()).toBeLessThanOrEqual(3);
     await page.screenshot({ path: info.outputPath("onsite-candidate.png"), fullPage: true });

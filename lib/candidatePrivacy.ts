@@ -3,7 +3,8 @@ export function candidateCanSeeScore(stage: string): boolean {
   return false;
 }
 
-export function candidateSafeNotification(message: string, suppressFailure = false): string {
+export function candidateSafeNotification(message: string, suppressFailure = false, type?: string): string {
+  if (type === "FUNNEL_ASSIGNED") return "Your assessment assignment has been updated. Open your application for the current assessment and availability.";
   const safe = message
     .replace(/Your CV (?:screening )?result (?:is|was re-evaluated and is now:)\s*(?:PASS|FAIL)[^.]*\.?/gi, "Your CV screening is complete and is with the recruitment team.")
     .replace(/\s*\(\s*\d+(?:\.\d+)?\s*\/\s*100\s*\)/gi, "")

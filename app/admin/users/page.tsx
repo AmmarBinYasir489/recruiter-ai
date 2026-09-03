@@ -1,10 +1,9 @@
 import { prisma } from "@/lib/db";
 import { Card, SectionTitle, LinkButton } from "@/components/ui";
-import { createUserAction } from "@/app/admin/actions";
+import { CreateUserForm } from "@/components/CreateUserForm";
 
 export const dynamic = "force-dynamic";
 
-const ROLES = ["admin", "recruiter", "reviewer", "candidate"];
 
 export default async function AdminUsers() {
   const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" } });
@@ -12,20 +11,10 @@ export default async function AdminUsers() {
     <div>
       <h1 className="text-2xl font-bold text-ink-900 mb-6">Users</h1>
 
-      <SectionTitle>Add user</SectionTitle>
+      <SectionTitle>Add staff account</SectionTitle>
       <Card className="mb-6">
-        <form action={createUserAction} className="grid sm:grid-cols-5 gap-3 items-end">
-          <div><label className="label" htmlFor="new-user-name">Name</label><input id="new-user-name" name="name" className="input" autoComplete="name" required /></div>
-          <div><label className="label" htmlFor="new-user-email">Email</label><input id="new-user-email" name="email" type="email" className="input" autoComplete="email" required /></div>
-          <div>
-            <label className="label" htmlFor="new-user-role">Role</label>
-            <select id="new-user-role" name="role" className="input">
-              {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-          <div><label className="label" htmlFor="new-user-password">Temporary password</label><input id="new-user-password" name="password" type="password" minLength={12} autoComplete="new-password" className="input" required /></div>
-          <div><button type="submit" className="btn-primary w-full">Create</button></div>
-        </form>
+        <p className="mb-4 text-sm text-slate-600">Create recruiter or reviewer accounts. Candidates register themselves using a public drive link.</p>
+        <CreateUserForm />
       </Card>
 
       <SectionTitle>All users</SectionTitle>

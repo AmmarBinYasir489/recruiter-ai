@@ -3,6 +3,7 @@ import { prisma, uj } from "@/lib/db";
 import { Card, SectionTitle, LinkButton, StatCard } from "@/components/ui";
 import type { FunnelStage } from "@/lib/engine/funnel";
 import { requireRole } from "@/lib/auth";
+import { DrivePublishingControls } from "@/components/DrivePublishingControls";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function AdminDriveDetail({ params: paramsPromise }: { para
         <StatCard label="Awaiting assignment" value={unassigned} />
         <StatCard label="Funnels" value={drive.funnels.length} />
       </div>
+      <DrivePublishingControls driveId={drive.id} status={drive.status} />
       <SectionTitle action={<LinkButton href={`/admin/drives/${drive.id}/new-funnel`} className="btn-primary">+ Create funnel</LinkButton>}>
         Funnels (each independently configured)
       </SectionTitle>

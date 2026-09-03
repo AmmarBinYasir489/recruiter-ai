@@ -12,6 +12,10 @@ type QuestionContent = {
   points?: number;
   difficulty?: string;
   category?: string;
+  text?: string;
+  options?: string[];
+  imageUrl?: string;
+  localImagePath?: string;
 };
 
 function contentOf(question: unknown): QuestionContent {
@@ -72,6 +76,14 @@ function allocateEvenly(keys: string[], available: Map<string, number>, total: n
 }
 
 function selectCcatQuestions<T>(questions: T[], attemptId: string): T[] {
+  // Repeated generated templates must not occur twice in one attempt.
+  const unique = new Map<string, T>();
+  for (const question of questions) {
+    const c = contentOf(question);
+    const key = c.text ? JSON.stringify([c.text.replace(/\s*\(Set\s*\d+,?\s*item\s*\d+\)/gi, "").trim(), c.imageUrl, c.localImagePath]) : JSON.stringify(question);
+    if (!unique.has(key)) unique.set(key, question);
+  }
+  questions = [...unique.values()];
   const limit = ASSESSMENT_QUESTION_LIMITS.CCAT;
   const difficulties = ["EASY", "MEDIUM", "HARD"];
   const categories = ["VERBAL", "LOGICAL", "QUANTITATIVE", "SPATIAL"];
@@ -99,9 +111,15 @@ function selectCcatQuestions<T>(questions: T[], attemptId: string): T[] {
     );
     for (const category of categories) {
       const categoryBucket = bucket.filter((question) => String(contentOf(question).category) === category);
-      selected.push(...stableShuffle(categoryBucket, `${attemptId}:CCAT:${difficulty}:${category}`).slice(0, categoryAllocation.get(category) ?? 0));
+      const count = categoryAllocation.get(category) ?? 0;
+      const shuffled = stableShuffle(categoryBucket, `${attemptId}:CCAT:${difficulty}:${category}`);
+      // Include a diagram when this category/difficulty offers one.
+      const diagram = shuffled.find((q) => contentOf(q).imageUrl || contentOf(q).localImagePath);
+      selected.push(...(diagram && count ? [diagram, ...shuffled.filter((q) => q !== diagram)] : shuffled).slice(0, count));
     }
   }
+  const remaining = stableShuffle(questions.filter((q) => !selected.includes(q)), `${attemptId}:CCAT:remaining`);
+  selected.push(...remaining.slice(0, Math.max(0, limit - selected.length)));
   return stableShuffle(selected, `${attemptId}:CCAT:order`);
 }
 
@@ -120,12 +138,11 @@ function selectMttQuestions<T>(questions: T[], attemptId: string): T[] {
       return inferredPoints === points;
     });
     if (bucket.length < 10) {
-      console.error("[assessment:MTT] question bank incomplete", { points, available: bucket.length, required: 10 });
-      return stableShuffle(bucket, `${attemptId}:MTT:${points}`);
+      throw new Error(`MTT bank requires 10 questions worth ${points} points. Staff must restore the bank before testing.`);
     }
     return stableShuffle(bucket, `${attemptId}:MTT:${points}`).slice(0, 10);
   });
-  return selected;
+  return stableShuffle(selected, `${attemptId}:MTT:order`);
 }
 
 /** Stable for refresh/submission, but different for each candidate attempt. */

@@ -11,9 +11,10 @@ import { Countdown } from "@/components/Countdown";
 import { ProctorMonitor } from "@/components/ProctorMonitor";
 import { WordCountTextarea } from "@/components/WordCountTextarea";
 import { GameForm } from "@/components/games/GameForm";
+import { getAttemptPuzzle } from "@/lib/games/attemptPuzzle";
 import { EnglishSpeakingAssessment } from "@/components/EnglishSpeakingAssessment";
 import { ENGLISH_SPEAKING_MAX_SECONDS, ENGLISH_SPEAKING_MIN_SECONDS, ENGLISH_SPEAKING_QUESTIONS } from "@/lib/englishSpeaking";
-import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
+import { attemptQuestions } from "@/lib/attemptQuestions";
 import { CcatAssessment } from "@/components/assessment/CcatAssessment";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +26,8 @@ const STAGE_LABEL: Record<string, string> = {
 };
 
 async function getBank(bank: string, attemptId: string) {
-  const qs = await prisma.question.findMany({ where: { bank }, orderBy: { number: "asc" } });
-  return selectAttemptQuestions(qs, attemptId, bank).map((q) => ({ number: q.number, ...uj<any>(q.content) }));
+  const qs = await attemptQuestions(attemptId, bank);
+  return qs.map((q) => ({ number: q.number, ...uj<any>(q.content), text: String(uj<any>(q.content)?.text || "").replace(/\s*\(Set\s*\d+,?\s*item\s*\d+\)/gi, "").trim() }));
 }
 
 export default async function TestPage({ params: paramsPromise }: { params: Promise<{ applicationId: string; type: string }> }) {
@@ -40,7 +41,7 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
   const funnel = app.funnelId ? await getFunnel(app.funnelId) : null;
   const stage = funnel?.stages.find((item) => item.type === type);
   const opensAt = stage?.opensAt ? new Date(stage.opensAt) : null;
-  const phaseAvailable = app.phaseReleased || Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
+  const phaseAvailable = app.phaseReleased && (!opensAt || opensAt.getTime() <= Date.now()) && !["REJECTED", "OFFERED", "HIRED"].includes(app.status);
 
   // Gating: the candidate may only open the test when the recruiter has
   // released this specific stage for this application.
@@ -85,7 +86,7 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
         <div className="max-w-3xl mx-auto">
           <Card>
             <h1 className="text-xl font-bold text-ink-900">{STAGE_LABEL[type]}</h1>
-            <p className="text-sm text-slate-600 mt-2">You have already submitted this assessment. Results are final.</p>
+            <p className="text-sm text-slate-600 mt-2">You have already submitted this assessment. Your submission is awaiting the recruitment team’s decision.</p>
             <a href={`/candidate/application/${applicationId}`} className="btn-outline text-sm mt-3 inline-block">Back to application</a>
           </Card>
         </div>
@@ -96,7 +97,7 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
   const durationMin = stage?.durationMin && stage.durationMin > 0 ? stage.durationMin : null;
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div data-assessment-page className="max-w-3xl mx-auto">
       <h1 className="text-2xl font-bold text-ink-900">{STAGE_LABEL[type]}</h1>
       <p className="text-slate-500 mb-4">Complete this stage for your application.</p>
 
@@ -113,7 +114,7 @@ export default async function TestPage({ params: paramsPromise }: { params: Prom
           {(type === "ESSAY" || type === "CODING" || type === "PROMPT") && (
             <SubjectiveForm applicationId={applicationId} attemptId={attempt.id} type={type} questions={await getBank(type, attempt.id)} />
           )}
-          {type === "GAMES" && <GameForm applicationId={applicationId} attemptId={attempt.id} />}
+          {type === "GAMES" && <GameForm applicationId={applicationId} attemptId={attempt.id} puzzle={await getAttemptPuzzle(attempt.id)} />}
           {type === "ENGLISH_SPEAKING" && (
             <EnglishSpeakingAssessment
               applicationId={applicationId}
@@ -152,6 +153,7 @@ function SubjectiveForm({ applicationId, attemptId, type, questions }: { applica
               </div>
               {q.example ? <pre className="mt-2 whitespace-pre-wrap rounded bg-slate-50 p-2 text-xs text-slate-600">{q.example}</pre> : null}
               <WordCountTextarea
+                label={`Response for question ${i + 1}`}
                 name={`answer_${q.number}`}
                 rows={q.minWords && q.minWords >= 200 ? 10 : 5}
                 minWords={Number(q.minWords || 0)}

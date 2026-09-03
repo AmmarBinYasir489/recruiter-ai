@@ -4,6 +4,7 @@ import { Card, SectionTitle, LinkButton, StatCard } from "@/components/ui";
 import { phaseThreshold } from "@/lib/engine/funnel";
 import type { FunnelStage } from "@/lib/engine/funnel";
 import { requireRole } from "@/lib/auth";
+import { DrivePublishingControls } from "@/components/DrivePublishingControls";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export default async function DriveDetail({ params: paramsPromise, searchParams:
         <StatCard label="Funnels" value={drive.funnels.length} />
       </div>
 
+      <DrivePublishingControls driveId={drive.id} status={drive.status} />
       <SectionTitle
         action={<LinkButton href={`/recruiter/drives/${drive.id}/new-funnel`} className="btn-primary">+ Create funnel</LinkButton>}
       >

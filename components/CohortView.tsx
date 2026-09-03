@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { decisionBadge } from "@/components/ui";
-import { issueNextPhaseAction, passSelectedAction, rejectSelectedAction, offerSelectedAction } from "@/app/recruiter/actions";
+import { passSelectedAction, decideSelectedAction, holdSelectedAction } from "@/app/recruiter/actions";
 import { ActionFeedbackDialog, type ActionFeedback } from "@/components/ActionFeedbackDialog";
 
 export interface CohortRow {
@@ -58,34 +58,12 @@ export function CohortView({
     <div className="mt-3">
       {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        {!automaticDecision && <button
-          className="btn-ghost"
-          disabled={busy}
-          onClick={() => run(() => issueNextPhaseAction(funnelId, phaseType, [], "passing"), "Issued next phase to passing")}
-        >
-          Issue next phase → passing only
-        </button>}
-        {!automaticDecision && <button
-          className="btn-primary"
-          disabled={busy || selected.length === 0}
-          onClick={() => run(() => passSelectedAction(selected), "Passed and moved")}
-        >
-          Pass &amp; move selected ({selected.length})
-        </button>}
-        {!automaticDecision && <button
-          className="btn-ghost"
-          disabled={busy || selected.length === 0}
-          onClick={() => run(() => issueNextPhaseAction(funnelId, phaseType, selected, "selected"), "Issued next phase to selected")}
-        >
-          Issue next phase → selected ({selected.length})
-        </button>}
-        {automaticDecision && <span className="badge-info">Threshold and next-stage release are automatic</span>}
-        <button className="btn-ghost" disabled={busy || selected.length === 0} onClick={() => run(() => rejectSelectedAction(selected), "Rejected")}>
-          Reject selected
-        </button>
-        <button className="btn-ghost" disabled={busy || selected.length === 0} onClick={() => run(() => offerSelectedAction(selected), "Offered")}>
-          Offer selected
-        </button>
+        <button className="btn-ghost" disabled={busy || !selected.length} onClick={() => run(() => holdSelectedAction(selected, phaseType), "Held")}>Hold selected</button>
+        <button className="btn-primary" disabled={busy || !selected.length} onClick={() => run(() => passSelectedAction(selected, phaseType), "Passed; next assessment approved")}>Pass selected</button>
+        <button className="btn-danger" disabled={busy || !selected.length} onClick={() => {
+          if (window.confirm("Fail the selected candidates and stop their current assessment path?")) run(() => decideSelectedAction(selected, "FAIL", phaseType), "Failed");
+        }}>Fail selected</button>
+        <p className="w-full text-xs text-slate-500">Scoring does not release tests. Pass approves the next configured phase; below-threshold candidates stay on Hold.</p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">

@@ -1,8 +1,10 @@
 import { prisma, uj } from "@/lib/db";
 import { trackLabel } from "@/lib/onsiteTrack";
 import { authorizeCvAccess, signCvToken } from "@/lib/cv/access";
+import { scoresForMode } from "@/lib/scoreModes";
 import { computeApplicationTotal } from "@/lib/engine/leaderboard";
 import type { CandidateRecord } from "@/lib/engine/search";
+import { buildTrackComparison } from "@/lib/trackComparison";
 
 type AnyObj = Record<string, any>;
 
@@ -25,6 +27,7 @@ export function buildCandidateListViews(
       cvScore: record.cvScore ?? null,
       cvResult: record.cvResult ?? null,
       scores: record.scores ?? {},
+      overall: record.overall,
       refreshKey: record.groupRefreshKey ?? record.latestResultId ?? "",
     },
     funnelOptions: funnelsByDrive.get(record.driveId) ?? [],
@@ -41,7 +44,10 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
   const cvToken = canViewCv && user ? signCvToken(app.id, user.id) : null;
 
   const funnelStages = app.funnel ? (uj<any[]>(app.funnel.stages) ?? []) : [];
-  const overall = computeApplicationTotal(app.scores, app.drive.tciWeights);
+  const enabled = app.funnel ? funnelStages.filter((stage) => stage.enabled !== false).map((stage) => stage.type) : ["CV_SCREENING"];
+  const mode = app.trackKey?.startsWith("ONSITE:") ? "ONSITE" : "ONLINE";
+  const modeScores = scoresForMode(app.scores, app.results, mode);
+  const overall = computeApplicationTotal(modeScores, app.drive.tciWeights, enabled);
   const questionsByBank: Record<string, any[]> = {};
   return {
     candidate: { id: app.candidate.id, name: app.candidate.name, email: app.candidate.email },
@@ -49,6 +55,7 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       id: app.id,
       funnelId: app.funnelId,
       funnelName: app.funnel ? trackLabel(app.funnel.name, app.trackKey) : null,
+      funnelDisplayName: app.funnel?.name || "Applicant pool",
       status: app.status,
       appliedAt: (app.appliedAt ?? app.createdAt).toISOString(),
       currentStage: app.currentStage,
@@ -57,12 +64,14 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       cvScore: app.cvScore,
       cvPassThreshold: app.drive.cvPassThreshold,
       cvJobStatus: app.cvJobStatus ?? null,
-      scores: uj(app.scores),
+      scores: modeScores,
       stageHistory: uj(app.stageHistory),
       extractedCv: uj(app.extractedCv),
       driveName: app.drive.name,
       driveId: app.driveId,
       overallScore: overall.total,
+      overall,
+      scoreMode: app.trackKey?.startsWith("ONSITE:") ? "Onsite" : "Online",
       overallComplete: overall.complete,
     },
     funnelOptions: (app.drive.funnels || []).map((funnel: AnyObj) => ({ id: funnel.id, name: funnel.name || `Funnel v${funnel.version}`, version: funnel.version })),
@@ -71,7 +80,7 @@ export async function buildCandidateView(app: AnyObj, user: any): Promise<AnyObj
       id: r.id,
       type: r.type,
       mode: r.mode,
-      normalized: r.normalized,
+      normalized: r.status === "MANUAL_REVIEW" && !r.gradedAt ? null : r.normalized,
       rawScore: r.rawScore,
       maxScore: r.maxScore,
       status: r.status,
@@ -133,10 +142,10 @@ export async function getCandidateView(applicationId: string, user: any) {
   // Populate question banks (needs the async prisma call).
   const banks = Array.from(new Set(app.results.map((result: AnyObj) => result.type)))
     .filter((bank) => ["CODING", "ESSAY", "PROMPT"].includes(bank));
-  const [siblingTracks, qRows, cvJob] = await Promise.all([
+  const [siblingTracks, qRows, cvJob, staffNotes] = await Promise.all([
     prisma.application.findMany({
       where: { candidateId: app.candidateId, driveId: app.driveId },
-      include: { funnel: { select: { name: true } } },
+      include: { funnel: { select: { name: true } }, results: { select: { type: true, mode: true, normalized: true, status: true, gradedAt: true, createdAt: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] } },
       orderBy: { createdAt: "asc" },
     }),
     banks.length
@@ -147,7 +156,15 @@ export async function getCandidateView(applicationId: string, user: any) {
       orderBy: { createdAt: "desc" },
       select: { status: true },
     }),
+    prisma.auditLog.findMany({
+      where: { action: "STAFF_NOTE", meta: { contains: app.id } },
+      orderBy: { createdAt: "desc" }, take: 50,
+      include: { actor: { select: { name: true } } },
+    }),
   ]);
+  view.staffNotes = staffNotes.filter(note => uj<any>(note.meta)?.applicationId === app.id).map(note => ({
+    id: note.id, message: uj<any>(note.meta).message, author: note.actor.name, createdAt: note.createdAt.toISOString(),
+  }));
   view.siblingTracks = siblingTracks.map((track) => ({
     id: track.id,
     funnelName: trackLabel(track.funnel?.name || "Drive application", track.trackKey),
@@ -155,6 +172,8 @@ export async function getCandidateView(applicationId: string, user: any) {
     status: track.status,
     archived: track.status === "ARCHIVED",
   }));
+  const enabled = app.funnel ? (uj<any[]>(app.funnel.stages) || []).filter((stage) => stage.enabled !== false).map((stage) => stage.type) : ["CV_SCREENING"];
+  view.trackComparison = buildTrackComparison(app, siblingTracks, app.drive.tciWeights, enabled);
   if (qRows.length) {
     for (const q of qRows) {
       (view.questionsByBank[q.bank] ||= []).push({ number: q.number, content: uj(q.content) });

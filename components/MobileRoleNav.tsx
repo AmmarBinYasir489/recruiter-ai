@@ -1,3 +1,4 @@
+import { ActiveNavLink } from "@/components/ActiveNavLink";
 import Link from "next/link";
 import { logoutAction } from "@/app/login/actions";
 
@@ -15,7 +16,7 @@ export function MobileRoleNav({
         <form action={logoutAction}><button className="btn-ghost">Sign out</button></form>
       </div>
       <nav aria-label={`${title} navigation`} className="mt-2 flex gap-1 overflow-x-auto pb-1">
-        {links.map((link) => <Link key={link.href} href={link.href} className="nav-link whitespace-nowrap">{link.label}</Link>)}
+        {links.map((link) => <ActiveNavLink key={link.href} href={link.href} className="nav-link whitespace-nowrap">{link.label}</ActiveNavLink>)}
       </nav>
     </header>
   );

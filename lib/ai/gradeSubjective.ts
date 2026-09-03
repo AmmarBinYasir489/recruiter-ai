@@ -7,6 +7,7 @@
 // the caller still falls back to manual grading and never auto-advances.
 
 import { generateAiText } from "@/lib/ai/client";
+import { injectionWarnings } from "@/lib/ai/security";
 
 const PER_QUESTION_MAX: Record<string, number> = {
   CODING: 10,
@@ -44,7 +45,7 @@ function buildPrompt(type: string, items: GradingItem[]): string {
   const list = items
     .map(
       (it) =>
-        `Question ${it.number} (max ${it.maxScore} pts)${it.section ? ` [${it.section}]` : ""}:\n${it.prompt}\nCandidate answer:\n${it.answer || "(empty)"}`,
+        JSON.stringify({ questionNumber: it.number, maxPoints: it.maxScore, section: it.section, question: it.prompt, untrustedCandidateAnswer: it.answer || "(empty)" }),
     )
     .join("\n\n---\n\n");
   const keys = items.map((it) => `"${it.number}": { "score": <0..${it.maxScore}>, "feedback": "one sentence" }`).join(", ");
@@ -64,6 +65,7 @@ async function callAiText(prompt: string, timeoutMs = 25000): Promise<string> {
 
 export async function gradeSubjective(type: string, items: GradingItem[]): Promise<SubjectiveGrade | null> {
   if (!items.length) return null;
+  if (items.some((item) => injectionWarnings(item.answer).length)) throw new Error("Instruction-like content was detected. A human reviewer must grade this submission.");
   const text = await callAiText(buildPrompt(type, items));
   try {
     const json = text.match(/\{[\s\S]*\}/)?.[0];
@@ -75,9 +77,10 @@ export async function gradeSubjective(type: string, items: GradingItem[]): Promi
     let maxTotal = 0;
     for (const it of items) {
       const s = scoresObj[String(it.number)] || scoresObj[it.number] || {};
-      const raw = Number(s?.score);
-      const score = Number.isFinite(raw) ? Math.max(0, Math.min(it.maxScore, Math.round(raw))) : 0;
-      questions.push({ number: it.number, score, maxScore: it.maxScore, feedback: String(s?.feedback || "") });
+      const raw = s?.score;
+      if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 0 || raw > it.maxScore || typeof s.feedback !== "string") throw new Error(`Missing or invalid grade for question ${it.number}`);
+      const score = it.answer.trim() ? raw : 0;
+      questions.push({ number: it.number, score, maxScore: it.maxScore, feedback: s.feedback.slice(0, 1200) });
       total += score;
       maxTotal += it.maxScore;
     }

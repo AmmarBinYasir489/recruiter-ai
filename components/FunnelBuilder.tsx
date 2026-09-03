@@ -127,30 +127,9 @@ export function FunnelBuilder({ driveId, backHref }: { driveId: string; backHref
                 <input type="datetime-local" className="input" value={r.opensAt} onChange={(e) => update(i, { opensAt: e.target.value })} />
                 <p className="mt-1 text-[11px] text-slate-400">Selected candidates are notified now but cannot start before this time.</p>
               </div>
-              <div>
-                <label className="label">Grading</label>
-                <select className="input" value={r.gradingMode} disabled={AUTOMATIC_TYPES.has(r.type) || MANUAL_TYPES.has(r.type)} onChange={(e) => update(i, { gradingMode: e.target.value })}>
-                  <option value="AUTO">AUTO</option>
-                  <option value="MANUAL">MANUAL (reviewer)</option>
-                  <option value="AUTO_APPROVAL">AUTO_APPROVAL</option>
-                </select>
-                {(AUTOMATIC_TYPES.has(r.type) || MANUAL_TYPES.has(r.type)) && <p className="mt-1 text-[11px] text-slate-400">Fixed for this assessment type.</p>}
-              </div>
-              <div>
-                <label className="label">Pass →</label>
-                <select className="input" value={r.passAction} onChange={(e) => update(i, { passAction: e.target.value })}>
-                  <option value="NEXT">NEXT</option>
-                  <option value="ADVANCE_TO">ADVANCE_TO</option>
-                  <option value="OFFER">OFFER</option>
-                </select>
-              </div>
-              <div>
-                <label className="label">Fail →</label>
-                <select className="input" value={r.failAction} onChange={(e) => update(i, { failAction: e.target.value })}>
-                  <option value="REJECT">REJECT</option>
-                  <option value="HOLD">HOLD</option>
-                  <option value="MOVE_TO">MOVE_TO</option>
-                </select>
+              <div className="sm:col-span-2">
+                <p className="font-medium">Automatic scoring · staff approval</p>
+                <p className="mt-1 text-slate-500">Every submitted result stays on Hold. Staff applies a threshold or chooses Pass / Hold / Fail. Pass releases the next enabled phase.</p>
               </div>
             </div>
           )}

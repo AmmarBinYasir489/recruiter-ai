@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { trackLabel } from "@/lib/onsiteTrack";
+import { isOnsiteTrack } from "@/lib/onsiteTrack";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { Card, StatCard, SectionTitle, statusBadge, LinkButton, EmptyState } from "@/components/ui";
@@ -9,16 +9,14 @@ export const dynamic = "force-dynamic";
 export default async function CandidateDashboard() {
   const user = await getCurrentUser();
   if (!user) return null;
-  const [apps, notifications] = await Promise.all([
+  const [apps, unreadCount] = await Promise.all([
     prisma.application.findMany({
       where: { candidateId: user.id, status: { not: "ARCHIVED" } },
       include: { drive: true, funnel: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.notification.findMany({
+    prisma.notification.count({
       where: { userId: user.id, read: false },
-      orderBy: { createdAt: "desc" },
-      take: 5,
     }),
   ]);
 
@@ -35,10 +33,10 @@ export default async function CandidateDashboard() {
       <h1 className="text-2xl font-bold text-ink-900">Welcome, {user.name}</h1>
       <p className="text-slate-500 mb-6">Track your applications and stage progress.</p>
 
-      <div className="grid gap-4 sm:grid-cols-3 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 mb-8">
         <StatCard label="Applications" value={applicationsByDrive.length} />
-        <StatCard label="Active funnel tracks" value={activeTracks} />
-        <StatCard label="Unread" value={notifications.length} />
+
+        <StatCard label="Unread" value={unreadCount} />
       </div>
 
       <SectionTitle
@@ -56,24 +54,20 @@ export default async function CandidateDashboard() {
               <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
                   <h3 id={`drive-${driveId}`} className="font-bold text-ink-900">{tracks[0].drive.name}</h3>
-                  <p className="text-sm text-slate-500">
-                    {tracks.length === 1
-                      ? "1 recruitment-assigned assessment track"
-                      : `${tracks.length} recruitment-assigned tracks · complete each active track separately`}
-                  </p>
+
                 </div>
-                {tracks.length > 1 && <span className="badge-info">{tracks.length} funnels</span>}
+
               </div>
               {tracks.map((track) => (
                 <Card key={track.id} hover>
                   <Link href={`/candidate/application/${track.id}`} className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-semibold text-ink-900">{trackLabel(track.funnel?.name || "Drive application", track.trackKey)}</p>
+                      <p className="font-semibold text-ink-900">{isOnsiteTrack(track.trackKey) ? "Onsite assessment" : "Application progress"}</p>
                       <p className="text-sm text-slate-500">
-                        Current step: <b>{track.currentStage || "—"}</b> · Reference {track.id.slice(0, 8).toUpperCase()}
+                        Current step: <b>{({ CV_SCREENING: "CV screening", CCAT: "CCAT / IQ", MTT: "Math thinking test", ENGLISH_SPEAKING: "English speaking", PROMPT: "Prompt engineering", FINAL: "Final review" } as Record<string, string>)[track.currentStage || ""] || track.currentStage?.toLowerCase().replaceAll("_", " ") || "Application review"}</b>
                       </p>
                       <p className={`mt-1 text-xs font-medium ${track.phaseReleased ? "text-brand-700" : "text-slate-400"}`}>
-                        {track.phaseReleased ? "Action available — open this track to continue" : "Waiting for the recruitment team to release the next action"}
+                        {["OFFERED", "HIRED"].includes(track.status) ? "You have been selected — open for details" : track.status === "REJECTED" ? "Application reviewed — open for details" : track.phaseReleased ? "Open your application to continue" : track.status === "HOLD" ? "Under review — no action needed" : "Waiting for the recruitment team's next update"}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">{statusBadge(track.status)}</div>

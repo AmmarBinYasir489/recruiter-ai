@@ -1,5 +1,9 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
+import nextEnv from "@next/env";
+
+// Both the Next server and the worker inherit the same local configuration.
+nextEnv.loadEnvConfig(process.cwd(), true);
 
 const root = process.cwd();
 const nextBin = join(root, "node_modules", "next", "dist", "bin", "next");

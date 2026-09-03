@@ -1,12 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CandidateWorkspace } from "@/components/candidate/CandidateWorkspace";
 import { ActionFeedbackDialog } from "@/components/ActionFeedbackDialog";
 import { decisionBadge, statusBadge } from "@/components/ui";
 import {
-  advanceSelectedAction,
+  passSelectedAction,
+  holdSelectedAction,
   rejectSelectedAction,
   offerSelectedAction,
   requestRetestsAction,
@@ -20,6 +21,8 @@ type AnyObj = Record<string, any>;
 
 export function CandidateAccordion({ views, initialApplicationId }: { views: AnyObj[]; initialApplicationId?: string }) {
   const router = useRouter();
+  const [ready, setReady] = useState(false);
+  useEffect(() => { setReady(true); }, []);
   const [openId, setOpenId] = useState<string | null>(() => initialApplicationId && views.some((view) => view.application.id === initialApplicationId) ? initialApplicationId : null);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
@@ -34,12 +37,15 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   const [activeTrackByRow, setActiveTrackByRow] = useState<Record<string, string>>({});
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<Record<string, string>>({});
+  const inFlight = useRef(new Set<string>());
 
   const summaryVersion = useMemo(
     () => views.map((view) => [view.application.id, view.application.status, view.application.currentStage, view.application.cvScore, view.application.refreshKey, JSON.stringify(view.application.scores)].join(":" )).join("|"),
     [views],
   );
   const loadDetail = useCallback(async (id: string) => {
+    if (inFlight.current.has(id)) return;
+    inFlight.current.add(id);
     setDetailLoading(id);
     setDetailError((current) => ({ ...current, [id]: "" }));
     try {
@@ -50,15 +56,29 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setDetailError((current) => ({ ...current, [id]: error instanceof Error ? error.message : "Could not load candidate details." }));
     } finally {
+      inFlight.current.delete(id);
       setDetailLoading((current) => current === id ? null : current);
     }
   }, []);
 
   useEffect(() => {
-    setDetailViews({});
-    setActiveTrackByRow({});
-    if (openId) void loadDetail(openId);
-  }, [summaryVersion, openId, loadDetail]);
+    if (openId) void loadDetail(activeTrackByRow[openId] || openId);
+  }, [summaryVersion, openId, activeTrackByRow, loadDetail]);
+
+  useEffect(() => {
+    if (initialApplicationId) setOpenId(initialApplicationId);
+  }, [initialApplicationId]);
+
+  // Refresh the existing workspace, without unmounting its forms or changing tracks.
+  useEffect(() => {
+    if (!openId) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible" && !busy) void loadDetail(activeTrackByRow[openId] || openId);
+    };
+    const timer = window.setInterval(refresh, 5000);
+    window.addEventListener("focus", refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+  }, [openId, activeTrackByRow, busy, loadDetail]);
 
   const allIds = views.map((v) => v.application.id);
   const toggle = (id: string) =>
@@ -72,7 +92,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   }).filter(Boolean);
   const selectedDriveIds = new Set(selectedViews.map((view) => view.application.driveId));
   const selectedTracksMutable = selectedTrackViews.length > 0 && selectedTrackViews.every((view) => view.application.status !== "ARCHIVED");
-  const canBulkAssign = selectedViews.length > 0 && selectedTracksMutable && selectedDriveIds.size === 1 && selectedViews.every((view) => ["PASS", "FAIL"].includes(view.application.cvResult));
+  const canBulkAssign = selectedViews.length > 0 && selectedTracksMutable && selectedDriveIds.size === 1 && selectedViews.every((view) => view.application.cvScore != null && !["PROCESSING", "FAILED"].includes(view.application.cvResult));
   const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
   const allSelectedAssigned = selectedTracksMutable && selectedTrackViews.every((view) => view.application.funnelId);
@@ -85,9 +105,9 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     setBusy(true);
     setFeedback(null);
     try {
-      const result = await advanceSelectedAction(selectedApplicationIds);
+      const result = await passSelectedAction(selectedApplicationIds);
       if ("error" in result) throw new Error(result.error);
-      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} moved to the next phase. No test result was changed.` });
+      setFeedback({ kind: "success", message: `${result.count} candidate${result.count === 1 ? "" : "s"} passed; their next assessment was approved.` });
       setSelected([]);
       router.refresh();
     } catch (error) {
@@ -146,7 +166,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
       } finally { setBusy(false); }
       return;
     }
-    if (!window.confirm(`Issue ${bulkTestType} in ${bulkTestMode.toLowerCase()} mode for ${selected.length} selected candidate(s)? Their present funnel position will be restored after this additional attempt.`)) return;
+    if (!window.confirm(`Issue ${bulkTestType} in ${bulkTestMode.toLowerCase()} mode for ${selected.length} selected candidate(s)? Previous results are preserved. The new submission will wait for a staff decision.`)) return;
     setBusy(true);
     setFeedback(null);
     try {
@@ -224,26 +244,28 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   }
 
   return (
-    <div data-auto-refresh-pause={openId ? "true" : undefined}>
+    <div data-auto-refresh-pause={busy ? "true" : undefined}>
       {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
       <Card2>
-        <table className="w-full min-w-0 max-w-full table-fixed text-sm">
+        <table className="candidate-table w-full min-w-0 max-w-full table-fixed text-sm tabular-nums">
           <thead>
             <tr className="text-left text-slate-500 border-b border-slate-100">
               <th className="p-3 w-8">
                 <input
                   type="checkbox"
                   aria-label="Select all"
+                  disabled={!ready || busy}
                   checked={allIds.length > 0 && selected.length === allIds.length}
                   onChange={toggleAll}
                 />
               </th>
-              <th className="p-3 w-[20%]">Candidate</th>
-              <th className="p-3 w-[17%]">Drive</th>
-              <th className="p-3 w-[12%]">Stage</th>
-              <th className="p-3 w-[12%]">CV</th>
-              <th className="p-3 w-[10%]">CCAT</th>
-              <th className="p-3 w-[10%]">MTT</th>
+              <th className="p-3 w-[19%]">Candidate</th>
+              <th className="p-3 w-[16%]">Drive</th>
+              <th className="p-3 w-[10%]">Stage</th>
+              <th className="p-3 w-[9%]">CV</th>
+              <th className="p-3 w-[7%]">CCAT</th>
+              <th className="p-3 w-[7%]">MTT</th>
+              <th className="p-3 w-[14%]">Total /100</th>
               <th className="p-3 w-[14%]">Status</th>
             </tr>
           </thead>
@@ -261,33 +283,37 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
                       <input
                         type="checkbox"
                         aria-label={`Select ${v.candidate.name}`}
+                        disabled={!ready || busy}
                         checked={isSel}
                         onChange={() => toggle(id)}
                       />
                     </td>
                     <td className="p-3">
                       <button
+                        aria-expanded={open}
+                        disabled={!ready}
                         onClick={() => setOpenId(open ? null : id)}
                         className="font-semibold text-brand-700 hover:underline text-left"
                       >
                         {v.candidate.name}
                       </button>
-                      <div className="text-xs text-slate-400">{v.candidate.email}</div>
+                      <div className="break-words text-xs text-slate-400">{v.candidate.email}</div>
                       {v.application.trackCount > 1 && <div className="mt-1 text-xs font-medium text-brand-700">{v.application.trackCount} funnel tracks</div>}
                     </td>
-                    <td className="p-3 text-slate-600">
+                    <td data-label="Drive" className="p-3 text-slate-600">
                       <div>{v.application.driveName}</div>
                       <div className="text-xs font-medium text-brand-700">{v.application.funnelName || "Applicant pool"}</div>
                     </td>
-                    <td className="p-3">{v.application.currentStage || "—"}</td>
-                    <td className="p-3">{v.application.cvScore ?? "—"} {v.application.cvResult && decisionBadge(v.application.cvResult)}</td>
-                    <td className="p-3">{scores.CCAT ?? "—"}</td>
-                    <td className="p-3">{scores.MTT ?? "—"}</td>
-                    <td className="p-3">{statusBadge(v.application.status)}</td>
+                    <td data-label="Current phase" className="p-3">{v.application.currentStage || "—"}</td>
+                    <td data-label="CV" className="p-3">{v.application.cvScore ?? "—"} {v.application.cvResult && decisionBadge(v.application.cvResult)}</td>
+                    <td data-label="CCAT" className="p-3">{scores.CCAT ?? "—"}</td>
+                    <td data-label="MTT" className="p-3">{scores.MTT ?? "—"}</td>
+                    <td data-label="Total" className="p-3"><span className="font-semibold">{v.application.overall?.total ?? 0}/100</span><p className="text-xs text-slate-500">{v.application.overall?.gradedCount ?? 0}/{v.application.overall?.assessmentCount ?? 0} graded{!v.application.overall?.complete ? " · provisional" : ""}</p></td>
+                    <td data-label="Status" className="p-3">{statusBadge(v.application.status)}</td>
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan={8} className="p-0 w-full min-w-0 max-w-0 overflow-hidden">
+                      <td colSpan={9} className="p-0 w-full min-w-0 max-w-0 overflow-hidden">
                         <div className="p-4 bg-slate-50/60 min-w-0">
                           {detailViews[activeTrackId]
                               ? <CandidateWorkspace
@@ -311,14 +337,14 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
               );
             })}
             {views.length === 0 && (
-              <tr><td colSpan={8} className="p-6 text-center text-slate-400">No candidates match the filters.</td></tr>
+              <tr><td colSpan={9} className="p-6 text-center text-slate-400">No candidates match the filters.</td></tr>
             )}
           </tbody>
         </table>
       </Card2>
 
       {selected.length > 0 && (
-        <div className="sticky bottom-4 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-lg" aria-label="Bulk candidate actions">
+        <div className="md:sticky md:bottom-4 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-lg" aria-label="Bulk candidate actions">
           <span className="text-sm font-semibold text-ink-900">{selected.length} selected</span>
           {!selectedTracksMutable && <span className="text-xs font-medium text-amber-700">Historical funnel tracks are read-only. Select an active track to use bulk actions.</span>}
           {canBulkAssign && <>
@@ -337,13 +363,14 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
           </>}
           {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
           {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened applicants from the same drive.</span>}
-          {canMoveNext && <button className="btn-primary whitespace-nowrap" disabled={busy} onClick={runIssue}>Move to next stage</button>}
+          <button className="btn-ghost whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={async () => { setBusy(true); try { const result = await holdSelectedAction(selectedApplicationIds); setFeedback("error" in result ? { kind: "error", message: result.error || "Could not save decision." } : { kind: "success", message: `${result.count} candidates held.` }); router.refresh(); } catch { setFeedback({ kind: "error", message: "Could not hold candidates." }); } finally { setBusy(false); } }}>Hold</button>
+          <button className="btn-primary whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runIssue}>Pass</button>
           {canInviteOnsite && <>
             <input type="datetime-local" className="input min-w-52" aria-label="Onsite screening date and time" value={onsiteDate} onChange={(event) => setOnsiteDate(event.target.value)} />
             <input className="input min-w-48" aria-label="Onsite screening location" placeholder="Onsite location" value={onsiteLocation} onChange={(event) => setOnsiteLocation(event.target.value)} />
             <button className="btn-primary whitespace-nowrap" disabled={busy || !onsiteDate} onClick={runOnsiteInvites}>Send onsite invitations</button>
           </>}
-          <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runOffer}>Offer</button>
+          <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable || !selectedTrackViews.every((view) => view.application.currentStage === "FINAL")} onClick={runOffer}>Offer</button>
           {canIssueTest && <>
             {bulkTestMode === "ONLINE" && <select className="input min-w-40" aria-label="Bulk assessment type" value={bulkTestType} onChange={(event) => setBulkTestType(event.target.value)}>
               <option value="CCAT">CCAT / IQ</option>
@@ -363,7 +390,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
             {bulkTestMode === "ONSITE" && <p className="w-full text-sm text-slate-600">Choose the funnel above. A separate onsite session runs every enabled test in order, then waits for staff review. Existing online progress and scores are preserved.</p>}
             {!validBulkRetest && <span className="text-xs text-amber-700">Online reissue must match every selected track’s current stage.</span>}
           </>}
-          <button className="btn-danger whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runReject}>Reject</button>
+          <button className="btn-danger whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runReject}>Fail</button>
           <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" disabled={!selectedTracksMutable} />
           <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable || !message.trim()} onClick={runNotify}>Send notification</button>
           <button className="btn-ghost whitespace-nowrap" disabled={busy} onClick={() => setSelected([])}>Clear</button>

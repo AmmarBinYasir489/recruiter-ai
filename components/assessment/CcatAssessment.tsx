@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { submitAutoTestAction } from "@/app/candidate/actions";
 import { ProctorMonitor } from "@/components/ProctorMonitor";
 
@@ -26,6 +26,19 @@ export function CcatAssessment({
 }) {
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(`assessment:${attemptId}`) || "null");
+      if (saved?.answers && typeof saved.answers === "object") setAnswers(saved.answers);
+      if (Number.isInteger(saved?.current)) setCurrent(Math.max(0, Math.min(questions.length - 1, saved.current)));
+    } catch { /* Storage may be unavailable; the assessment remains usable. */ }
+    setLoaded(true);
+  }, [attemptId, questions.length]);
+  useEffect(() => {
+    if (loaded) { try { sessionStorage.setItem(`assessment:${attemptId}`, JSON.stringify({ answers, current })); } catch { /* Optional recovery only. */ } }
+  }, [answers, current, loaded, attemptId]);
   const question = questions[current];
   if (!question) return <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">No CCAT questions are available.</p>;
 
@@ -33,7 +46,8 @@ export function CcatAssessment({
   const isLast = current === questions.length - 1;
 
   return (
-    <form action={submitAutoTestAction.bind(null, applicationId, type)} className="select-none">
+    <form onKeyDown={event => { if (event.key === "Enter" && event.target instanceof HTMLInputElement) event.preventDefault(); }} action={async (formData) => { setError(""); const result = await submitAutoTestAction(applicationId, type, formData); if (result?.error) setError(result.error); }} className="select-none">
+      {error && <p role="alert" className="mb-4 rounded-xl bg-rose-50 p-3 text-rose-700">{error}</p>}
       <ProctorMonitor stage={type} applicationId={applicationId} attemptId={attemptId} />
       <div className="mb-4 flex items-center justify-between gap-4 text-sm">
         <span className="font-semibold text-ink-900">Question {current + 1} of {questions.length}</span>
@@ -62,7 +76,7 @@ export function CcatAssessment({
                 />
                 {item.optionImages?.[optionIndex]
                   ? <img src={item.optionImages[optionIndex]} alt={`Option ${String.fromCharCode(65 + optionIndex)}`} className="max-h-24 w-auto object-contain" />
-                  : <span><b>{String.fromCharCode(65 + optionIndex)}.</b> {option}</span>}
+                  : <span className="min-w-0 break-words"><b>{String.fromCharCode(65 + optionIndex)}.</b> {option}</span>}
               </label>
             ))}
           </div> : <input type="text" inputMode="numeric" pattern="-?[0-9]+(?:\\.[0-9]+)?" name={`a${item.number}`} value={answers[item.number] || ""} onChange={(event) => setAnswers((existing) => ({ ...existing, [item.number]: event.target.value }))} className="input mt-5 w-36 select-text" autoComplete="off" required />}

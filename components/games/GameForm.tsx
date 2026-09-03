@@ -6,8 +6,9 @@ import { Card } from "@/components/ui";
 import { ProctorMonitor } from "@/components/ProctorMonitor";
 import { GamesAssessment } from "@/components/games/GamesAssessment";
 import { shouldPreventGameFormKey } from "@/lib/games/keyboard";
+import type { WordSearchPuzzle } from "@/lib/games/wordSearch";
 
-export function GameForm({ applicationId, attemptId }: { applicationId: string; attemptId: string }) {
+export function GameForm({ applicationId, attemptId, puzzle }: { applicationId: string; attemptId: string; puzzle: WordSearchPuzzle }) {
   function preventEnterSubmit(event: KeyboardEvent<HTMLFormElement>) {
     if (!shouldPreventGameFormKey(event.key)) return;
     event.preventDefault();
@@ -28,7 +29,7 @@ export function GameForm({ applicationId, attemptId }: { applicationId: string; 
       <ProctorMonitor stage="GAMES" applicationId={applicationId} attemptId={attemptId} />
       <Card className="space-y-3">
         <p className="text-sm text-slate-600">Complete all three Neodým cognitive games. Accuracy and completion time are scored securely.</p>
-        <GamesAssessment />
+        <GamesAssessment puzzle={puzzle} attemptId={attemptId} />
         <p id="game-submit-help" className="text-xs text-slate-500">Pressing Enter does not submit this assessment. Use the button and confirm when all three games are complete.</p>
         <button type="submit" className="btn-primary" aria-describedby="game-submit-help" onClick={confirmSubmission}>Submit completed games</button>
       </Card>

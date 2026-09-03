@@ -21,7 +21,11 @@ async function ensurePrivateBucket() {
   const client = getSupabaseAdmin();
   const bucket = cvBucketName();
   const { data, error } = await client.storage.getBucket(bucket);
-  if (data && !error) return bucket;
+  if (data && !error) {
+    if (data.public) throw new Error("CV storage must be private. Ask the administrator to correct the bucket configuration.");
+    if (!data.file_size_limit || data.file_size_limit > MAX_CV_BYTES) throw new Error("CV storage must enforce a maximum upload size of 10 MB before signed uploads are enabled.");
+    return bucket;
+  }
   const { error: createError } = await client.storage.createBucket(bucket, {
     public: false,
     fileSizeLimit: MAX_CV_BYTES,
@@ -56,11 +60,20 @@ export async function storeCvFile(appId: string, fileName: string, mime: string,
     return `${SUPABASE_PREFIX}${bucket}/${objectPath}`;
   }
 
+  if (process.env.NODE_ENV === "production") throw new Error("Private Supabase storage is required in production.");
   const dir = path.join(process.cwd(), "uploads", appId);
   await fs.promises.mkdir(dir, { recursive: true });
   const full = path.join(dir, `${crypto.randomUUID()}-${safeName(fileName)}`);
   await fs.promises.writeFile(full, buf);
   return full;
+}
+
+export async function prepareDirectCvUpload(appId: string, fileName: string) {
+  const bucket = await ensurePrivateBucket();
+  const objectPath = `applications/${appId}/${crypto.randomUUID()}-${safeName(fileName)}`;
+  const { data, error } = await getSupabaseAdmin().storage.from(bucket).createSignedUploadUrl(objectPath, { upsert: false });
+  if (error || !data) throw new Error("Could not prepare a secure upload.");
+  return { signedUrl: data.signedUrl, storagePath: `${SUPABASE_PREFIX}${bucket}/${objectPath}` };
 }
 
 export async function readCvFile(storagePath: string): Promise<Buffer> {

@@ -1,4 +1,5 @@
 import { getAiRuntimeConfig, type AiRuntimeConfig } from "@/lib/ai/config";
+import { ASSESSMENT_SYSTEM_RULES } from "@/lib/ai/security";
 
 interface GenerateOptions {
   prompt: string;
@@ -23,7 +24,7 @@ async function callWithKey(config: AiRuntimeConfig, key: string, options: Genera
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({ contents: [{ parts }], ...(options.json ? { generationConfig: { responseMimeType: "application/json" } } : {}) }),
+      body: JSON.stringify({ systemInstruction: { parts: [{ text: ASSESSMENT_SYSTEM_RULES }] }, contents: [{ parts }], ...(options.json ? { generationConfig: { responseMimeType: "application/json" } } : {}) }),
       signal,
     });
     const body = await response.json().catch(() => ({}));
@@ -37,7 +38,7 @@ async function callWithKey(config: AiRuntimeConfig, key: string, options: Genera
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] }),
+      body: JSON.stringify({ model, system: ASSESSMENT_SYSTEM_RULES, max_tokens: 4096, messages: [{ role: "user", content: prompt }] }),
       signal,
     });
     const body = await response.json().catch(() => ({}));
@@ -51,7 +52,7 @@ async function callWithKey(config: AiRuntimeConfig, key: string, options: Genera
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({ model, input: prompt }),
+      body: JSON.stringify({ model, instructions: ASSESSMENT_SYSTEM_RULES, input: prompt }),
       signal,
     });
     const body = await response.json().catch(() => ({}));
@@ -72,7 +73,7 @@ async function callWithKey(config: AiRuntimeConfig, key: string, options: Genera
   const response = await fetch(endpoint, {
     method: "POST",
     headers,
-    body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }], ...(options.json ? { response_format: { type: "json_object" } } : {}) }),
+    body: JSON.stringify({ model, messages: [{ role: "system", content: ASSESSMENT_SYSTEM_RULES }, { role: "user", content: prompt }], ...(options.json ? { response_format: { type: "json_object" } } : {}) }),
     signal,
   });
   const body = await response.json().catch(() => ({}));
@@ -107,4 +108,3 @@ export async function testAiProvider(config: AiRuntimeConfig) {
     return { ok: false, message: error instanceof Error ? error.message : "Connection failed." };
   }
 }
-

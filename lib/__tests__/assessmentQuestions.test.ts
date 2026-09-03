@@ -36,7 +36,7 @@ describe("per-attempt question selection", () => {
     expect(selectedDifficulties.filter((value) => value === "HARD")).toHaveLength(26);
   });
 
-  it("serves MTT as three point-safe sections of ten", () => {
+  it("shuffles MTT while keeping ten questions at each point value", () => {
     const mtt = [3, 4, 5].flatMap((points) =>
       Array.from({ length: 12 }, (_, index) => ({
         number: `${points}-${index}`,
@@ -45,9 +45,9 @@ describe("per-attempt question selection", () => {
     );
     const selected = selectAttemptQuestions(mtt, "mtt-attempt", "MTT");
     expect(selected).toHaveLength(30);
-    expect(selected.slice(0, 10).every((question) => JSON.parse(question.content).points === 3)).toBe(true);
-    expect(selected.slice(10, 20).every((question) => JSON.parse(question.content).points === 4)).toBe(true);
-    expect(selected.slice(20).every((question) => JSON.parse(question.content).points === 5)).toBe(true);
+    expect(selected.filter((question) => JSON.parse(question.content).points === 3)).toHaveLength(10);
+    expect(selected.filter((question) => JSON.parse(question.content).points === 4)).toHaveLength(10);
+    expect(selected.filter((question) => JSON.parse(question.content).points === 5)).toHaveLength(10);
   });
 
   it("supports the original MTT bank without explicit point metadata", () => {
@@ -55,8 +55,8 @@ describe("per-attempt question selection", () => {
     const selected = selectAttemptQuestions(legacy, "legacy-mtt-attempt", "MTT");
 
     expect(selected).toHaveLength(30);
-    expect(selected.slice(0, 10).every((question) => question.number <= 10)).toBe(true);
-    expect(selected.slice(10, 20).every((question) => question.number >= 11 && question.number <= 20)).toBe(true);
-    expect(selected.slice(20).every((question) => question.number >= 21)).toBe(true);
+    expect(selected.filter((question) => question.number <= 10)).toHaveLength(10);
+    expect(selected.filter((question) => question.number >= 11 && question.number <= 20)).toHaveLength(10);
+    expect(selected.filter((question) => question.number >= 21)).toHaveLength(10);
   });
 });

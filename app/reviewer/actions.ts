@@ -26,6 +26,7 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
     include: { application: { include: { drive: true, funnel: true } } },
   });
   if (!result) return { error: "Not found." };
+  if (["COMPLETED", "ARCHIVED"].includes(result.application.drive.status)) return { error: "This drive is read-only." };
   if (!reviewerCanGrade(user, result.type, result.application.funnel)) return { error: "Not assigned to this assessment." };
   if (result.gradedAt && result.status !== "MANUAL_REVIEW") {
     return { ok: true, normalized: result.normalized, status: result.status, alreadyGraded: true };
@@ -88,7 +89,7 @@ export async function gradeAssessmentAction(resultId: string, formData: FormData
       where: { id: app.id },
       data: {
         scores: j(scores),
-        ...(!isOnsiteTrack(app.trackKey) && app.currentStage === result.type ? { phaseReleased: false, status: "IN_PROGRESS" } : {}),
+        ...(app.currentStage === result.type && !["ARCHIVED", "REJECTED", "OFFERED", "HIRED"].includes(app.status) ? { phaseReleased: false, status: "HOLD" } : {}),
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: result.type, status, at: new Date().toISOString(), note: `Graded by reviewer: ${normalized}/100` }]),
       },
     });

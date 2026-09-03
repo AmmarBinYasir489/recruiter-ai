@@ -28,6 +28,8 @@ import {
   requestRetestAction,
   manualPassAction,
   advanceApplicationAction,
+  holdApplicationAction,
+  decideCandidateAction,
   assignCandidateFunnelAction,
   assignOnsiteFunnelAction,
 } from "@/app/recruiter/actions";
@@ -55,7 +57,7 @@ const fakeFile = (name: string, text: string, type = "text/plain") =>
 const ctx: any = {};
 
 describe("onsite bulk session", () => {
-  it("preserves online scores, runs through failed and subjective tests, and never rewinds on review", async () => {
+  it("requires staff approval after every onsite submission and preserves online scores", async () => {
     const funnel = await prisma.funnel.create({ data: {
       driveId: ctx.driveA.id, name: "QA onsite session", published: true, version: 1,
       stages: j(["CV_SCREENING", "CCAT", "CODING", "GAMES", "ONSITE", "FINAL"].map((type, order) => ({ id: type, name: type, type, order, enabled: true, passScore: 99, durationMin: 20, failAction: "REJECT", assignedReviewers: ["qa-rev"] }))),
@@ -72,19 +74,27 @@ describe("onsite bulk session", () => {
       authState.user = { id: "c12", role: "candidate" };
       await startAssessmentAction(onsite.id, "CCAT");
       await act(submitAutoTestAction(onsite.id, "CCAT", new FormData()));
-      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "CODING", phaseReleased: true });
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "CCAT", phaseReleased: false, status: "HOLD" });
+      authState.user = { id: "qa-rec", role: "recruiter" };
+      expect(await manualPassAction(onsite.id, "CCAT")).toMatchObject({ ok: true });
+      authState.user = { id: "c12", role: "candidate" };
       const coding = await startAssessmentAction(onsite.id, "CODING");
       await act(submitSubjectiveAction(onsite.id, "CODING", fd({ attemptId: (coding as any).attempt.id, answer: "A synthetic QA answer" })));
-      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "GAMES", phaseReleased: true });
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "CODING", phaseReleased: false, status: "HOLD" });
       const pending = await prisma.assessmentResult.findFirstOrThrow({ where: { applicationId: onsite.id, type: "CODING" } });
       authState.user = { id: "qa-rev", role: "reviewer" };
       const answers = JSON.parse(pending.answers || "{}");
       const grades = fd(Object.fromEntries((answers.items || []).map((item: any) => [`questionScore_${item.number}`, "1"])));
       await gradeAssessmentAction(pending.id, grades);
-      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "GAMES", phaseReleased: true });
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "CODING", phaseReleased: false, status: "HOLD" });
+      authState.user = { id: "qa-rec", role: "recruiter" };
+      expect(await manualPassAction(onsite.id, "CODING")).toMatchObject({ ok: true });
       authState.user = { id: "c12", role: "candidate" };
       const games = await startAssessmentAction(onsite.id, "GAMES");
       await act(submitGameAction(onsite.id, fd({ attemptId: (games as any).attempt.id })));
+      expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "GAMES", phaseReleased: false, status: "HOLD" });
+      authState.user = { id: "qa-rec", role: "recruiter" };
+      expect(await manualPassAction(onsite.id, "GAMES")).toMatchObject({ ok: true });
       expect(await prisma.application.findUnique({ where: { id: onsite.id } })).toMatchObject({ currentStage: "FINAL", phaseReleased: false, status: "HOLD" });
       const results = await prisma.assessmentResult.findMany({ where: { applicationId: onsite.id } });
       expect(results).toHaveLength(3);
@@ -99,6 +109,7 @@ describe("onsite bulk session", () => {
 });
 
 beforeAll(async () => {
+  if (!process.env.DATABASE_URL?.endsWith("/qa.db")) throw new Error("QA database required.");
   await prisma.application.deleteMany();
   await prisma.assessmentResult.deleteMany();
   await prisma.assessmentAttempt.deleteMany();
@@ -178,7 +189,7 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
     expect(job.status).toBe("COMPLETED");
     expect((job.extractedText ?? "").length).toBeGreaterThan(0);
     const scored = await prisma.application.findUnique({ where: { id: app!.id } })!;
-    expect(scored!.cvResult).toBe("PASS");
+    expect(scored!.cvResult).toBe("HOLD");
     expect(scored!.currentStage).toBe("CV_SCREENING");
     expect(scored!.phaseReleased).toBe(false);
     expect(scored!.status).toBe("HOLD");
@@ -363,31 +374,29 @@ describe("2. Per-phase threshold preview/apply, re-eval, notifications, isolatio
     await prisma.notification.create({ data: { userId: "c6", type: "CV_RESULT", message: "initB", read: true, relatedAppId: apps.b.id } });
   });
 
-  it("marks automatic threshold changes as future-only", async () => {
+  it("previews scored waiting candidates without mutating them", async () => {
     authState.user = { id: "qa-rec", role: "recruiter" };
     const p = (await previewPhaseThresholdAction(ctx.funnelA.id, "CV_SCREENING", 70))!;
     expect(p).toBeTruthy();
-    expect(p.futureOnly).toBe(true);
-    expect(p.eligible).toBe(0);
-    expect(p.passToFail).toBe(0);
-    expect(p.failToPass).toBe(0);
-    expect(p.unchanged).toBe(0);
+    expect(p.eligible).toBe(3);
+    expect(p.passing).toBe(1);
+    expect(p.holding).toBe(2);
     expect((await prisma.application.findUnique({ where: { id: apps.mid.id } }))!.cvResult).toBe("PASS");
   });
 
-  it("applies automatic thresholds to future submissions without rewriting progressed candidates", async () => {
+  it("approves qualifying waiting candidates and holds others without rewriting progressed candidates", async () => {
     authState.user = { id: "qa-rec", role: "recruiter" };
     const before = await prisma.notification.count({ where: { userId: "c4" } });
     const r = await act(applyPhaseThresholdAction(ctx.funnelA.id, "CV_SCREENING", 70, 60));
-    expect(r).toEqual({ __redirected: true } as any);
-    expect((await prisma.application.findUnique({ where: { id: apps.mid.id } }))!.cvResult).toBe("PASS");
+    expect(r).toEqual({ ok: true, count: 3 });
+    expect((await prisma.application.findUnique({ where: { id: apps.mid.id } }))!.cvResult).toBe("HOLD");
     expect((await prisma.application.findUnique({ where: { id: apps.high.id } }))!.cvResult).toBe("PASS");
     const lowRec = await prisma.application.findUnique({ where: { id: apps.low.id } });
-    expect(lowRec!.cvResult).toBe("FAIL");
-    expect(await prisma.notification.count({ where: { userId: "c4" } })).toBe(before);
+    expect(lowRec!.cvResult).toBe("HOLD");
+    expect(await prisma.notification.count({ where: { userId: "c4" } })).toBe(before + 1);
     const tc = await prisma.thresholdChange.findFirst({ where: { funnelId: ctx.funnelA.id, phaseType: "CV_SCREENING" }, orderBy: { createdAt: "desc" } });
     expect(tc!.passToFail).toBe(0);
-    expect(tc!.affected).toBe(0);
+    expect(tc!.affected).toBe(3);
   });
 
   it("funnel isolation: funnelA change does not touch funnelB", async () => {
@@ -410,9 +419,8 @@ describe("2. Per-phase threshold preview/apply, re-eval, notifications, isolatio
     authState.user = { id: "qa-rec", role: "recruiter" };
     await prisma.assessmentResult.create({ data: { applicationId: apps.high.id, type: "CCAT", status: "PASS", normalized: 78, answers: "[]" } });
     const p = (await previewPhaseThresholdAction(ctx.funnelA.id, "CCAT", 90))!;
-    expect(p.futureOnly).toBe(true);
     expect(p.eligible).toBe(0);
-    expect(p.passToFail).toBe(0);
+    expect(p.passing).toBe(0);
     await act(applyPhaseThresholdAction(ctx.funnelA.id, "CCAT", 90, 55));
     const ccRes = await prisma.assessmentResult.findFirst({ where: { applicationId: apps.high.id, type: "CCAT" } });
     const cvr = await prisma.application.findUnique({ where: { id: apps.high.id } });
@@ -430,14 +438,14 @@ describe("3. Gated phase release", () => {
       low: await prisma.application.findFirst({ where: { candidateId: "c5" } }),
     };
   });
-  it("does not allow manual issuance for an automatic phase", async () => {
+  it("does not reissue a phase to candidates who already progressed", async () => {
     authState.user = { id: "qa-rec", role: "recruiter" };
     const nHigh = await prisma.notification.count({ where: { userId: "c3" } });
     const r = await act(issueNextPhaseAction(ctx.funnelA.id, "CV_SCREENING", [], "passing"));
-    expect((r as any).error).toMatch(/automatically/i);
+    expect(r).toMatchObject({ ok: true, count: 0 });
     const high = await prisma.application.findUnique({ where: { id: apps.high.id } });
-    expect(high!.phaseReleased).toBe(false);
-    expect(high!.currentStage).toBe("CV_SCREENING");
+    expect(high!.phaseReleased).toBe(true);
+    expect(high!.currentStage).toBe("CCAT");
     expect((await prisma.application.findUnique({ where: { id: apps.mid.id } }))!.phaseReleased).toBe(false);
     expect((await prisma.application.findUnique({ where: { id: apps.low.id } }))!.phaseReleased).toBe(false);
     expect(await prisma.notification.count({ where: { userId: "c3" } })).toBe(nHigh);
@@ -629,8 +637,8 @@ describe("7b. Independent multi-funnel tracks", () => {
     expect(await prisma.application.count({ where: { candidateId: "c-track", driveId: ctx.driveA.id } })).toBe(2);
 
     const skipped = await advanceApplicationAction(newTrack!.id);
-    expect((skipped as any).ok).toBe(true);
-    expect(await prisma.application.findUnique({ where: { id: newTrack!.id } })).toMatchObject({ currentStage: "FINAL", status: "HOLD" });
+    expect((skipped as any).error).toMatch(/completed, scored/);
+    expect(await prisma.application.findUnique({ where: { id: newTrack!.id } })).toMatchObject({ currentStage: "MTT" });
 
     const moveFunnel = await prisma.funnel.create({
       data: {
@@ -742,5 +750,53 @@ describe("9. Retest (re-issue), manual pass override, integrity summary", () => 
     expect(updated!.status).toBe("IN_PROGRESS");
     expect(updated!.currentStage).toBe("CODING"); // next stage after CCAT in funnelA
     expect((JSON.parse(updated!.scores) as Record<string, number>)["CCAT"]).toBe(40);
+  });
+});
+
+
+describe("staff-only decision regression", () => {
+  it("holds scored CCAT, previews current candidates, releases only on approval and rejects stale approval", async () => {
+    const funnel = await prisma.funnel.create({ data: { driveId: ctx.driveA.id, name: "Approval regression", published: true, stages: j(["CCAT", "MTT", "FINAL"].map((type, order) => ({ id: type, type, name: type, order, enabled: true, passScore: 60 }))) } });
+    const app = await prisma.application.create({ data: { driveId: ctx.driveA.id, candidateId: "c12", trackKey: crypto.randomUUID(), funnelId: funnel.id, currentStage: "CCAT", status: "HOLD", phaseReleased: false, scores: j({ CCAT: 50 }) } });
+    await prisma.assessmentResult.create({ data: { applicationId: app.id, type: "CCAT", normalized: 50, status: "PENDING", gradedAt: new Date() } });
+    authState.user = { id: "qa-rec", role: "recruiter" };
+    expect(await previewPhaseThresholdAction(funnel.id, "CCAT", 60)).toMatchObject({ passing: 0, holding: 1 });
+    expect(await applyPhaseThresholdAction(funnel.id, "CCAT", 60, 60)).toMatchObject({ ok: true });
+    expect(await prisma.application.findUnique({ where: { id: app.id } })).toMatchObject({ currentStage: "CCAT", status: "HOLD", phaseReleased: false });
+    expect(await applyPhaseThresholdAction(funnel.id, "CCAT", 40, 60)).toMatchObject({ ok: true });
+    expect(await prisma.application.findUnique({ where: { id: app.id } })).toMatchObject({ currentStage: "MTT", phaseReleased: true });
+    expect(await manualPassAction(app.id, "CCAT")).toHaveProperty("error");
+    expect(await applyPhaseThresholdAction(funnel.id, "CCAT", 99, 40)).toMatchObject({ ok: true, count: 0 });
+    expect(await prisma.application.findUnique({ where: { id: app.id } })).toMatchObject({ currentStage: "MTT", phaseReleased: true });
+  });
+  it("does not approve a missing AI grade even at threshold zero", async () => {
+    const app = await prisma.application.create({ data: { driveId: ctx.driveA.id, candidateId: "c12", trackKey: crypto.randomUUID(), funnelId: ctx.funnelA.id, currentStage: "CODING", status: "HOLD", phaseReleased: false, scores: "{}" } });
+    await prisma.assessmentResult.create({ data: { applicationId: app.id, type: "CODING", normalized: 0, status: "MANUAL_REVIEW", notes: "AI unavailable" } });
+    authState.user = { id: "qa-rec", role: "recruiter" };
+    expect(await manualPassAction(app.id, "CODING")).toHaveProperty("error");
+    await holdApplicationAction(app.id, "CODING");
+    expect(await manualPassAction(app.id, "CODING")).toHaveProperty("error");
+    const preview = await previewPhaseThresholdAction(ctx.funnelA.id, "CODING", 0);
+    expect(preview?.details.some((row) => row.id === app.id)).toBe(false);
+  });
+  it("a past schedule cannot release a held assessment", async () => {
+    const funnel = await prisma.funnel.create({ data: { driveId: ctx.driveA.id, name: "Scheduled gate", published: true, stages: j([{ id: "ccat", type: "CCAT", name: "CCAT", order: 1, enabled: true, opensAt: "2020-01-01" }]) } });
+    const app = await prisma.application.create({ data: { driveId: ctx.driveA.id, candidateId: "c12", trackKey: crypto.randomUUID(), funnelId: funnel.id, currentStage: "CCAT", status: "HOLD", phaseReleased: false } });
+    authState.user = { id: "c12", role: "candidate" };
+    expect(await startAssessmentAction(app.id, "CCAT")).toHaveProperty("error");
+    expect(await prisma.assessmentAttempt.count({ where: { applicationId: app.id } })).toBe(0);
+  });
+  it("a saved question snapshot survives changes to the source bank", async () => {
+    const { attemptQuestions } = await import("@/lib/attemptQuestions");
+    const app = await prisma.application.create({ data: { driveId: ctx.driveA.id, candidateId: "c12", trackKey: crypto.randomUUID(), funnelId: ctx.funnelA.id, currentStage: "CCAT", phaseReleased: true } });
+    authState.user = { id: "c12", role: "candidate" };
+    const started = await startAssessmentAction(app.id, "CCAT");
+    const attemptId = (started as any).attempt.id;
+    const snapshot = await attemptQuestions(attemptId, "CCAT");
+    const first = await prisma.question.findUniqueOrThrow({ where: { bank_number: { bank: "CCAT", number: snapshot[0].number } } });
+    try {
+      await prisma.question.update({ where: { id: first.id }, data: { content: j({ text: "Changed question", correctAnswerIndex: 99 }) } });
+      expect(await attemptQuestions(attemptId, "CCAT")).toEqual(snapshot);
+    } finally { await prisma.question.update({ where: { id: first.id }, data: { content: first.content } }); }
   });
 });

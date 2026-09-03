@@ -7,11 +7,13 @@ export function WordCountTextarea({
   rows = 6,
   minWords = 0,
   placeholder = "Write your response…",
+  label = "Your response",
 }: {
   name: string;
   rows?: number;
   minWords?: number;
   placeholder?: string;
+  label?: string;
 }) {
   const [value, setValue] = useState("");
   const count = useMemo(() => value.trim() ? value.trim().split(/\s+/).length : 0, [value]);
@@ -21,6 +23,7 @@ export function WordCountTextarea({
     <div className="mt-3">
       <textarea
         name={name}
+        aria-label={label}
         className="input select-text"
         rows={rows}
         required

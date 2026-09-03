@@ -8,15 +8,19 @@ import { requireRole, getCurrentUser } from "@/lib/auth";
 import { scoreCcat, decideCcat } from "@/lib/engine/ccat";
 import { scoreMtt, decideMtt, type MttAnswer } from "@/lib/engine/mtt";
 import { scoreGame, gameAverageToTci } from "@/lib/engine/games";
-import { automaticStageTransition, phaseThreshold, type Funnel } from "@/lib/engine/funnel";
-import { ALLOWED_CV_TYPES, MAX_CV_BYTES, deleteStoredCv, storeCvFile } from "@/lib/cv/storage";
+import { phaseThreshold, type Funnel } from "@/lib/engine/funnel";
+import { ALLOWED_CV_TYPES, MAX_CV_BYTES, deleteStoredCv, storeCvFile, readCvFile } from "@/lib/cv/storage";
+import { readUploadTicket } from "@/lib/cv/uploadTicket";
+import { validateCvBytes } from "@/lib/cv/fileValidation";
 import { summarizeAssessmentIntegrity, type AssessmentIntegrityEvent } from "@/lib/integrity";
 import { gradeSubjective } from "@/lib/ai/gradeSubjective";
 import { createNotification } from "@/lib/notifications";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
-import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
+import { attemptQuestions } from "@/lib/attemptQuestions";
 import { driveApplicationError } from "@/lib/driveApplications";
-import { isOnsiteTrack, onsiteNext, onsiteUpdateMessage } from "@/lib/onsiteTrack";
+import { getAttemptPuzzle } from "@/lib/games/attemptPuzzle";
+import { validateWordPaths } from "@/lib/games/wordSearch";
+import { isOnsiteTrack } from "@/lib/onsiteTrack";
 import {
   ENGLISH_SPEAKING_MAX_BYTES,
   ENGLISH_SPEAKING_MAX_SECONDS,
@@ -49,6 +53,7 @@ async function readCvInput(formData: FormData): Promise<{ file?: { buf: Buffer; 
     if (mime === "application/msword") return { error: "Please save your DOC file as PDF or DOCX before uploading so its contents can be extracted." };
     if (!ALLOWED_CV_TYPES.includes(mime)) return { error: "Upload a PDF, DOCX, or TXT CV." };
     const buf = Buffer.from(await file.arrayBuffer());
+    if (!validateCvBytes(buf, mime)) return { error: "The file contents do not match a supported CV format." };
     return { file: { buf, name: file.name, mime } };
   }
   return { error: "Upload your CV to apply. Profile details are extracted from the file." };
@@ -65,7 +70,20 @@ export async function applyAction(driveId: string, formData: FormData) {
   const intakeError = driveApplicationError(drive);
   if (intakeError) return { error: intakeError };
 
-  const input = await readCvInput(formData);
+  const ticketValue = String(formData.get("cvUploadTicket") || "");
+  const ticket = ticketValue ? readUploadTicket(ticketValue, user.id, driveId) : null;
+  if (ticketValue && !ticket) return { error: "This upload expired or is invalid. Please upload your CV again.", field: "cvFile" };
+  let input: Awaited<ReturnType<typeof readCvInput>>;
+  if (ticket) {
+    try {
+      const buf = await readCvFile(ticket.storagePath);
+      if (buf.length !== ticket.size || buf.length > MAX_CV_BYTES || !validateCvBytes(buf, ticket.mime)) return { error: "The uploaded file is invalid. Upload a supported CV.", field: "cvFile" };
+      input = { file: { buf, name: ticket.fileName, mime: ticket.mime } };
+    } catch { return { error: "The uploaded CV could not be verified. Please retry." }; }
+  } else {
+    if (process.env.NODE_ENV === "production") return { error: "Use the secure CV upload form to apply." };
+    input = await readCvInput(formData);
+  }
   if (input.error || !input.file) return { error: input.error || "Provide a CV.", field: "cvFile" };
 
   const submittedProfile = {
@@ -78,10 +96,10 @@ export async function applyAction(driveId: string, formData: FormData) {
   // application in a PROCESSING state and enqueue a job; the worker scores it,
   // sets gating, and notifies the candidate. This keeps apply non-blocking and
   // makes CV scoring retryable without re-running AI on already-scored jobs.
-  const applicationId = randomUUID();
+  const applicationId = ticket?.applicationId || randomUUID();
   let storagePath = "";
   try {
-    storagePath = await storeCvFile(applicationId, input.file.name, input.file.mime, input.file.buf);
+    storagePath = ticket?.storagePath || await storeCvFile(applicationId, input.file.name, input.file.mime, input.file.buf);
     await prisma.$transaction(async (tx) => {
       // A deadline/drive closure during upload must also reject the submission.
       const currentDrive = await tx.drive.findUnique({ where: { id: driveId } });
@@ -119,8 +137,10 @@ export async function applyAction(driveId: string, formData: FormData) {
       await createNotification({ userId: user.id, type: "APPLICATION_RECEIVED", message: "Your application was received and your CV is queued for screening.", relatedAppId: applicationId }, tx);
     });
   } catch (error) {
+    const committed = await prisma.application.findUnique({ where: { id: applicationId }, select: { id: true } });
+    if (committed) redirect("/candidate"); // concurrent retry must not delete the accepted CV
     if (storagePath) await deleteStoredCv(storagePath).catch(() => undefined);
-    return { error: error instanceof Error ? `Application could not be submitted: ${error.message}` : "Application could not be submitted. Please try again." };
+    return { error: "Application could not be submitted. The drive may have closed during upload; please refresh and try again." };
   }
 
   redirect(`/candidate/application/${applicationId}`);
@@ -165,11 +185,8 @@ export async function startAssessmentAction(applicationId: string, type: string)
   const stage = funnel?.stages.find((item) => item.type === type);
   if (["ARCHIVED", "REJECTED", "OFFERED", "HIRED"].includes(app.status)) return { error: "This assessment track is closed." };
   const opensAt = stage?.opensAt ? new Date(stage.opensAt) : null;
-  const scheduledReleaseReady = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
-  if (app.currentStage !== type || (!app.phaseReleased && !scheduledReleaseReady)) return { error: "This phase is not available yet." };
-  if (!app.phaseReleased && scheduledReleaseReady) {
-    await prisma.application.update({ where: { id: applicationId }, data: { phaseReleased: true, status: "IN_PROGRESS" } });
-  }
+  if (app.currentStage !== type || !app.phaseReleased) return { error: "This phase has not been approved yet." };
+  if (opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now()) return { error: "This assessment has not opened yet." };
 
   // Prevent multiple active attempts for the same phase.
   const active = await getSingleActiveAttempt(applicationId, type);
@@ -189,6 +206,7 @@ export async function startAssessmentAction(applicationId: string, type: string)
       where: { id: ready.id },
       data: { status: "ACTIVE", startedAt: now, deadlineAt },
     });
+    await attemptQuestions(attempt.id, type);
     return { ok: true, attempt: { id: attempt.id, startedAt: attempt.startedAt, deadlineAt: attempt.deadlineAt, attemptNumber: attempt.attemptNumber } };
   }
 
@@ -211,6 +229,7 @@ export async function startAssessmentAction(applicationId: string, type: string)
       idempotencyKey: `${applicationId}:${type}:${attemptNumber}`,
     },
   });
+  await attemptQuestions(attempt.id, type);
   return { ok: true, attempt: { id: attempt.id, startedAt: attempt.startedAt, deadlineAt: attempt.deadlineAt, attemptNumber: attempt.attemptNumber } };
 }
 
@@ -279,8 +298,7 @@ export async function submitAutoTestAction(applicationId: string, type: "CCAT" |
   const threshold = phaseThreshold(funnel, type);
   const integrity = readIntegrity(formData, chk.attempt);
 
-  const bankQuestions = await prisma.question.findMany({ where: { bank: type }, orderBy: { number: "asc" } });
-  const questions = selectAttemptQuestions(bankQuestions, chk.attempt.id, type);
+  const questions = await attemptQuestions(chk.attempt.id, type);
   if (type === "CCAT") {
     const items: any[] = [];
     let correct = 0;
@@ -330,8 +348,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
   if (app.currentStage !== type || !app.phaseReleased) return { error: "This phase is not available yet." };
   const chk = await requireActiveAttempt(applicationId, type);
   if ("error" in chk) return { error: chk.error };
-  const bankQuestions = await prisma.question.findMany({ where: { bank: type }, orderBy: { number: "asc" } });
-  const questions = selectAttemptQuestions(bankQuestions, chk.attempt.id, type);
+  const questions = await attemptQuestions(chk.attempt.id, type);
   let payload: any;
   if (questions.length > 0) {
     const items = questions.map((q) => {
@@ -346,8 +363,6 @@ export async function submitSubjectiveAction(applicationId: string, type: string
   }
   const integrity = readIntegrity(formData, chk.attempt);
   const returnState = supplementalReturnState(chk.attempt.idempotencyKey);
-  const onsiteFunnel = isOnsiteTrack(app.trackKey) && app.funnelId ? await getFunnel(app.funnelId) : null;
-  const onsiteTransition = onsiteFunnel ? onsiteNext(onsiteFunnel, type) : null;
   // AI may provide a reviewer aid, but subjective assessments remain manual.
   // An AI suggestion never changes the result state or advances a candidate.
   let aiScored = false;
@@ -386,6 +401,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
 
   const scores = uj<Record<string, number>>(app.scores) || {};
   if (aiScored && aiScore != null) scores[type] = aiScore;
+  else delete scores[type];
   await prisma.$transaction(async (tx) => {
     await tx.assessmentResult.create({
       data: {
@@ -399,7 +415,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        scores: j(scores), currentStage: returnState?.stage ?? onsiteTransition?.currentStage ?? type, phaseReleased: returnState?.phaseReleased ?? onsiteTransition?.phaseReleased ?? false, status: returnState?.status ?? onsiteTransition?.applicationStatus ?? "IN_PROGRESS",
+        scores: j(scores), currentStage: returnState?.stage ?? type, phaseReleased: false, status: "HOLD",
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: type, status: "MANUAL_REVIEW", at: nowIso(), note: aiScored ? "AI score prepared as a reviewer aid; human review required" : "Submitted for reviewer grading" }]),
       },
     });
@@ -407,7 +423,7 @@ export async function submitSubjectiveAction(applicationId: string, type: string
     await createNotification({
       userId: app.candidateId,
       type: "SUBMISSION_RECEIVED",
-      message: onsiteTransition ? onsiteUpdateMessage(onsiteTransition) : `Your ${type} submission was received and is awaiting review.`,
+      message: `Your ${type} submission was received and is awaiting review.`,
       relatedAppId: app.id,
     }, tx);
     await tx.auditLog.create({ data: { actorId: user.id, action: "AI_REVIEW_AID", meta: j({ applicationId, type, outcome: aiScored ? "SCORED" : "FALLBACK_TO_HUMAN", normalized: aiScore }) } });
@@ -439,8 +455,6 @@ export async function submitEnglishSpeakingAction(applicationId: string, formDat
   const { data: objects, error: storageError } = await getSupabaseAdmin().storage.from(bucket).list(prefix, { search: fileName, limit: 1 });
   if (storageError || !objects?.some((object) => object.name === fileName)) return { error: "The uploaded recording could not be verified." };
 
-  const onsiteFunnel = isOnsiteTrack(app.trackKey) && app.funnelId ? await getFunnel(app.funnelId) : null;
-  const onsiteTransition = onsiteFunnel ? onsiteNext(onsiteFunnel, "ENGLISH_SPEAKING") : null;
   const integrity = readIntegrity(formData, chk.attempt);
   const result = await prisma.$transaction(async (tx) => {
     const created = await tx.assessmentResult.create({
@@ -460,13 +474,13 @@ export async function submitEnglishSpeakingAction(applicationId: string, formDat
     await tx.application.update({
       where: { id: applicationId },
       data: {
-        currentStage: onsiteTransition?.currentStage ?? "ENGLISH_SPEAKING",
-        phaseReleased: onsiteTransition?.phaseReleased ?? false,
-        status: onsiteTransition?.applicationStatus ?? "IN_PROGRESS",
+        currentStage: "ENGLISH_SPEAKING",
+        phaseReleased: false,
+        status: "HOLD",
         stageHistory: j([...(uj<any[]>(app.stageHistory) || []), { stage: "ENGLISH_SPEAKING", status: "MANUAL_REVIEW", at: nowIso(), note: "Voice note submitted for human review" }]),
       },
     });
-    await createNotification({ userId: app.candidateId, type: "SUBMISSION_RECEIVED", message: onsiteTransition ? onsiteUpdateMessage(onsiteTransition) : "Your English speaking voice note was received and is awaiting human review.", relatedAppId: app.id }, tx);
+    await createNotification({ userId: app.candidateId, type: "SUBMISSION_RECEIVED", message: "Your English speaking voice note was received and is awaiting human review.", relatedAppId: app.id }, tx);
     return created;
   });
   await prisma.auditLog.create({ data: { actorId: user.id, action: "ENGLISH_SPEAKING_SUBMITTED", meta: j({ applicationId, resultId: result.id, durationSeconds }) } });
@@ -494,8 +508,11 @@ export async function submitGameAction(applicationId: string, formData: FormData
     [8,0,0,0,6,0,0,0,3], [4,0,0,8,0,3,0,0,1], [7,0,0,0,2,0,0,0,6],
     [0,6,0,0,0,0,2,8,0], [0,0,0,4,1,9,0,0,5], [0,0,0,0,8,0,0,7,9],
   ];
-  let wordCorrect = 0;
-  for (let i = 1; i <= 5; i++) if (formData.get(`w${i}`) === "1") wordCorrect++;
+  const wordPuzzle = await getAttemptPuzzle(chk.attempt.id);
+  let paths: unknown = [];
+  try { const rawPaths = String(formData.get("wordSearchPaths") || "[]"); if (rawPaths.length <= 6000) paths = JSON.parse(rawPaths); } catch { /* Invalid paths earn no credit. */ }
+  const validatedWords = validateWordPaths(wordPuzzle, paths);
+  const wordCorrect = Object.keys(validatedWords).length;
   let sudokuCorrect = 0, sudokuTotal = 0;
   sudokuPuzzle.forEach((row, r) => row.forEach((given, c) => {
     if (given) return;
@@ -511,20 +528,20 @@ export async function submitGameAction(applicationId: string, formData: FormData
     const [r, c] = cell.split(",");
     if (String(formData.get(`crossword_${r}_${c}`) || "").trim().toUpperCase() === answer) crosswordCorrect++;
   }
-  const elapsedSeconds = Math.max(0, Number(formData.get("games_elapsed_seconds") || 0));
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - (chk.attempt.startedAt?.getTime() || Date.now())) / 1000));
   const speed = Math.max(0, Math.min(100, (1 - elapsedSeconds / 1020) * 100));
   const gameScores = [
-    scoreGame((wordCorrect / 5) * 100, speed, "MEDIUM"),
-    scoreGame(sudokuTotal ? (sudokuCorrect / sudokuTotal) * 100 : 0, speed, "MEDIUM"),
-    scoreGame((crosswordCorrect / Object.keys(crosswordSolution).length) * 100, speed, "MEDIUM"),
+    scoreGame((wordCorrect / wordPuzzle.words.length) * 100, wordCorrect ? speed : 0, "MEDIUM"),
+    scoreGame(sudokuTotal ? (sudokuCorrect / sudokuTotal) * 100 : 0, sudokuCorrect ? speed : 0, "MEDIUM"),
+    scoreGame((crosswordCorrect / Object.keys(crosswordSolution).length) * 100, crosswordCorrect ? speed : 0, "MEDIUM"),
   ];
   const result0to10 = Math.round((gameScores.reduce((sum, score) => sum + score, 0) / gameScores.length) * 10) / 10;
   const normalized = gameAverageToTci(result0to10);
   // Games pass when above the funnel threshold.
   const result = normalized >= threshold ? "PASS" : "FAIL";
   const raw = wordCorrect + sudokuCorrect + crosswordCorrect;
-  const total = 5 + sudokuTotal + Object.keys(crosswordSolution).length;
-  await storeResult(app, app.candidateId, "GAMES", raw, total, normalized, result, { wordCorrect, sudokuCorrect, sudokuTotal, crosswordCorrect, elapsedSeconds, gameScores, result0to10 }, funnel, integrity);
+  const total = wordPuzzle.words.length + sudokuTotal + Object.keys(crosswordSolution).length;
+  await storeResult(app, app.candidateId, "GAMES", raw, total, normalized, result, { wordCorrect, wordTotal: wordPuzzle.words.length, wordSearchPaths: Object.values(validatedWords), sudokuCorrect, sudokuTotal, crosswordCorrect, elapsedSeconds, gameScores, result0to10 }, funnel, integrity);
   redirect(`/candidate/application/${applicationId}`);
 }
 
@@ -550,20 +567,13 @@ async function storeResult(
   funnel: Funnel,
   integrity: IntegrityPayload,
 ) {
-  const isAutomatic = type === "CCAT" || type === "MTT";
-  const decision = _suggestedResult === "PASS" ? "PASS" : "FAIL";
-  const onsiteTransition = isOnsiteTrack(app.trackKey) && !integrity.returnState ? onsiteNext(funnel, type) : null;
-  const transition = onsiteTransition ?? (isAutomatic && !integrity.returnState
-    ? automaticStageTransition(funnel, type as "CCAT" | "MTT", decision)
-    : null);
-  const nextIsOnsite = transition?.currentStage === "ONSITE";
   const scores = uj<Record<string, number>>(app.scores) || {};
   scores[type] = normalized;
   await prisma.$transaction(async (tx) => {
     await tx.assessmentResult.create({
       data: {
         applicationId: app.id, type, attemptId: integrity.attemptId, mode: integrity.mode,
-        rawScore: raw, maxScore: max, normalized, status: isAutomatic ? decision : "PENDING",
+        rawScore: raw, maxScore: max, normalized, status: "PENDING", gradedAt: new Date(),
         answers: j(answers), integrityEvents: integrity.integrityEvents,
         integrityLevel: integrity.integrityLevel, integrityReasons: integrity.integrityReasons,
       },
@@ -575,24 +585,20 @@ async function storeResult(
         stageHistory: j([
           ...(uj<any[]>(app.stageHistory) || []),
           {
-            stage: type, status: isAutomatic ? decision : "SCORED", at: nowIso(),
-            note: isAutomatic
-              ? `${type} ${normalized}/100 — automatic threshold result: ${decision}${transition?.nextStageName ? nextIsOnsite ? `; selected for ${transition.nextStageName}, invitation pending` : `; ${transition.nextStageName} released` : ""}`
-              : `${type} ${normalized}/100; awaiting recruiter threshold decision`,
+            stage: type, status: "SCORED", at: nowIso(),
+            note: `${type} ${normalized}/100; awaiting recruiter decision`,
           },
         ]),
-        currentStage: integrity.returnState?.stage ?? transition?.currentStage ?? type,
-        phaseReleased: integrity.returnState?.phaseReleased ?? transition?.phaseReleased ?? false,
-        status: integrity.returnState?.status ?? transition?.applicationStatus ?? "IN_PROGRESS",
+        currentStage: type,
+        phaseReleased: false,
+        status: "HOLD",
       },
     });
     await tx.assessmentAttempt.update({ where: { id: integrity.attemptId }, data: { status: "SUBMITTED", submittedAt: new Date() } });
     await createNotification({
       userId: candidateId,
       type: "SCORE_READY",
-      message: onsiteTransition ? onsiteUpdateMessage(onsiteTransition) : isAutomatic
-        ? `Your ${type} result is ${decision} (${normalized}/100).${transition?.nextStageName ? nextIsOnsite ? " You have been selected for onsite screening; date and location details will be emailed by the recruitment team." : ` ${transition.nextStageName} is now available.` : ""}`
-        : `Your ${type} assessment was submitted. The recruitment team will review it and notify you about the next step.`,
+      message: `Your ${type} assessment was submitted. The recruitment team will review it and notify you about the next step.`,
       relatedAppId: app.id,
     }, tx);
   });

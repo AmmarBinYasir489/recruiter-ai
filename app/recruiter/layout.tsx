@@ -1,3 +1,4 @@
+import { ActiveNavLink } from "@/components/ActiveNavLink";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,7 +26,7 @@ export default async function RecruiterLayout({ children }: { children: React.Re
         </div>
         <nav className="space-y-1">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="nav-link">{n.label}</Link>
+            <ActiveNavLink key={n.href} href={n.href} className="nav-link">{n.label}</ActiveNavLink>
           ))}
         </nav>
         <form action={logoutAction} className="mt-6">
@@ -35,7 +36,7 @@ export default async function RecruiterLayout({ children }: { children: React.Re
       </aside>
       <div className="min-w-0 flex-1">
         <MobileRoleNav title="Recruiter" links={NAV} />
-        <main id="main-content" className="min-w-0 w-full max-w-full overflow-x-hidden px-6 py-6 md:px-10 md:py-8">{children}</main>
+        <main id="main-content" className="min-w-0 w-full max-w-full overflow-x-hidden px-4 py-6 sm:px-6 md:px-10 md:py-8">{children}</main>
       </div>
     </div>
   );

@@ -8,12 +8,14 @@ function canManage(user: SessionUser, ownerId: string) {
 export async function requireManagedDrive(user: SessionUser, driveId: string) {
   const drive = await prisma.drive.findUnique({ where: { id: driveId } });
   if (!drive || !canManage(user, drive.ownerId)) throw new Error("FORBIDDEN");
+  if (["COMPLETED", "ARCHIVED"].includes(drive.status)) throw new Error("This drive is read-only. Resume recruitment before changing assessments.");
   return drive;
 }
 
 export async function requireManagedFunnel(user: SessionUser, funnelId: string) {
   const funnel = await prisma.funnel.findUnique({ where: { id: funnelId }, include: { drive: true } });
   if (!funnel || !canManage(user, funnel.drive.ownerId)) throw new Error("FORBIDDEN");
+  if (["COMPLETED", "ARCHIVED"].includes(funnel.drive.status)) throw new Error("This drive is read-only.");
   return funnel;
 }
 
@@ -23,6 +25,7 @@ export async function requireManagedApplication(user: SessionUser, applicationId
     include: { drive: true, funnel: true },
   });
   if (!application || !canManage(user, application.drive.ownerId)) throw new Error("FORBIDDEN");
+  if (["COMPLETED", "ARCHIVED"].includes(application.drive.status)) throw new Error("This drive is read-only.");
   return application;
 }
 

@@ -30,7 +30,7 @@ export default async function CandidateNotifications({ searchParams }: { searchP
         <div className="space-y-2">
           {notes.slice(0, 20).map((n) => (
             <Card key={n.id} className={`text-sm flex items-start justify-between gap-3 ${n.read ? "opacity-60" : ""}`}>
-              <span>{candidateSafeNotification(n.message, Boolean(n.relatedAppId && heldIds.has(n.relatedAppId)))}</span>
+              <span>{candidateSafeNotification(n.message, Boolean(n.relatedAppId && heldIds.has(n.relatedAppId)), n.type)}</span>
               <span className="text-xs text-slate-400 whitespace-nowrap">{new Date(n.createdAt).toLocaleDateString()}</span>
             </Card>
           ))}

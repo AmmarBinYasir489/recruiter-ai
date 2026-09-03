@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { signCvToken } from "@/lib/cv/access";
 import { resultForCurrentStage } from "@/lib/candidateStage";
 import { candidateSafeNotification } from "@/lib/candidatePrivacy";
-import { trackLabel } from "@/lib/onsiteTrack";
+import { isOnsiteTrack } from "@/lib/onsiteTrack";
 import { markNotificationsReadAction } from "@/app/candidate/actions";
 import { Card, SectionTitle, decisionBadge, statusBadge, LinkButton } from "@/components/ui";
 
@@ -21,7 +21,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   if (!user) return null;
   const app = await prisma.application.findUnique({
     where: { id: params.id },
-    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } }, onsiteInvites: { orderBy: { createdAt: "desc" }, take: 1 }, cvJobs: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true } } },
+    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } }, assessmentAttempts: { where: { status: { in: ["READY", "ACTIVE"] } } }, onsiteInvites: { orderBy: { createdAt: "desc" }, take: 1 }, cvJobs: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true } } },
   });
   if (!app || app.candidateId !== user.id || app.status === "ARCHIVED") return <Card>Application not found.</Card>;
 
@@ -43,11 +43,12 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   const extractionFailed = app.cvJobs[0]?.status === "FAILED";
   const processing = app.cvResult === "PROCESSING" && !extractionFailed;
   const currentDecision = currentStage === "CV_SCREENING" ? null : currentResult?.status;
-  const visibleDecision = app.status === "HOLD" && currentDecision === "FAIL" ? null : currentDecision;
+  const pendingAttempt = app.assessmentAttempts.find((attempt) => attempt.type === currentStage);
+  const visibleDecision = app.status === "HOLD" || pendingAttempt ? null : currentDecision;
   const currentStageConfig = app.funnel ? (uj<any[]>(app.funnel.stages) || []).find((stage) => stage.type === currentStage) : null;
   const opensAt = currentStageConfig?.opensAt ? new Date(currentStageConfig.opensAt) : null;
   const scheduled = Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() > Date.now());
-  const phaseAvailable = app.phaseReleased || Boolean(opensAt && Number.isFinite(opensAt.getTime()) && opensAt.getTime() <= Date.now());
+  const phaseAvailable = app.phaseReleased && !scheduled && !["REJECTED", "OFFERED", "HIRED"].includes(app.status);
   const onsiteInvite = app.onsiteInvites[0] || null;
 
   return (
@@ -56,22 +57,13 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <div>
           <p className="text-sm font-medium text-brand-600">Your application</p>
           <h1 className="text-2xl font-bold text-ink-900">{app.drive.name}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {app.funnel?.name ? `${trackLabel(app.funnel.name, app.trackKey)} · ` : ""}Reference {app.id.slice(0, 8).toUpperCase()}
-          </p>
         </div>
         {statusBadge(app.status)}
       </div>
 
       {siblingTracks.length > 1 && (
         <section aria-labelledby="assessment-tracks" className="mb-6">
-          <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <h2 id="assessment-tracks" className="font-bold text-ink-900">Your assessment tracks</h2>
-              <p className="text-sm text-slate-500">You are participating in {siblingTracks.length} funnels for this drive. Each keeps its own progress and results.</p>
-            </div>
-            <span className="badge-info">{siblingTracks.length} funnels</span>
-          </div>
+          <h2 id="assessment-tracks" className="mb-3 font-bold text-ink-900">Assigned assessments</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {siblingTracks.map((track) => {
               const active = track.id === app.id;
@@ -81,7 +73,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
                   href={`/candidate/application/${track.id}`}
                   className={active ? "btn-primary justify-start" : "btn-outline justify-start"}
                 >
-                  {trackLabel(track.funnel?.name || "Drive application", track.trackKey)} · {STAGE_LABEL[track.currentStage || ""] || track.currentStage || "Review"}
+                  {isOnsiteTrack(track.trackKey) ? "Onsite" : "Online"} · {STAGE_LABEL[track.currentStage || ""] || track.currentStage || "Review"}
                 </LinkButton>
               );
             })}
@@ -96,7 +88,11 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         {!processing && visibleDecision && <div className="mt-4">{decisionBadge(visibleDecision)}</div>}
 
         <div className="mt-4">
-          {extractionFailed && currentStage === "CV_SCREENING" ? (
+          {app.status === "OFFERED" || app.status === "HIRED" ? (
+            <p className="text-sm font-medium text-emerald-700">Congratulations — you have been selected. The recruitment team will contact you with the next details.</p>
+          ) : app.status === "REJECTED" ? (
+            <p className="text-sm font-medium text-rose-700">Your application was not selected. Please see the latest update below.</p>
+          ) : extractionFailed && currentStage === "CV_SCREENING" ? (
             <p className="text-sm text-amber-700" role="status">We could not complete your CV extraction. Your application is saved. Please contact the recruitment team with a readable PDF or DOCX; no CV result has been issued.</p>
           ) : processing ? (
             <p className="text-sm text-slate-600" role="status">Your CV is securely queued for scoring. This page updates automatically.</p>
@@ -109,14 +105,14 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
             </div> : <p className="text-sm font-medium text-amber-700">You have been selected for onsite screening. The recruitment team will email the date and location details.</p>
           ) : phaseAvailable && currentStage !== "FINAL" ? (
             <>
-              <p className="mb-3 text-sm text-slate-600">This assessment is ready. Your timer starts only when you begin.</p>
+              <p className="mb-3 text-sm text-slate-600">{pendingAttempt && currentResult ? "Retest available. Your previous attempt is saved." : "This assessment is ready."} Your timer starts only when you begin.</p>
               <LinkButton href={`/candidate/test/${app.id}/${currentStage}`} className="btn-primary">
                 Start {STAGE_LABEL[currentStage] || currentStage} →
               </LinkButton>
             </>
           ) : scheduled ? (
             <p className="text-sm font-medium text-amber-700">This assessment opens on {opensAt!.toLocaleString("en", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" })} UTC. You’ll be notified here automatically when it is available.</p>
-          ) : currentDecision === "PENDING" || app.cvResult === "PENDING" ? (
+          ) : (app.status === "HOLD" && currentStage !== "FINAL" && currentStage !== "ONSITE") || currentDecision === "PENDING" || currentDecision === "MANUAL_REVIEW" || app.cvResult === "PENDING" ? (
             <p className="text-sm font-medium text-amber-700">Your submission is under review. No action is needed from you.</p>
           ) : app.status === "REJECTED" ? (
             <p className="text-sm font-medium text-rose-700">Your application was not selected. Please see the latest update below.</p>
@@ -150,7 +146,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         ) : notes.map((note) => (
           <Card key={note.id} className={`text-sm ${note.read ? "text-slate-600" : "border-brand-200 bg-brand-50 text-ink-900"}`}>
             <div className="flex items-start justify-between gap-3">
-              <p>{candidateSafeNotification(note.message, app.status === "HOLD")}</p>
+              <p>{candidateSafeNotification(note.message, app.status === "HOLD", note.type)}</p>
               {!note.read && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-label="Unread" />}
             </div>
             <p className="mt-1 text-xs text-slate-400">{note.createdAt.toLocaleString()}</p>

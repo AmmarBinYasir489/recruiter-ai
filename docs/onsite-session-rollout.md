@@ -2,9 +2,9 @@
 
 Bulk **Onsite: Full funnel** requires a published funnel from the candidate's drive.
 The new track uses `ONSITE:<funnelId>` and preserves the original online application/results.
-Candidates complete all enabled tests in order, including after a failed automatic test.
+Candidates complete all enabled tests in order, with staff approval between tests.
 CV is reused, the invitation-only ONSITE stage is skipped, and FINAL remains held for staff.
-Subjective results still require human review. Reviewing an earlier result must not rewind progress.
+Automatic and AI-assisted scores remain on Hold until staff approves them. Reviewing an earlier result must not rewind progress.
 Per-candidate single-stage comparison retests remain available separately.
 
 ## Database rollout

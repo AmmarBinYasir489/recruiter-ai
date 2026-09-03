@@ -5,6 +5,7 @@ import { getAiRuntimeConfig } from "@/lib/ai/config";
 import { generateAiText, testAiProvider } from "@/lib/ai/client";
 import { normalizeAiModel, normalizeAiProvider } from "@/lib/ai/providers";
 import { cleanSkills, evidenceMatches, roleTerms } from "@/lib/jobSkills";
+import { injectionWarnings, safeEvidenceUrl } from "@/lib/ai/security";
 
 export type CvLinkKind = "LINKEDIN" | "GITHUB" | "PORTFOLIO" | "HUGGINGFACE" | "OTHER";
 export interface CvProject { name: string; description?: string; technologies: string[]; url?: string }
@@ -183,12 +184,28 @@ export function extractRequiredFromJd(jd: string) {
   return extractSkillRequirementsFromJd(jd).required;
 }
 export async function parseCv(text: string, requiredSkills: string[] = [], _preferredSkills: string[] = []): Promise<CvParseResult> {
-  return completeParse(await llmParse(text) || heuristicParse(text), requiredSkills);
+  if (injectionWarnings(text).length) return completeParse({ ...heuristicParse(""), validationWarnings: injectionWarnings(text) }, requiredSkills);
+  const parsed = await llmParse(text) || heuristicParse(text);
+  return completeParse(groundCvEvidence(parsed, text), requiredSkills);
+}
+
+function groundCvEvidence(parsed: ParsedCv, text: string): ParsedCv {
+  const normalized = text.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const supported = (value: unknown) => typeof value === "string" && value.length > 1 && normalized.includes(value.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  const skills = parsed.skills.filter((skill) => supported(skill));
+  const projectDetails = parsed.projectDetails.filter((item) => supported(item.name)).map((item) => ({ ...item, url: safeEvidenceUrl(item.url) }));
+  const experience = parsed.experience.filter((item) => supported(item.company) || supported(item.title));
+  const removed = skills.length !== parsed.skills.length || projectDetails.length !== parsed.projectDetails.length || experience.length !== parsed.experience.length;
+  return { ...parsed, skills, projectDetails, projects: projectDetails.length, experience,
+    certifications: parsed.certifications.filter(supported), coursework: parsed.coursework.filter(supported),
+    links: parsed.links.flatMap((link) => { const url = safeEvidenceUrl(link.url); return url ? [{ ...link, url }] : []; }),
+    validationWarnings: [...parsed.validationWarnings, ...(removed ? ["AI-extracted claims without matching source evidence were excluded from scoring."] : [])] };
 }
 export async function parseCvDocument(buffer: Buffer, mime: string, extractedText: string, requiredSkills: string[] = []): Promise<CvParseResult> {
+  if (injectionWarnings(extractedText).length) return completeParse({ ...heuristicParse(""), validationWarnings: injectionWarnings(extractedText) }, requiredSkills);
   const canSendDocument = mime === "application/pdf" || mime.startsWith("image/");
   const parsed = await llmParse(extractedText, canSendDocument ? { mime, base64: buffer.toString("base64") } : undefined) || heuristicParse(extractedText);
-  return completeParse(parsed, requiredSkills);
+  return completeParse(groundCvEvidence(parsed, extractedText), requiredSkills);
 }
 function completeParse(parsed: ParsedCv, requiredSkills: string[]): CvParseResult {
   const have = new Set(parsed.skills.map((skill) => skill.toLowerCase()));

@@ -1,6 +1,13 @@
 node_modules
 .next
+.next-build-check/
 .env
+.env.*
+!.env.example
+.vercel/
+.next-qa/
+playwright-report/
+.codex-dev.*.log
 .env.backup-before-v2
 .supabase-question-bank-backup.json
 *.db
@@ -10,3 +17,4 @@ prisma/migrations
 uploads/
 test-results/
 *.tsbuildinfo
+prisma/question-bank-before-restore-*.json

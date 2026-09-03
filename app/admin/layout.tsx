@@ -1,3 +1,4 @@
+import { ActiveNavLink } from "@/components/ActiveNavLink";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
@@ -33,13 +34,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
         <nav className="space-y-1">
           {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="nav-link">{n.label}</a>
+            <ActiveNavLink key={n.href} href={n.href}>{n.label}</ActiveNavLink>
           ))}
         </nav>
         <div className="mt-6 mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Recruiter tools</div>
         <nav className="space-y-1">
           {RECRUITER_NAV.map((n) => (
-            <a key={n.href} href={n.href} className="nav-link">{n.label}</a>
+            <ActiveNavLink key={n.href} href={n.href}>{n.label}</ActiveNavLink>
           ))}
         </nav>
         <form action={logoutAction} className="mt-6">
@@ -49,7 +50,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </aside>
       <div className="min-w-0 flex-1">
         <MobileRoleNav title="Admin" links={[...NAV, ...RECRUITER_NAV]} />
-        <main id="main-content" className="min-w-0 w-full max-w-full overflow-x-hidden px-6 py-6 md:px-10 md:py-8">{children}</main>
+        <main id="main-content" className="min-w-0 w-full max-w-full overflow-x-hidden px-4 py-6 sm:px-6 md:px-10 md:py-8">{children}</main>
       </div>
     </div>
   );

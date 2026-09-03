@@ -5,10 +5,11 @@ import { requireRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function DrivesList() {
+export default async function DrivesList({ searchParams }: { searchParams: Promise<{ archived?: string }> }) {
+  const archived = (await searchParams).archived === "1";
   const user = await requireRole("recruiter");
   const drives = await prisma.drive.findMany({
-    where: { ownerId: user.id },
+    where: { ownerId: user.id, status: archived ? "ARCHIVED" : { not: "ARCHIVED" } },
     include: { _count: { select: { applications: { where: { sourceApplicationId: null } }, funnels: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -18,11 +19,14 @@ export default async function DrivesList() {
         <h1 className="text-2xl font-bold text-ink-900">Drives</h1>
         <LinkButton href="/recruiter/drives/new" className="btn-primary">+ New drive</LinkButton>
       </div>
+      <LinkButton href={archived ? "/recruiter/drives" : "/recruiter/drives?archived=1"} className="btn-outline mb-4">{archived ? "Current drives" : "Archived drives"}</LinkButton>
+      {drives.length === 0 && <Card>No {archived ? "archived" : "current"} drives.</Card>}
       <div className="grid gap-4 md:grid-cols-2">
         {drives.map((d) => (
           <Card key={d.id} hover>
             <Link href={`/recruiter/drives/${d.id}`}>
               <h3 className="font-bold text-ink-900">{d.name}</h3>
+              <span className="badge-muted mt-2">{d.status}</span>
               <p className="text-sm text-slate-500 mt-1">{d.location}</p>
               <div className="flex gap-4 mt-3 text-sm text-slate-500">
                 <span>Threshold <b className="text-ink-900">{d.cvPassThreshold}</b></span>

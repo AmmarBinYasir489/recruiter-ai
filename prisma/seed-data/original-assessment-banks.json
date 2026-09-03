@@ -1,0 +1,4782 @@
+[
+  {
+    "bank": "CCAT",
+    "number": 100000,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/0-6ac21bde690fbc63ac30fc509a841225.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100001,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/1-04183291fbd814997df60a4554f01c7b.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100002,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/2-a6b287a4453672ad2fe06aace9a6eb4d.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100003,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/3-08489e6d042c4df48cf34370481b3b5d.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100004,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/4-425f564849a5eee7036adb3ede808b8a.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100005,
+    "content": {
+      "text": "Choose the most appropriate option from the given four options to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/5-73ffbd94ea435d1f192e2272d8905ec1.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100006,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/6-eb7e1486028b6a15e338273e69adbef5.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100007,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/7-ca75e66a40dea56d5488aac2aeb17064.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100008,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/8-08271f09a7ad48ba0a62bf1c94f85a96.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100009,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/9-29166446e63f95cabaa8070a45c38327.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100010,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/10-f18580d3e5be0dc512f6842048e43dd5.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100011,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures?",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/11-d53443729d202d53dd7d62aff7aea95e.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100012,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures?",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/12-1008f0ac424c53fb40311ad99bfc0090.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100013,
+    "content": {
+      "text": "Divide the following six figures into two categories, so that each category of figures has its own common characteristics or patterns. The correct classification is: \nA: ①②⑤, ③④⑥\nB: ①③④, ②⑤⑥\nC: ①④⑤, ②③⑥\nD: ①⑤⑥, ②③④",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/13-c516f528b5cf88521a3afce5918ac97f.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100014,
+    "content": {
+      "text": "Choose the most appropriate one to fill in the question mark, so that it conforms to the pattern of change in the entire figure:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/14-125840c0e6e55cc1296a6c3b2c241fea.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100015,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it conforms to the pattern of change of the previous four figures (　　).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/15-fae99689213617c512e9af5852f70357.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100016,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it conforms to the pattern of change of the previous four figures (　　).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/16-6e29f902bf03e22cf682d7850c442f51.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100017,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it conforms to the pattern of change of the previous four figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/17-343694298148ad244222147c7b2fd8ff.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100018,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it conforms to the pattern of change of the previous four figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/18-72eb9921cd349b33f253e0a93f2fdd23.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100019,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it conforms to the pattern of change in the entire figure (　　).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/19-1012375b48ed14fa12e279a756c07959.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100020,
+    "content": {
+      "text": "\"·\" and \"○\" move along the route indicated by the arrows. Which of the following options conforms to the pattern of change in the given figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/20-49fbd9f5402f6e3e167001c25fa2cea1.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100021,
+    "content": {
+      "text": "The option that best fits the given pattern of figures is ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/21-71fb1d8ba3234a0efb1b9dc34d2104dd.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100022,
+    "content": {
+      "text": "The option that best fits the given pattern of figures is ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/22-1c405cf3f6845d59775c1efc562cceab.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100023,
+    "content": {
+      "text": "The option that best fits the given pattern of figures is ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/23-acd6d98c8b332a678bb75efd2d1fa241.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100024,
+    "content": {
+      "text": "The option that best fits the given pattern of figures is:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/24-c70244ef75ea360ff1cc396dcc375c6c.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100025,
+    "content": {
+      "text": "The option that conforms to the given pattern of changes in the figures is ______.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/25-6c38bb99e7ecd021d08a8ec8ad6ae7ed.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100026,
+    "content": {
+      "text": "The option that conforms to the given pattern of changes in the figures is ______.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/26-0ea47c61df72d0ba96da08bb5a95ffd4.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100027,
+    "content": {
+      "text": "The option that conforms to the given pattern of changes in the figures is ______.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/27-a674ccfcf8538fba5b844c92bc8a65a9.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100028,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/28-7960e5b82c5151be5f61b47a3bd1d986.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100029,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures?",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/29-d36a8f72ba1c48c99e06bbea8d895c30.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100030,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures?",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/30-3354bcb1671030cfce4d372b93910df3.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100031,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/31-a14aa6f244793d06a063bfd5cc462980.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100032,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/32-e44f0a01b6cdc8f401d1362a4ce6d07b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100033,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/33-c8f46d03e506bb68bff6851b9c0ecd6d.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100034,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/34-3a2ef50fe4420324d7a7f098f128e1a6.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100035,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/35-d553a28ce4efb578954e7427e836e7e6.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100036,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/36-6ca220a1c350d21d1d1f2372694d5f76.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100037,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/37-b80c875e300409cebb8c8b481866d959.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100038,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/38-e761b3a81e3eb014c2e586ee5ba17fb5.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100039,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/39-8cf8ae84126f68e5078f5f4194d59c60.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100040,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures? ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/40-6d3497b45fa5bfe2ad6b50dc923f7e41.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100041,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/41-0acf09fcd02600fde4d02528e4605fd8.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100042,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/42-4865b5e1366bf934a002c68919c6763b.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100043,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/43-940259194bd3135ffa7331e1848e5d2c.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100044,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/44-394132a657d1e45b762dcd8f5af803cb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100045,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/45-f7bbc31371278af7ec6ec2fd58dbd994.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100046,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/46-26893b2ac788f47b710dfa8ce4c7229b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100047,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/47-e74538c82cf0841c99c43901912a4e50.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100048,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/48-47019d4285bde128d116cf06942d84a4.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100049,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/49-d80620b7d9f51d9b12584b8508c69a79.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100050,
+    "content": {
+      "text": "Which of the following options conforms to the given pattern of changes in the figures:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/50-79144c8f00383cb38b2abfd05068627c.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100051,
+    "content": {
+      "text": "Choose the most suitable one from the four figures A, B, C, and D, so that it maintains the regularity presented by the four figures in the first row:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/51-70e480a76dfbb0b145a182e578628dd4.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100052,
+    "content": {
+      "text": "Choose the most suitable one from the four figures A, B, C, and D, so that it maintains the regularity presented by the four figures in the first row:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/52-fa49431816fba97a4073a7801c2dcef6.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100053,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/53-73124eb977d136414b21439731f82462.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100054,
+    "content": {
+      "text": "Choose one of the four options to replace the question mark, so that it presents a certain regularity. The most suitable is ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/54-4e05bfe6b85240c490c003dc8dddc39b.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100055,
+    "content": {
+      "text": "Choose one from the four options to replace the question mark, so that it presents a certain regularity ( ).",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/55-e10983cea5c3a44f9cac1a6384329440.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100056,
+    "content": {
+      "text": "Choose the most suitable option from the four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/56-478adbd54da618157fe7b9282e058a48.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100057,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/57-3280bf08489b26bb6b08b5be42944be3.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100058,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/58-b0126c6961453fa374ae5a67916dce55.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100059,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/59-4acd6ffccc5b1b2fe17163494891dd62.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100060,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/60-23e24025103b105d1988cf20134e527a.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100061,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/61-a990efed85ad62c82c9a48eb31ff4e21.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100062,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/62-2f57d64a38267a40a89bb6872b7011a3.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100063,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/63-cc01252ca565f84ba0f1ac9310756b69.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100064,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/64-5babf78593a7300bc5171d05044e53b6.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100065,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/65-c12b608b99708fbe501f4e9a006ef4eb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100066,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/66-f3e5a58cc6e4d87a7940f0a47fc1f97a.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100067,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/67-212209cd42175d3ad1316507391eb846.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100068,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/68-fb2be5625cae0aa3b3a989d07f1e8839.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100069,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/69-e97e67ccf3e07ebd26804cc6e6a0f79d.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100070,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/70-1f3ca4d5241726b0cff6bb4582154182.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100071,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/71-528bab9e563a5f7468375da124141eae.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100072,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/72-1a07d2d7ad32bfcc37c0631edeb174fa.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100073,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/73-6efc3626fc9b6ea72f5faf4e7152f533.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100074,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/74-d03b0d2cb7aec430cd567fd4b7d30f20.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100075,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/75-c56f6266aa25c093faf7e4aa8d8e3c1c.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100076,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/76-372a63b3a0bc9e0c310dca025276a045.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100077,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/77-adff97f89fd2b33575db75019f11a5eb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100078,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/78-65fcacf925379f633267e8722ad66f5f.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100079,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/79-2d5577c6ce3e6b2d516c1856955df2ef.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100080,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/80-568102d1072d0f4eb3a3b0e1f9e1a14b.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100081,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/81-3de60b9a0c105f047d173c264d759603.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100082,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/82-5ff1719e30f5745c6262c67549c8a68f.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100083,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/83-1d7018d72e8454d6f58acf73600a028b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100084,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/84-cd6105a4fb4c165a8293108d00bc6b46.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100085,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/85-defdad27727bde90b679292c8a0176f1.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100086,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/86-31ee6c36360268d31ba8fdc9c19ca600.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100087,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/87-ebb61539947e90b4c8ea4a4f26700cde.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100088,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/88-9fae696bc5699cfbdcef9ad3b1957554.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100089,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/89-f9e288e2d87478fc84900548e76c1bee.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100090,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/90-6eabb42d82fffc448251dcf4b7e1eae8.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100091,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/91-08449406ee13bf29a971cc2eab31b506.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100092,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/92-7e04a16ed882f1d587bb509c4dad1958.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100093,
+    "content": {
+      "text": "Choose the most appropriate option from the given four options to present a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/93-e31d591a4b03b2a498b38b1e0aa2cf86.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100094,
+    "content": {
+      "text": "Choose the most appropriate option from the given four options to present a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/94-27693aff88d7704bd57ee71abf3a69a0.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100095,
+    "content": {
+      "text": "Choose the most appropriate option from the given four options to present a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/95-1d5f2563878605a5c0878ede9db2e522.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100096,
+    "content": {
+      "text": "Choose the most appropriate option from the given four options to present a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/96-0fdf28df95f36533ed371e27f596ebf7.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100097,
+    "content": {
+      "text": "Choose the most suitable option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/97-33b01f7bc2ce0fb1c56fa86266b0727b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100098,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/98-017b4ecae5a7818a6c106654d41b50ba.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100099,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/99-1478aec70a808c0dada15b5ecf5281b9.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100100,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/100-80ac829c6a31f542dd2d22fcd2f1b266.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100101,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/101-f1dd1fe1594326266094e6e060afc946.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100102,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/102-ce8d2cb524cd6e3a5cac1c797e145cbf.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100103,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/103-e9529d0f9fc8a578e871933649c52f5a.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100104,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/104-45b234001b3b2e9c7cf0193fc37263bb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100105,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/105-1a98b1800863fd9848a83392a85b7034.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100106,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/106-0ec1a191a653df259a6e652912d4e4e5.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100107,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/107-b8bcff24b26f83142c2e5bf51c029637.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100108,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/108-e438b9ee8f6438048abd9eb6d84baa59.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100109,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/109-edd7eb64b814ec1188d00d3fb168210d.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100110,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/110-af1723f716edb92e69891004823b9f5a.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100111,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/111-653468b7d962407e6c94e1029ba07e8c.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100112,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/112-21afa352481924f8d4b0114b77d0e4e8.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100113,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/113-da78aeae493db6ae3e911663c7ba410d.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100114,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/114-3ce694e2dff45442360ada1fae696aba.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100115,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/115-37ed7e321d61b6690bd4529c8e449057.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100116,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/116-22854859bd0110906b70c7100814bbdd.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100117,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/117-d4871739a13d3bd7a4618a92a2ebe04e.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100118,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/118-d916b2bba749181760bbe8323e3d5e56.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100119,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/119-90441ab2514cbd001ef0d2de87cb6be9.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100120,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/120-b82ff08cfbeda78696e9dbe05aca24e3.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100121,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/121-b478e712ca2ca50df5c1fdef052bdb11.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100122,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/122-48d3434598c9dbbbfca1b9fde7bb17be.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100123,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/123-852636d3d78fe24a29cf4a90163156a5.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100124,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/124-ab09b91652cf106c5ab3884964f17db5.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100125,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/125-d18ba24ea7877f0c0bb8438b611d28ee.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100126,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/126-fe19daed38b905b8edffa57c902da2bd.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100127,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/127-c5820a2f3f7e5b8d146f20017776fffb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100128,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/128-40435ac7b0f4feaaaecb816c5a884833.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100129,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/129-a20f6a868599db8f355ece262fe51d76.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100130,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/130-38ec6a2a585bef39b60c8f9f1a2a534e.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100131,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/131-0b6d2f8fe51410f8f18d3efa1639df27.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100132,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/132-3921553fd8c5d6c993cd31e2c285748b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100133,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/133-14c2780a819e58e68a9701fd13d3a22c.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100134,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/134-95d0aaafee4007411d557b00023ddc50.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100135,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/135-db398cf6f4a0ad1be4945463c97157d0.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100136,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/136-28fc8e43cd17180f0fee4d70dee8d390.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100137,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/137-f12a6e5ee1bf54ec969370dacd024108.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100138,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/138-e98e79db270c87ebaa0f31fbce305aec.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100139,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/139-cafb788de963ec6a9a25c4cfb1f1b853.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100140,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/140-09b30c0a7db72ae687c418bd6f06fbda.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100141,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/141-01be9990b98b89445c721e0ba416551b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100142,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/142-550c6e6f23ae5dfd655e737ed6697e9d.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100143,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/143-f025d5c53fb98495f3d71ffb926336c7.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100144,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/144-4afd32913aa178f6b368851a16f65c4e.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100145,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/145-9a87aa7d00a05659b23a328815a8fa6f.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100146,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/146-38fcb4f1e2094721657da4085df7c741.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100147,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/147-559e16fb9d149f9d129f590cb497d17c.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100148,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/148-0ded3246447487b7f07924e169634972.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100149,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/149-a39c14518fe66e950ffa9974abaddd8b.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100150,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/150-574f749aeb8bd6d14fa63a7fb2a72a58.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100151,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/151-9d03bcadfafd94dce340a36f18e33dd5.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100152,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/152-1e667b825ebc628f0d685486cf8a315c.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100153,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/153-9c60a564205bdaf394609d1c8f96e887.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100154,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/154-7a21f71245a207e1d2c3c92968f8548d.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100155,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/155-dde05ab94bd1d44110754d6cfcba90ae.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100156,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/156-6116b17e5ce5f72f7352bc2c4b4553d7.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100157,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/157-6d866c2d3dfe237b181fb8ba564c9322.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100158,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/158-3b2765cd2616f838c4a57d6aee43d753.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100159,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/159-79b60374d02be617f23f5f7026115431.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100160,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/160-1043c387b89bfd9c6dd224fe655d22e4.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100161,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/161-ecf6e76387a73af106fb941ddd6e7f4a.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100162,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/162-6481858db8b0463fa5099925d628bed0.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100163,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/163-e67d2ea884f517fe68a893d8e0b1eadb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100164,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/164-84e9acb32bc15025742a68f9e4d25277.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100165,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/165-3add3e8869ab294088c90c899da259e1.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100166,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/166-2859f3c90283640d7bfd6e17c0faec99.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100167,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/167-f5ae2ff46651e29dd741ba203aa09771.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100168,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/168-efc7f5d7e15de5732a7b253d2a884e16.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100169,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/169-a23ef7db7dde90ab32e8f3621ef2c340.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100170,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/170-cb575b32457e07ca0cf360e250cb7659.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100171,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the blanks for question mark 1 and question mark 2, so that a certain pattern is formed:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/171-79b654cf18dab0a72bc028f6dc985c6d.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100172,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain pattern:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/172-3f13f246eae2070016bc55d4ae5c75c8.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100173,
+    "content": {
+      "text": "On the left are four pieces of paper, each with one side black and the other side white. Only one option on the right can be formed by combining them (can be translated, rotated, flipped). Please find it.\nA: As shown in Figure A\nB: As shown in Figure B\nC: As shown in Figure C\nD: As shown in Figure D",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/173-b6d7a5133e380bc9b381d569be13ee29.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100174,
+    "content": {
+      "text": "This question contains two sets of figures and four selectable figures. These two sets of figures have certain similarities and also certain differences. You are required to choose the most suitable one to replace the question mark from the four options. The correct answer not only makes the two sets of figures show the greatest similarity but also allows the second set of figures to exhibit its own characteristics.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/174-3ca8da3a18b7b28e6553ccd667999bb0.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100175,
+    "content": {
+      "text": "Each question contains a set of figures and four options. Please select the most appropriate option from the four to fill in the question mark, so that the figures exhibit a certain pattern.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/175-bf4fcc9917bbab2720210d5181f73e47.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100176,
+    "content": {
+      "text": "Each question contains two sets of figures and four selectable figures. These two sets of figures have certain similarities and also certain differences. You are required to choose one from the four options that best replaces the question mark. The correct answer should not only make the two sets of figures show the greatest similarity but also allow the second set of figures to exhibit its own characteristics.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/176-807951151f7277af521d2eeb48519afb.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100177,
+    "content": {
+      "text": "Each question contains two sets of figures and four selectable figures. These two sets of figures have certain similarities and also certain differences. You are required to choose one from the four options that best replaces the question mark. The correct answer should not only make the two sets of figures show the greatest similarity but also allow the second set of figures to exhibit its own characteristics.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/177-e9f355ba98004a0b5b5195538c25b674.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100178,
+    "content": {
+      "text": "Choose the most appropriate option from the four choices to fill in the question mark, so that the figures exhibit a certain pattern:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/178-8ddc1fb418e41ad84c969970d17947aa.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100179,
+    "content": {
+      "text": "Choose the most appropriate option from the four choices to fill in the question mark, so that the figures exhibit a certain pattern:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/179-8d4a99373fa25b9ed1703105027aa380.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100180,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that a certain pattern is formed.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/180-e3d583b6b4078ba2bafe16989abfeda2.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100181,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/181-658898fd98fde64f82731e880ffecfc4.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100182,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/182-d2cd8767d5c859596450b354449ff95e.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100183,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/183-54b786837ebb914a7d2703798807ebfc.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100184,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it conforms to the pattern of change in the entire figure before it.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/184-0db2152ce35548eebcf94f8b2c3eb1cf.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100185,
+    "content": {
+      "text": "Choose the most suitable option to fill in the question mark, so that it presents a certain regularity. This option is:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/185-66564c9f464fae88d6bda09d264ba3e2.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100186,
+    "content": {
+      "text": "The option that best fits the given pattern of figures is:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/186-be73244c4f86a0359b6f2a7215da4775.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100187,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/187-943b07e6360047a1afeb65e0f3526128.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100188,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/188-9b865c16b732aef24d79786186c812f8.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100189,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/189-8fba4610c67d823ac7db89e4bb311cd1.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100190,
+    "content": {
+      "text": "Choose the most appropriate option from the four given choices to fill in the question mark, so that it presents a certain regularity.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/190-5ad13d389fcbb2fd9c96bdaa77da1d6c.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100191,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/191-fa3bc3a464fdcc2b918cc34b2e46d610.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100192,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/192-3cb424d7da6806f73618b7d258eb840b.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100193,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/193-90dbcfa9ab328f5689adc569289a2c48.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100194,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/194-80f469fe3dadd7399bc2b42ad523c265.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100195,
+    "content": {
+      "text": "Choose the most appropriate option from the given four choices to fill in the question mark, so that it presents a certain regularity:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/195-0600c4e35c2957d451b08527a99fdd26.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100196,
+    "content": {
+      "text": "Among the four figures on the right, only one is formed by combining the two figures on the left (only by translating up, down, left, or right, rotating on the plane, and overlapping). Please identify it.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/196-72053ee31b58da5307e5e03df125e018.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100197,
+    "content": {
+      "text": "Divide the following six figures into two categories, so that each category of figures has its own common characteristics and patterns. The correct classification is: \nA: ①②⑥, ③④⑤\nB: ①③⑤, ②④⑥\nC: ①③④, ②⑤⑥\nD: ①④⑥, ②③⑤",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/197-8e7f42090816ab6815dad39d2b3ad8ac.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100198,
+    "content": {
+      "text": "Choose one option from the four given that is the same as the figure provided in the question.",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/198-3f6c912534eca7f7c5614348b93c708b.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "CCAT",
+    "number": 100199,
+    "content": {
+      "text": "Choose the most appropriate option to fill in the question mark, so that the pattern of change in the figure on the right is consistent with that of the figure on the left:",
+      "type": "IMAGE",
+      "imageUrl": "https://lvmnqpsfussgfizxvhpf.supabase.co/storage/v1/object/public/ccat-question-images/mmiq/199-2b028b457f07a41e2518e88220d23e29.jpg",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D"
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "difficulty": "MEDIUM",
+      "category": "LOGICAL",
+      "points": 1
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 1,
+    "content": {
+      "text": "Lisa can make the number 2025 out of four wooden digits as shown. Which of the following numbers is the largest that she can make with these digits?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/1.png",
+      "options": [
+        "2502",
+        "5202",
+        "5220",
+        "5502",
+        "5520"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 2,
+    "content": {
+      "text": "Isabelle is playing a game with a hexagonal sheet of paper. She rotates the hexagon by the same angle and in the same direction with each move. The illustration shows the sheet at the beginning and after the first move. After how many moves does the sheet look the same as it did at the beginning?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/2.png",
+      "options": [
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 3,
+    "content": {
+      "text": "Alex rolls three standard dice and gets a total of 8. All three dice show different numbers. What number is definitely not shown on any of the three dice?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "Image_3",
+        "Image_4",
+        "Image_5",
+        "Image_6",
+        "Image_7"
+      ],
+      "optionImages": [
+        "/mtt/2025/3.png",
+        "/mtt/2025/4.png",
+        "/mtt/2025/5.png",
+        "/mtt/2025/6.png",
+        "/mtt/2025/7.png"
+      ],
+      "correctAnswer": "E",
+      "correctAnswerIndex": 4,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 4,
+    "content": {
+      "text": "The regular hexagon shown is divided into a number of triangles with equal areas. What fraction of the hexagon is grey?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/8.png",
+      "options": [
+        "1/2",
+        "1/3",
+        "1/4",
+        "1/5",
+        "1/6"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 5,
+    "content": {
+      "text": "In Kangaroo Town, instead of kilometres the unit used is ‘hops’. Kangaroo Klaus needs 12 minutes to cover one hop. How many hops can he cover in 12 hours?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "60",
+        "24",
+        "12",
+        "10",
+        "6"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 6,
+    "content": {
+      "text": "Daniel is 5 years old. His brother Dominik is 6 years older. How old will they both be in total in 7 years’ time?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "26",
+        "27",
+        "28",
+        "29",
+        "30"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "E",
+      "correctAnswerIndex": 4,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 7,
+    "content": {
+      "text": "Ohad wants to write the four digits 2, 0, 2 and 5 in the four boxes of the calculation shown. What is the smallest result Ohad could obtain?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/9.png",
+      "options": [
+        "-7",
+        "-6",
+        "-5",
+        "-4",
+        "-3"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 8,
+    "content": {
+      "text": "The picture on the right shows the menu of a burger restaurant. The rain has washed away some of the numbers. The burgers are ordered by price in ascending order, the cheapest being the \"veggie\" burger. What is the smallest possible price of the \"deluxe\" burger?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/10.png",
+      "options": [
+        "5.8",
+        "6.8",
+        "7.8",
+        "8.8",
+        "9.8"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 9,
+    "content": {
+      "text": "Five circles, each with an area of 8 cm², overlap to form the figure shown. Each overlapping section has an area of 1 cm². What is the total area of the figure in cm²?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/11.png",
+      "options": [
+        "32",
+        "36",
+        "38",
+        "39",
+        "42"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 10,
+    "content": {
+      "text": "If Paul sets the number 0000 on his bicycle lock, he sees 8888 at the point marked with an x. To open the lock, he must turn the rings so that the number 2815 is at the x mark. What number is then next to the arrows?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/12.png",
+      "options": [
+        "4037",
+        "4693",
+        "639",
+        "693",
+        "9083"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 3
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 11,
+    "content": {
+      "text": "A mouse wants to get to a piece of cheese. From each square it can only move to the square to the right of it or directly below it. How many different paths lead the mouse to a piece of cheese?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/13.png",
+      "options": [
+        "3",
+        "5",
+        "8",
+        "10",
+        "11"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 12,
+    "content": {
+      "text": "In a 60 m hurdles race, there are 5 hurdles. The first hurdle is 12 m after the start. The distance between any two consecutive hurdles is 8 m. How far is the last hurdle from the finish line?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "8 m",
+        "10 m",
+        "12 m",
+        "14 m",
+        "16 m"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "E",
+      "correctAnswerIndex": 4,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 13,
+    "content": {
+      "text": "Emma wants to write a number in each circle (see diagram). She wants each number to be equal to the sum of the numbers in the two adjacent circles. She has already written two numbers. Which number will she write in the grey circle?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/14.png",
+      "options": [
+        "2",
+        "-1",
+        "-2",
+        "-3",
+        "-5"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 14,
+    "content": {
+      "text": "Sanja has two bowls containing numbered balls. In the left bowl, there are seven balls with the numbers 1, 2, 6, 7, 10, 11 and 12. Their arithmetic mean is 7.0. In the right bowl there are five balls with the numbers 3, 4, 5, 8 and 9; their arithmetic mean is 5.8. Sanja wants to increase the arithmetic mean of the numbers in both bowls. Which ball must she transfer from the left bowl to the right to do this?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/15.png",
+      "options": [
+        "6",
+        "7",
+        "10",
+        "11",
+        "12"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 15,
+    "content": {
+      "text": "Theo is standing on a treadmill in the gym. He sees two stopwatches. The left one shows the time that has elapsed since he started his workout. The right one shows the time remaining until the end of his workout. At some point both stopwatches will display the same time. What will they display at that point?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/16.png",
+      "options": [
+        "17:50",
+        "18:00",
+        "18:12",
+        "18:15",
+        "18:20"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 16,
+    "content": {
+      "text": "In a room, there are 10 more people who always tell the truth than there are people who always lie. Everyone in the room was asked: \"Are you telling the truth?\" and all 20 people answered yes. How many liars are there in the room?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "0",
+        "5",
+        "15",
+        "20",
+        "25"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 17,
+    "content": {
+      "text": "A bee, a mouse, a beetle and a cat want to take a group photo. To do this, they line up next to each other. The cat is not allowed to stand next to the mouse. In how many different ways can the animals line up?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/17.png",
+      "options": [
+        "6",
+        "12",
+        "16",
+        "18",
+        "20"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 18,
+    "content": {
+      "text": "The two bookworms Linki and Rechti eat their way through the books. Linki starts on the left, and Rechti starts on the right. They start at the same time. Linki eats his way through a book cover in 3 days and through all the pages of a book in 2 days. Rechti eats his way through a book cover in 1 day and through all the pages of a book in 2 days. In which book do the two meet?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/18.png",
+      "options": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 19,
+    "content": {
+      "text": "Emus, snakes and kangaroos live together on an Australian farm. Emus have two legs but no tail. Kangaroos have four legs and a tail. Snakes have no legs but a tail. All animals have two eyes. Together they have 18 eyes, 7 tails and 24 legs. How many kangaroos live on the farm?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "E",
+      "correctAnswerIndex": 4,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 20,
+    "content": {
+      "text": "Elke draws quarter circles on a sheet of paper measuring 12 cm × 9 cm. The centres of the quarter circles are in the four corners. He paints the resulting area in the middle of the illustration, which is not to scale. How long is the distance with the question mark?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/19.png",
+      "options": [
+        "5 cm",
+        "6 cm",
+        "7 cm",
+        "8 cm",
+        "9 cm"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 4
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 21,
+    "content": {
+      "text": "In the six-digit number PAPAYA, different letters stand for different digits and identical letters stand for identical digits. Furthermore, Y = P + P = A + A + A. What is the value of P × A × P × A × Y × A?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "432",
+        "342",
+        "324",
+        "243",
+        "234"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 22,
+    "content": {
+      "text": "Manuela shoots at a goal a total of 17 times in two soccer training sessions. In the first training session, she hits the goal with 60% of her shots. In the second training session, she hits the goal with 75% of her shots. How often does she hit the goal in the second training session?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 23,
+    "content": {
+      "text": "Louise places three rectangular pictures as shown in the figure. What is the size of angle α?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/20.png",
+      "options": [
+        "64°",
+        "70°",
+        "72°",
+        "76°",
+        "80°"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 24,
+    "content": {
+      "text": "Anurag lives 1 km from his school. He sets off for school at the same time every day. If he walks, he walks at a speed of 4 km/h. If he cycles, he cycles at a speed of 15 km/h. When he walks, he arrives 5 minutes before school starts. How many minutes before school starts does he arrive if he cycles?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "12",
+        "13",
+        "14",
+        "15",
+        "16"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "E",
+      "correctAnswerIndex": 4,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 25,
+    "content": {
+      "text": "In the rectangle ABCD the points E and F lie on the side DC (see diagram), so that ∠EBA = ∠DFA = 45° and AB = EF = 20 cm. How long is the side BC?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/21.png",
+      "options": [
+        "4 cm",
+        "6 cm",
+        "8 cm",
+        "10 cm",
+        "12 cm"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 26,
+    "content": {
+      "text": "If the height of a cuboid is reduced by 3 cm, its surface area decreases by 60 cm² and a cube is formed. What is the volume of the original cuboid in cm³?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/22.png",
+      "options": [
+        "75",
+        "125",
+        "150",
+        "200",
+        "225"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "D",
+      "correctAnswerIndex": 3,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 27,
+    "content": {
+      "text": "In the quadrilateral ABCD, the points N and K are marked on the sides BC and AD, so that BN = 2 · NC and AK = KD. The areas of the two triangles ABN and CKD are known (see graphic). What is the area of the quadrilateral ABCD?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/23.png",
+      "options": [
+        "13",
+        "14",
+        "15",
+        "16",
+        "17"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 28,
+    "content": {
+      "text": "Martin wants to fill the cells in the diagram shown such that each cell contains either a cross or a circle. No column, row or diagonal should contain a series of four consecutive identical symbols. What will the grey column contain in the completed diagram?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/24.png",
+      "options": [
+        "3 circles and 3 crosses",
+        "2 circles and 4 crosses",
+        "4 circles and 2 crosses",
+        "5 circles and 1 cross",
+        "1 circle and 5 crosses"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "B",
+      "correctAnswerIndex": 1,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 29,
+    "content": {
+      "text": "The letters p, q, r, s and t stand for five consecutive positive integers, but not necessarily in this order. The following applies: p + q = 69 and s + t = 72. Which number does r stand for?",
+      "year": 2025,
+      "imageUrl": null,
+      "options": [
+        "29",
+        "31",
+        "34",
+        "37",
+        "39"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "C",
+      "correctAnswerIndex": 2,
+      "points": 5
+    }
+  },
+  {
+    "bank": "MTT",
+    "number": 30,
+    "content": {
+      "text": "The friends Annie, Bibi, Clara and Doris each live on a different floor of a four-storey building. There are also other people living in the building. 25 people live above Annie. 5 people live below Bibi. 17 people live below Clara. 22 people live above Doris. How many people live in the building in total?",
+      "year": 2025,
+      "imageUrl": "/mtt/2025/25.png",
+      "options": [
+        "27",
+        "30",
+        "32",
+        "37",
+        "40"
+      ],
+      "optionImages": [
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "correctAnswer": "A",
+      "correctAnswerIndex": 0,
+      "points": 5
+    }
+  }
+]

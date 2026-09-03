@@ -15,10 +15,13 @@ function uid() {
 }
 
 async function main() {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL || process.env.ALLOW_DEMO_SEED !== "true") {
+    throw new Error("Demo seeding is disabled. Use ALLOW_DEMO_SEED=true only against a disposable local database. Never seed production accounts or drives.");
+  }
   console.log("Seeding clean recruitment-portal...");
 
   // ---- Users ----
-  const seedPassword = process.env.PORTAL_SEED_PASSWORD || (process.env.NODE_ENV === "production" ? "" : "password1234");
+  const seedPassword = process.env.PORTAL_SEED_PASSWORD || "password1234";
   if (seedPassword.length < 12) throw new Error("Set PORTAL_SEED_PASSWORD to at least 12 characters before production seeding.");
   const pw = await bcrypt.hash(seedPassword, 10);
   const admin = await prisma.user.upsert({
@@ -62,7 +65,7 @@ async function main() {
   for (const q of codingRaw) {
     await prisma.question.upsert({
       where: { bank_number: { bank: "CODING", number: q.number } },
-      update: { content: j(q) },
+      update: {},
       create: { bank: "CODING", number: q.number, content: j(q) },
     });
   }
@@ -71,36 +74,17 @@ async function main() {
   for (const q of essayRaw) {
     await prisma.question.upsert({
       where: { bank_number: { bank: "ESSAY", number: q.number } },
-      update: { content: j(q) },
+      update: {},
       create: { bank: "ESSAY", number: q.number, content: j(q) },
     });
   }
 
-  const ccatRaw = JSON.parse(fs.readFileSync(path.join(SEED_DIR, "generated_ccat_similar_questions.json"), "utf8"));
-  const ccatSubset = (Array.isArray(ccatRaw) ? ccatRaw : Object.values(ccatRaw)).slice(0, 80);
-  for (let i = 0; i < ccatSubset.length; i++) {
-    const q = ccatSubset[i];
-    await prisma.question.upsert({
-      where: { bank_number: { bank: "CCAT", number: i + 1 } },
-      update: { content: j(q) },
-      create: { bank: "CCAT", number: i + 1, content: j(q) },
-    });
-  }
-
-  // MTT: 30 generated math questions (logic reused/adapted for the new portal)
-  for (let i = 1; i <= 30; i++) {
-    const a = 2 + (i % 9);
-    const b = 3 + (i % 7);
-    const op = i % 3;
-    let text: string, answer: number;
-    if (op === 0) { text = `Evaluate ${a} + ${b} × ${a}.`; answer = a + b * a; }
-    else if (op === 1) { text = `If 3x = ${3 * (a + b)}, what is x?`; answer = a + b; }
-    else { text = `What is ${a * b} ÷ ${a}?`; answer = b; }
-    await prisma.question.upsert({
-      where: { bank_number: { bank: "MTT", number: i } },
-      update: { content: j({ text, answer, points: i <= 10 ? 3 : i <= 20 ? 4 : 5 }) },
-      create: { bank: "MTT", number: i, content: j({ text, answer, points: i <= 10 ? 3 : i <= 20 ? 4 : 5 }) },
-    });
+  // Never replace a live bank with the old 80-question demo slice.
+  // Restore the complete retained banks explicitly with scripts/restore-assessment-banks.ts.
+  const retainedBanks = JSON.parse(fs.readFileSync(path.join(SEED_DIR, "original-assessment-banks.json"), "utf8"));
+  const retainedText = JSON.parse(fs.readFileSync(path.join(SEED_DIR, "generated_ccat_similar_questions.json"), "utf8"));
+  for (const row of [...retainedBanks, ...retainedText.map((q: any) => ({ bank: "CCAT", number: q.number, content: q }))]) {
+    await prisma.question.upsert({ where: { bank_number: { bank: row.bank, number: row.number } }, update: {}, create: { bank: row.bank, number: row.number, content: j(row.content) } });
   }
 
   // Prompt engineering: 6 prompts
@@ -115,7 +99,7 @@ async function main() {
   for (let i = 0; i < prompts.length; i++) {
     await prisma.question.upsert({
       where: { bank_number: { bank: "PROMPT", number: i + 1 } },
-      update: { content: j({ prompt: prompts[i] }) },
+      update: {},
       create: { bank: "PROMPT", number: i + 1, content: j({ prompt: prompts[i] }) },
     });
   }

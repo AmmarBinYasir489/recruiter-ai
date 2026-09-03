@@ -8,9 +8,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model AuthRateLimit {
+  key       String   @id
+  attempts  Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
+  authId       String?  @unique
   name         String
   passwordHash String
   role         String // admin | recruiter | reviewer | candidate
@@ -161,6 +170,7 @@ model AssessmentAttempt {
   submittedAt    DateTime?
   status         String    @default("ACTIVE") // ACTIVE | SUBMITTED | EXPIRED | CANCELLED
   idempotencyKey String?
+  questionSnapshot String? // server-only immutable question/answer-key snapshot for this attempt
   createdAt      DateTime  @default(now())
 
   application Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)

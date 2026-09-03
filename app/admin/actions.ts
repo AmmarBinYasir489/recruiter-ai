@@ -3,27 +3,29 @@
 import { redirect } from "next/navigation";
 import { prisma, j } from "@/lib/db";
 import { requireRole } from "@/lib/auth";
-import { hashPassword } from "@/lib/auth";
 import { testAiProvider } from "@/lib/ai/client";
 import { encryptAiKey, getAiRuntimeConfig, parseStoredProviderChecks, parseStoredProviderKeys } from "@/lib/ai/config";
 import { normalizeAiModel, normalizeAiProvider } from "@/lib/ai/providers";
 import { revalidatePath } from "next/cache";
+import { canCreateStaffRole, registrationCredentials } from "@/lib/registration";
+import { createPortalAccount } from "@/lib/accounts";
 
 export async function createUserAction(formData: FormData) {
   const user = await requireRole("admin");
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const name = String(formData.get("name") || "").trim();
-  const role = String(formData.get("role") || "candidate");
+  const role = String(formData.get("role") || "");
   const password = String(formData.get("password") || "");
   if (!email || !name) return { error: "Name and email required." };
-  if (!["admin", "recruiter", "reviewer", "candidate"].includes(role)) return { error: "Invalid role." };
-  if (password.length < 12) return { error: "Password must be at least 12 characters." };
+  if (!canCreateStaffRole(role)) return { error: "Admins can create recruiter and reviewer accounts only. Candidates must sign up themselves." };
+  const valid = registrationCredentials.safeParse({ email, password });
+  if (!valid.success) return { error: valid.error.issues[0].message };
   const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) return { error: "Email already exists." };
-  await prisma.user.create({
-    data: { email, name, role, passwordHash: await hashPassword(password) },
-  });
+  try { await createPortalAccount({ email, name, password, role: role as "recruiter" | "reviewer" }); }
+  catch { return { error: "Account could not be created. Check whether the email is already registered or contact support." }; }
   await prisma.auditLog.create({ data: { actorId: user.id, action: "USER_CREATED", meta: j({ email, role }) } });
+  revalidatePath("/admin/users");
   return { ok: true };
 }
 

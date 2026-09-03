@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { Card, LinkButton, StatCard, decisionBadge } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { driveApplicationError, formatDriveDeadline } from "@/lib/driveApplications";
+import { publicApplyPath } from "@/lib/publicApplications";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto max-w-6xl px-4 py-4 flex flex-wrap gap-3 items-center justify-between sm:px-6">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 grid place-items-center rounded-xl bg-brand-600 text-white font-black">R</div>
             <span className="font-bold text-ink-900">Recruitment Portal</span>
@@ -32,7 +33,7 @@ export default async function HomePage() {
             {user ? (
               <LinkButton href={`/${user.role}`} className="btn-primary">Go to {user.role} dashboard</LinkButton>
             ) : (
-              <LinkButton href="/login" className="btn-primary">Sign in</LinkButton>
+              <><LinkButton href="/login" className="btn-outline">Sign in</LinkButton><LinkButton href="/signup" className="btn-primary">Create account</LinkButton></>
             )}
           </div>
         </div>
@@ -65,7 +66,7 @@ export default async function HomePage() {
                   ) : user?.role === "candidate" ? (
                     <LinkButton href={`/candidate/apply/${d.id}`} className="btn-primary">Apply</LinkButton>
                   ) : (
-                    <LinkButton href="/login" className="btn-ghost">Sign in to apply</LinkButton>
+                    <LinkButton href={publicApplyPath(d.id)} className="btn-primary">View & apply</LinkButton>
                   )}
                 </div>
               </Card>

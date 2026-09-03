@@ -6,6 +6,8 @@ import { readCvFile } from "@/lib/cv/storage";
 import { createNotification } from "@/lib/notifications";
 import { DEFAULT_CGPA } from "@/lib/engine/cgpa";
 import { cleanSkills } from "@/lib/jobSkills";
+import { injectionWarnings } from "@/lib/ai/security";
+import { candidatePlaceholderName } from "@/lib/publicApplications";
 
 const MAX_RETRIES = 3;
 const STALE_AFTER_MS = 10 * 60 * 1000;
@@ -40,6 +42,16 @@ export async function processCvJob(jobId: string) {
     }
     // Stage 1 produces a faithful text transcription; stage 2 converts that
     // text into validated structured evidence for scoring.
+      const warnings = injectionWarnings(nativeText + "\n" + parserText);
+      if (warnings.length) {
+        const safeScores = uj<Record<string, unknown>>(app.scores) || {};
+        delete safeScores.CV_SCREENING;
+        await prisma.$transaction(async (tx) => {
+          await tx.application.update({ where: { id: app.id }, data: { cvScore: null, scores: j(safeScores), cvResult: "HOLD", status: "HOLD", phaseReleased: false, extractedCv: j({ ...submitted, validationWarnings: warnings, securityReviewRequired: true }) } });
+        await tx.cvJob.update({ where: { id: jobId }, data: { status: "FAILED", error: warnings[0], extractedText: parserText } });
+      });
+      return { processed: true, status: "FAILED" as const };
+    }
     const parsed = await parseCv(parserText, required, requirements.preferred);
     const hydrated = {
       ...parsed,
@@ -64,7 +76,7 @@ export async function processCvJob(jobId: string) {
     // CV screening belongs to the drive intake pool, not to a funnel. A PASS
     // makes the candidate eligible for staff selection; it never advances them.
     const threshold = app.drive.cvPassThreshold;
-    const cvResult = cvScore >= threshold ? "PASS" : "FAIL";
+    const cvResult = "HOLD";
     const extracted = {
       ...submitted,
       ...hydrated,
@@ -79,20 +91,23 @@ export async function processCvJob(jobId: string) {
       missing: hydrated.missingSkills,
       extractionState: hydrated.extractionMethod || "TEXT_EXTRACTED",
       textExtractionMethod: ocr.method,
-      scoringState: "AUTOMATIC_THRESHOLD_APPLIED",
+      scoringState: "SCORED_AWAITING_STAFF_DECISION",
       threshold,
     };
 
     await prisma.$transaction(async (tx) => {
+      if (parsed.name && typeof parsed.name === "string") {
+        // Replace only the signup placeholder; preserve deliberately edited names.
+        const account = await tx.user.findUnique({ where: { id: app.candidateId }, select: { email: true } });
+        if (account) await tx.user.updateMany({ where: { id: app.candidateId, name: candidatePlaceholderName(account.email) }, data: { name: parsed.name.slice(0, 120) } });
+      }
       await tx.application.update({
         where: { id: app.id },
         data: {
           cvScore,
           cvResult,
           extractedCv: j(extracted),
-          currentStage: "CV_SCREENING",
-          phaseReleased: false,
-          status: "HOLD",
+          ...(app.currentStage === "CV_SCREENING" ? { phaseReleased: false, status: "HOLD" } : {}),
           stageHistory: j([
             ...(uj<any[]>(app.stageHistory || "[]")),
             {

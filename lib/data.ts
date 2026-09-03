@@ -1,5 +1,7 @@
 import { prisma, uj } from "./db";
 import { trackLabel } from "./onsiteTrack";
+import { scoresForMode } from "@/lib/scoreModes";
+import { computeApplicationTotal } from "@/lib/engine/leaderboard";
 import type { CandidateRecord } from "./engine/search";
 
 export async function getCandidateRecords(driveId?: string, ownerId?: string): Promise<CandidateRecord[]> {
@@ -26,11 +28,11 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       appliedAt: true,
       createdAt: true,
       candidate: { select: { name: true, email: true } },
-      drive: { select: { name: true } },
-      funnel: { select: { name: true } },
+      drive: { select: { name: true, tciWeights: true } },
+      funnel: { select: { name: true, stages: true } },
       results: {
         orderBy: { createdAt: "desc" },
-        select: { id: true, type: true, status: true, integrityLevel: true },
+        select: { id: true, type: true, status: true, integrityLevel: true, normalized: true, mode: true, gradedAt: true, createdAt: true },
       },
       onsiteInvites: {
         orderBy: { createdAt: "desc" },
@@ -48,7 +50,7 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
   }
 
   const records: CandidateRecord[] = apps.map((a) => {
-    const scores = uj<Record<string, number>>(a.scores) || {};
+    const scores = scoresForMode(a.scores, a.results, a.trackKey.startsWith("ONSITE:") ? "ONSITE" : "ONLINE");
     const extracted = uj<any>(a.extractedCv) || {};
     const history = uj<any[]>(a.stageHistory) || [];
     const ccat = scores.CCAT;
@@ -69,9 +71,11 @@ export async function getCandidateRecords(driveId?: string, ownerId?: string): P
       status: a.status,
       funnelId: a.funnelId ?? undefined,
       funnelName: a.funnel ? trackLabel(a.funnel.name, a.trackKey) : undefined,
+      scoreMode: a.trackKey.startsWith("ONSITE:") ? "ONSITE" : "ONLINE",
       trackCount: trackCounts.get(`${a.candidateId}:${a.driveId}`) || 1,
       phaseReleased: a.phaseReleased,
       scores,
+      overall: computeApplicationTotal(scores, a.drive.tciWeights, a.funnel ? (uj<any[]>(a.funnel.stages) || []).filter((s) => s.enabled !== false).map((s) => s.type) : ["CV_SCREENING"]),
       latestResultId: a.results[0]?.id,
       currentStage: a.currentStage || undefined,
       previousStage: history.length >= 2 ? history[history.length - 2].stage : undefined,

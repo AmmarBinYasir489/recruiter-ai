@@ -1,5 +1,5 @@
 import { prisma, uj } from "@/lib/db";
-import { Card, LinkButton, decisionBadge, SectionTitle, EmptyState } from "@/components/ui";
+import { Card, LinkButton, SectionTitle, EmptyState } from "@/components/ui";
 import { PhaseThresholdEditor } from "@/components/PhaseThresholdEditor";
 import { CohortView, type CohortRow } from "@/components/CohortView";
 import { toggleStageEnabledAction } from "@/app/recruiter/actions";
@@ -24,15 +24,16 @@ export default async function FunnelPage({ params: paramsPromise, searchParams: 
 
   const apps = await prisma.application.findMany({
     where: { funnelId: funnel.id },
-    include: { candidate: true, results: true },
+    include: { candidate: true, results: { orderBy: [{ createdAt: "asc" }, { id: "asc" }] }, assessmentAttempts: { where: { status: { in: ["READY", "ACTIVE"] } }, select: { type: true } } },
   });
 
   function cohortFor(type: string): CohortRow[] {
+    const waiting = apps.filter((a) => a.currentStage === type && !a.phaseReleased && ["HOLD", "IN_PROGRESS", "SUBMITTED"].includes(a.status) && !a.assessmentAttempts.some((attempt) => attempt.type === type));
     if (type === "CV_SCREENING") {
-      return apps.map((a) => ({ id: a.id, candidateName: a.candidate.name, score: a.cvScore ?? 0, result: a.cvResult || "FAIL" }));
+      return waiting.filter((a) => a.cvScore != null && !["PROCESSING", "FAILED"].includes(a.cvResult || "")).map((a) => ({ id: a.id, candidateName: a.candidate.name, score: a.cvScore ?? 0, result: a.cvResult || "FAIL" }));
     }
-    return apps
-      .filter((a) => a.results.some((r) => r.type === type))
+    return waiting
+      .filter((a) => { const r = a.results.filter((result) => result.type === type).at(-1); return r && (r.gradedAt || r.status !== "MANUAL_REVIEW"); })
       .map((a) => {
         const rs = a.results.filter((r) => r.type === type);
         const r = rs[rs.length - 1];
@@ -52,7 +53,7 @@ export default async function FunnelPage({ params: paramsPromise, searchParams: 
 
       {searchParams.thresholdApplied && (
         <Card className="mb-4 border-emerald-200 bg-emerald-50 text-sm">
-          Threshold updated to <b>{searchParams.thresholdApplied}</b>. Results re-evaluated; notifications sent only where results changed.
+          Threshold updated to <b>{searchParams.thresholdApplied}</b>. Scored waiting candidates reviewed; qualifying candidates approved. Progressed candidates unchanged.
         </Card>
       )}
 
@@ -73,7 +74,7 @@ export default async function FunnelPage({ params: paramsPromise, searchParams: 
               </form>
             </div>
             {s.enabled !== false && s.type === "ONSITE" && <p className="mt-3 text-sm text-slate-500">Invitation-only stage. Open a candidate to schedule and email the onsite screening; no threshold or portal test applies.</p>}
-            {s.enabled !== false && s.type !== "ONSITE" && (
+            {s.enabled !== false && !["ONSITE", "FINAL"].includes(s.type) && (
               <PhaseThresholdEditor
                 funnelId={funnel.id}
                 phaseType={s.type}
@@ -81,13 +82,13 @@ export default async function FunnelPage({ params: paramsPromise, searchParams: 
                 currentThreshold={s.passScore ?? 0}
               />
             )}
-            {s.enabled !== false && s.type !== "ONSITE" && (
+            {s.enabled !== false && !["ONSITE", "FINAL"].includes(s.type) && (
               <CohortView
                 funnelId={funnel.id}
                 phaseType={s.type}
                 phaseLabel={PHASE_LABEL[s.type] || s.type}
                 rows={cohortFor(s.type)}
-                automaticDecision={["CV_SCREENING", "CCAT", "MTT"].includes(s.type)}
+                automaticDecision={false}
                 initialSelected={
                   searchParams.phase === s.type && searchParams.preselect
                     ? searchParams.preselect.split(",").filter(Boolean)
@@ -105,7 +106,7 @@ export default async function FunnelPage({ params: paramsPromise, searchParams: 
       ) : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-slate-500 border-b border-slate-100"><th className="p-2">When</th><th className="p-2">Phase</th><th className="p-2">Old</th><th className="p-2">New</th><th className="p-2">P→F</th><th className="p-2">F→P</th></tr></thead>
+            <thead><tr className="text-left text-slate-500 border-b border-slate-100"><th className="p-2">When</th><th className="p-2">Phase</th><th className="p-2">Old</th><th className="p-2">New</th><th className="p-2">Held</th><th className="p-2">Passed</th></tr></thead>
             <tbody>
               {history.map((h) => (
                 <tr key={h.id} className="border-b border-slate-50">

@@ -17,9 +17,15 @@ export interface CandidateRecord {
   status: string;
   funnelId?: string;
   funnelName?: string;
+  scoreMode?: string;
+  totalScore?: number;
+  gradedCount?: number;
+  assessmentCount?: number;
+  scoreState?: string;
   trackCount?: number;
   phaseReleased?: boolean;
   scores?: Record<string, number>;
+  overall?: { total: number; complete: boolean; gradedCount: number; assessmentCount: number };
   latestResultId?: string;
   currentStage?: string;
   previousStage?: string;
@@ -135,7 +141,9 @@ export function toCsv(candidates: CandidateRecord[], columns: (keyof CandidateRe
     columns
       .map((col) => {
         const v = c[col];
-        const s = v === undefined ? "" : String(v);
+          const raw = v === undefined ? "" : String(v);
+          // Prevent spreadsheet applications from interpreting exported user data as a formula.
+          const s = /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
         return `"${s.replace(/"/g, '""')}"`;
       })
       .join(","),

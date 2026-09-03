@@ -14,7 +14,7 @@ describe("onsite session progression", () => {
   });
   it("honours disabled and scheduled tests", () => {
     const custom = { ...funnel, stages: funnel.stages.map((stage) => ({ ...stage, enabled: stage.type !== "CCAT", opensAt: stage.type === "MTT" ? "2099-01-01" : undefined })) };
-    expect(onsiteNext(custom)).toMatchObject({ currentStage: "MTT", phaseReleased: false, applicationStatus: "HOLD" });
+    expect(onsiteNext(custom)).toMatchObject({ currentStage: "MTT", phaseReleased: true, applicationStatus: "IN_PROGRESS" });
     expect(isOnsiteTrack("ONSITE:f1")).toBe(true);
     expect(isOnsiteTrack("f1")).toBe(false);
   });
