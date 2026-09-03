@@ -32,10 +32,10 @@ export async function processCvJob(jobId: string) {
     const submitted = uj<Record<string, any>>(app.extractedCv) || {};
     const requirements = extractSkillRequirementsFromJd(app.drive.jobDescription);
     const required = requirements.required;
-    const fallbackText = [submitted.name, submitted.email, submitted.phone, submitted.university, submitted.degree, submitted.screening]
-      .filter(Boolean)
-      .join("\n");
-    const parserText = ocr.text.trim() || fallbackText;
+    const parserText = ocr.text.trim();
+    if (parserText.length < 40) {
+      throw new Error("The CV could not be read. A readable PDF/DOCX or working OCR provider is required; no profile score was generated.");
+    }
     // Stage 1 produces a faithful text transcription; stage 2 converts that
     // text into validated structured evidence for scoring.
     const parsed = await parseCv(parserText, required, requirements.preferred);
@@ -43,13 +43,9 @@ export async function processCvJob(jobId: string) {
       ...parsed,
       name: parsed.name || submitted.name,
       email: parsed.email || submitted.email,
-      phone: parsed.phone || submitted.phone,
-      university: parsed.university || submitted.university,
-      degree: parsed.degree || submitted.degree,
-      gradYear: parsed.gradYear || submitted.gradYear,
-      gpa: parsed.gpa ?? submitted.gpa ?? DEFAULT_CGPA,
+      gpa: parsed.gpa ?? DEFAULT_CGPA,
       gpaScale: parsed.gpaScale ?? 4,
-      gpaAssumed: parsed.gpaAssumed ?? (submitted.gpa == null),
+      gpaAssumed: parsed.gpaAssumed ?? (parsed.gpa == null),
     };
     const configuredTiers = await prisma.universityTier.findMany();
     const university = (hydrated.university || "").toLowerCase();
@@ -75,8 +71,8 @@ export async function processCvJob(jobId: string) {
       preferredSkills: requirements.preferred,
       matched: hydrated.matchedSkills,
       missing: hydrated.missingSkills,
-      extractionState: hydrated.extractionMethod || (parserText ? "TEXT_EXTRACTED" : "APPLICATION_FIELDS_FALLBACK"),
-      textExtractionMethod: ocr.text.trim() ? ocr.method : "APPLICATION_FIELDS_FALLBACK",
+      extractionState: hydrated.extractionMethod || "TEXT_EXTRACTED",
+      textExtractionMethod: ocr.method,
       scoringState: "AUTOMATIC_THRESHOLD_APPLIED",
       threshold,
     };

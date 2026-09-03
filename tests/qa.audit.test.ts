@@ -17,7 +17,7 @@ vi.mock("next/navigation", () => ({
 
 import { prisma, j } from "@/lib/db";
 import { applyAction, submitAutoTestAction, startAssessmentAction, getAssessmentAttemptAction } from "@/app/candidate/actions";
-import { processDueCvJobs } from "@/lib/cv/worker";
+import { processDueCvJobs, processCvJob } from "@/lib/cv/worker";
 import { signCvToken, verifyCvToken, authorizeCvAccess } from "@/lib/cv/access";
 import {
   createFunnelAction,
@@ -106,7 +106,7 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
   it("uploads CV, enqueues CvJob, then worker scores it (async pipeline)", async () => {
     authState.user = { id: "c1", role: "candidate" };
     const evidencedCv = `C1\nLUMS university\nComputer Science\nGPA: 4.0/4.0\n\nSkills\nPython, machine learning, data structures\n\nExperience\nMachine Learning Engineer | Acme | 2021 - 2025\nBuilt and deployed fraud detection models in Python.\n\nProjects\nFraud Detection Model\nProduction machine learning classifier built with Python.`;
-    const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", evidencedCv), fullName: "C1", email: "c1@portal.com" })));
+    const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", evidencedCv), university: "Forged university", degree: "Forged degree", gpa: "1.0", phone: "forged", screening: "Forged evidence" })));
     expect(res).toEqual({ __redirected: true } as any);
     const app = await prisma.application.findFirst({ where: { candidateId: "c1", driveId: ctx.driveA.id } });
     expect(app).toBeTruthy();
@@ -114,6 +114,10 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
     // Immediately after apply the CV is queued, not yet scored.
     expect(app!.cvResult).toBe("PROCESSING");
     expect(app!.phaseReleased).toBe(false);
+    expect(app!.cvScore).toBeNull();
+    const submitted = JSON.parse(app!.extractedCv!);
+    expect(submitted.source).toBe("CV_UPLOAD");
+    for (const field of ["university", "degree", "gpa", "phone", "screening"]) expect(submitted[field]).toBeUndefined();
     const queued = await prisma.cvJob.findFirst({ where: { applicationId: app!.id } });
     expect(queued!.status).toBe("QUEUED");
     expect(queued!.storagePath).toContain(app!.id);
@@ -133,6 +137,11 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
     expect(scored!.currentStage).toBe("CV_SCREENING");
     expect(scored!.phaseReleased).toBe(false);
     expect(scored!.status).toBe("HOLD");
+    const extracted = JSON.parse(scored!.extractedCv!);
+    expect(extracted.gpa).toBe(4);
+    expect(extracted.university).toContain("LUMS");
+    expect(extracted.projectDetails.length).toBeGreaterThan(0);
+    expect(extracted.experience.length).toBeGreaterThan(0);
 
     // Funnel selection is staff-only and happens after CV screening. This
     // deliberate action releases the funnel's first real assessment.
@@ -151,13 +160,64 @@ describe("1. Apply + async CV processing + gating + duplicate", () => {
     expect(await prisma.application.findFirst({ where: { candidateId: "c2" } })).toBeTruthy();
   });
 
-  it("duplicate application rejected (single row)", async () => {
+  it("existing applicant returns to dashboard without a duplicate row", async () => {
     authState.user = { id: "c1", role: "candidate" };
     const before = await prisma.application.count({ where: { candidateId: "c1", driveId: ctx.driveA.id } });
     const res = await act(applyAction(ctx.driveA.id, fd({ funnelId: ctx.funnelA.id, cvFile: fakeFile("cv.txt", "x"), fullName: "C1", email: "c1@portal.com" })));
     const after = await prisma.application.count({ where: { candidateId: "c1", driveId: ctx.driveA.id } });
     expect(after).toBe(before);
-    expect((res as any)?.error).toBeTruthy();
+    expect(res).toEqual({ __redirected: true });
+  });
+
+  it("expired intake rejects newcomers but existing applicants retain dashboard and test access", async () => {
+    const current = await prisma.drive.findUniqueOrThrow({ where: { id: ctx.driveA.id } });
+    await prisma.drive.update({ where: { id: current.id }, data: { deadline: new Date("2020-01-01") } });
+    let existingTestId: string | undefined;
+    try {
+      authState.user = { id: "c11", role: "candidate" };
+      const rejected = await applyAction(current.id, fd({ cvFile: fakeFile("cv.txt", "A candidate CV with sufficient source document text.") }));
+      expect(rejected.error).toContain("deadline has passed");
+      expect(await prisma.application.count({ where: { candidateId: "c11", driveId: current.id } })).toBe(0);
+
+      authState.user = { id: "c1", role: "candidate" };
+      expect(await act(applyAction(current.id, new FormData()))).toEqual({ __redirected: true });
+
+      const existing = await prisma.application.create({ data: {
+        candidateId: "c12", driveId: current.id, funnelId: ctx.funnelA.id,
+        currentStage: "CCAT", phaseReleased: true, status: "IN_PROGRESS", cvResult: "PASS",
+      } });
+      existingTestId = existing.id;
+      authState.user = { id: "c12", role: "candidate" };
+      expect(await startAssessmentAction(existing.id, "CCAT")).toMatchObject({ ok: true });
+      expect(await getAssessmentAttemptAction(existing.id, "CCAT")).toBeTruthy();
+    } finally {
+      if (existingTestId) await prisma.application.delete({ where: { id: existingTestId } });
+      await prisma.drive.update({ where: { id: current.id }, data: { deadline: current.deadline } });
+    }
+  });
+
+  it("requires a file even when profile fields or pasted CV text are posted", async () => {
+    authState.user = { id: "c11", role: "candidate" };
+    const response = await applyAction(ctx.driveA.id, fd({ cvText: "A complete pasted resume is no longer an upload.", name: "Candidate", gpa: "4" }));
+    expect(response).toMatchObject({ field: "cvFile" });
+    expect(await prisma.application.count({ where: { candidateId: "c11", driveId: ctx.driveA.id } })).toBe(0);
+  });
+
+  it("never fabricates a profile score when the uploaded document is unreadable", async () => {
+    authState.user = { id: "c11", role: "candidate" };
+    await act(applyAction(ctx.driveA.id, fd({ cvFile: fakeFile("empty-cv.txt", " "), university: "LUMS", gpa: "4" })));
+    const application = await prisma.application.findFirstOrThrow({ where: { candidateId: "c11", driveId: ctx.driveA.id } });
+    const job = await prisma.cvJob.findFirstOrThrow({ where: { applicationId: application.id } });
+    try {
+      for (let i = 0; i < 3; i++) await processCvJob(job.id);
+      expect(await prisma.cvJob.findUnique({ where: { id: job.id } })).toMatchObject({ status: "FAILED" });
+      const unscored = await prisma.application.findUniqueOrThrow({ where: { id: application.id } });
+      expect(unscored.cvScore).toBeNull();
+      expect(JSON.parse(unscored.scores)).toEqual({});
+      expect(JSON.parse(unscored.extractedCv!).university).toBeUndefined();
+    } finally {
+      await prisma.application.delete({ where: { id: application.id } });
+    }
   });
 });
 

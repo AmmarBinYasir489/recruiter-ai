@@ -19,7 +19,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   if (!user) return null;
   const app = await prisma.application.findUnique({
     where: { id: params.id },
-    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } }, onsiteInvites: { orderBy: { createdAt: "desc" }, take: 1 } },
+    include: { drive: true, funnel: true, results: { orderBy: { createdAt: "desc" } }, onsiteInvites: { orderBy: { createdAt: "desc" }, take: 1 }, cvJobs: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true } } },
   });
   if (!app || app.candidateId !== user.id || app.status === "ARCHIVED") return <Card>Application not found.</Card>;
 
@@ -38,7 +38,8 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
   const currentStage = app.currentStage || "CV_SCREENING";
   const currentResult = resultForCurrentStage(app.results, currentStage);
   const cvToken = signCvToken(app.id, user.id);
-  const processing = app.cvResult === "PROCESSING";
+  const extractionFailed = app.cvJobs[0]?.status === "FAILED";
+  const processing = app.cvResult === "PROCESSING" && !extractionFailed;
   const currentDecision = currentStage === "CV_SCREENING" ? null : currentResult?.status;
   const visibleDecision = app.status === "HOLD" && currentDecision === "FAIL" ? null : currentDecision;
   const currentStageConfig = app.funnel ? (uj<any[]>(app.funnel.stages) || []).find((stage) => stage.type === currentStage) : null;
@@ -93,7 +94,9 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         {!processing && visibleDecision && <div className="mt-4">{decisionBadge(visibleDecision)}</div>}
 
         <div className="mt-4">
-          {processing ? (
+          {extractionFailed && currentStage === "CV_SCREENING" ? (
+            <p className="text-sm text-amber-700" role="status">We could not complete your CV extraction. Your application is saved. Please contact the recruitment team with a readable PDF or DOCX; no CV result has been issued.</p>
+          ) : processing ? (
             <p className="text-sm text-slate-600" role="status">Your CV is securely queued for scoring. This page updates automatically.</p>
           ) : currentStage === "ONSITE" ? (
             onsiteInvite ? <div className="text-sm text-slate-700">
@@ -132,7 +135,7 @@ export default async function ApplicationPage({ params: paramsPromise }: { param
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm text-slate-500">Screening status</p>
-            <div className="mt-1"><span className={processing ? "badge-info" : "badge-muted"}>{processing ? "Processing" : "Reviewed"}</span></div>
+            <div className="mt-1"><span className={processing ? "badge-info" : "badge-muted"}>{extractionFailed ? "Needs attention" : processing ? "Processing" : "Reviewed"}</span></div>
           </div>
           <a href={`/api/cv/${app.id}?token=${cvToken}`} className="btn-outline text-sm">Download your CV</a>
         </div>

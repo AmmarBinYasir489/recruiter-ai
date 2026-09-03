@@ -2,16 +2,23 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { Card, LinkButton, StatCard, decisionBadge } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
+import { driveApplicationError, formatDriveDeadline } from "@/lib/driveApplications";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const user = await getCurrentUser();
   const drives = await prisma.drive.findMany({
-    where: { status: "OPEN" },
+    where: user?.role === "candidate"
+      ? { OR: [{ status: "OPEN" }, { applications: { some: { candidateId: user.id } } }] }
+      : { status: "OPEN" },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { applications: { where: { sourceApplicationId: null } }, funnels: true } } },
   });
+  const existingApplications = user?.role === "candidate"
+    ? await prisma.application.findMany({ where: { candidateId: user.id }, select: { driveId: true } })
+    : [];
+  const appliedDriveIds = new Set(existingApplications.map((app) => app.driveId));
 
   return (
     <div className="min-h-screen">
@@ -33,8 +40,8 @@ export default async function HomePage() {
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-ink-900">Open recruitment drives</h1>
-          <p className="text-slate-500 mt-1">Browse active drives and apply with your CV.</p>
+          <h1 className="text-3xl font-bold text-ink-900">Recruitment drives</h1>
+          <p className="text-slate-500 mt-1">Apply to open drives with your CV, or continue an existing application.</p>
         </div>
 
         {drives.length === 0 && <Card className="text-center text-slate-400 py-10">No open drives right now.</Card>}
@@ -48,10 +55,14 @@ export default async function HomePage() {
               </div>
               <p className="text-sm text-slate-600 line-clamp-3">{d.jobDescription}</p>
               <div className="flex gap-6 text-sm text-slate-500">
-                <span>Deadline: <b className="text-ink-900">{new Date(d.deadline).toLocaleDateString()}</b></span>
+                <span>Deadline: <b className="text-ink-900">{formatDriveDeadline(d.deadline)}, 23:59 UTC</b></span>
               </div>
                 <div className="mt-auto flex gap-2">
-                  {user?.role === "candidate" ? (
+                  {appliedDriveIds.has(d.id) ? (
+                    <LinkButton href="/candidate" className="btn-primary">Continue to dashboard</LinkButton>
+                  ) : driveApplicationError(d) ? (
+                    <span className="badge-muted">Applications closed</span>
+                  ) : user?.role === "candidate" ? (
                     <LinkButton href={`/candidate/apply/${d.id}`} className="btn-primary">Apply</LinkButton>
                   ) : (
                     <LinkButton href="/login" className="btn-ghost">Sign in to apply</LinkButton>

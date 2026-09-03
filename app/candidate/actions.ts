@@ -14,6 +14,7 @@ import { gradeSubjective } from "@/lib/ai/gradeSubjective";
 import { createNotification } from "@/lib/notifications";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { selectAttemptQuestions } from "@/lib/assessmentQuestions";
+import { driveApplicationError } from "@/lib/driveApplications";
 import {
   ENGLISH_SPEAKING_MAX_BYTES,
   ENGLISH_SPEAKING_MAX_SECONDS,
@@ -31,7 +32,7 @@ function supplementalReturnState(idempotencyKey?: string | null) {
   return match ? { stage: match[1], phaseReleased: match[2] === "1", status: match[3] } : null;
 }
 
-// Prepare pasted text or an uploaded file for the same durable CV queue.
+// Profile details come from the uploaded CV, not client-supplied profile fields.
 async function readCvInput(formData: FormData): Promise<{ file?: { buf: Buffer; name: string; mime: string }; error?: string }> {
   const f = formData.get("cvFile");
   if (f && typeof f === "object" && "arrayBuffer" in (f as any) && (f as File).size > 0) {
@@ -43,41 +44,32 @@ async function readCvInput(formData: FormData): Promise<{ file?: { buf: Buffer; 
         : extension === "docx" ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           : extension === "txt" ? "text/plain" : "";
     const mime = file.type || inferred;
-    if (!ALLOWED_CV_TYPES.includes(mime)) return { error: "Upload a PDF, DOC, DOCX, or TXT CV." };
+    if (mime === "application/msword") return { error: "Please save your DOC file as PDF or DOCX before uploading so its contents can be extracted." };
+    if (!ALLOWED_CV_TYPES.includes(mime)) return { error: "Upload a PDF, DOCX, or TXT CV." };
     const buf = Buffer.from(await file.arrayBuffer());
     return { file: { buf, name: file.name, mime } };
   }
-  const text = String(formData.get("cvText") || "").trim();
-  if (text.length < 40) return { error: "Upload your CV or paste at least 40 characters of CV text." };
-  const buf = Buffer.from(text, "utf8");
-  if (buf.byteLength > MAX_CV_BYTES) return { error: "Pasted CV text is too large." };
-  return { file: { buf, name: "pasted-cv.txt", mime: "text/plain" } };
+  return { error: "Upload your CV to apply. Profile details are extracted from the file." };
 }
 
 export async function applyAction(driveId: string, formData: FormData) {
   const user = await requireRole("candidate");
   const drive = await prisma.drive.findUnique({ where: { id: driveId } });
-  if (!drive || drive.status !== "OPEN") return { error: "Drive is not open for applications." };
 
   // A candidate applies to a drive once. Recruiters may later create multiple
   // independent funnel tracks beneath that application.
   const dup = await prisma.application.findFirst({ where: { candidateId: user.id, driveId } });
-  if (dup) return { error: "You have already applied to this drive." };
+  if (dup) redirect("/candidate");
+  const intakeError = driveApplicationError(drive);
+  if (intakeError) return { error: intakeError };
 
   const input = await readCvInput(formData);
-  if (input.error || !input.file) return { error: input.error || "Provide a CV." };
+  if (input.error || !input.file) return { error: input.error || "Provide a CV.", field: "cvFile" };
 
   const submittedProfile = {
-    name: String(formData.get("name") || user.name).trim(),
+    name: user.name,
     email: user.email,
-    phone: String(formData.get("phone") || "").trim(),
-    university: String(formData.get("university") || "").trim(),
-    degree: String(formData.get("degree") || "").trim(),
-    gradYear: Number(formData.get("gradYear")) || undefined,
-    gpa: Number(formData.get("gpa")) || undefined,
-    linkedin: String(formData.get("linkedin") || "").trim(),
-    screening: String(formData.get("screening") || "").trim(),
-    source: "APPLICATION_FORM",
+    source: "CV_UPLOAD",
   };
 
   // CV is processed asynchronously (see lib/cv/worker.ts). We commit the
@@ -89,6 +81,10 @@ export async function applyAction(driveId: string, formData: FormData) {
   try {
     storagePath = await storeCvFile(applicationId, input.file.name, input.file.mime, input.file.buf);
     await prisma.$transaction(async (tx) => {
+      // A deadline/drive closure during upload must also reject the submission.
+      const currentDrive = await tx.drive.findUnique({ where: { id: driveId } });
+      const closed = driveApplicationError(currentDrive);
+      if (closed) throw new Error(closed);
       await tx.application.create({
         data: {
           id: applicationId,
@@ -97,7 +93,7 @@ export async function applyAction(driveId: string, formData: FormData) {
           funnelId: null,
           funnelVersion: 1,
           status: "IN_PROGRESS",
-          cvScore: 0,
+          cvScore: null,
           cvResult: "PROCESSING",
           extractedCv: j(submittedProfile),
           currentStage: "CV_SCREENING",
