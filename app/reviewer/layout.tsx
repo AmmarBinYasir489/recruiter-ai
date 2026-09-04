@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { logoutAction } from "@/app/login/actions";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { MobileRoleNav } from "@/components/MobileRoleNav";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default async function ReviewerLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
@@ -13,7 +14,7 @@ export default async function ReviewerLayout({ children }: { children: React.Rea
       <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[110] focus:rounded-lg focus:bg-white focus:px-3 focus:py-2">Skip to content</a>
       <aside className="w-60 shrink-0 border-r border-slate-200 bg-white p-4 hidden md:block">
         <div className="flex items-center gap-2 mb-6">
-          <div className="h-8 w-8 grid place-items-center rounded-xl bg-brand-600 text-white font-black">R</div>
+          <BrandLogo priority />
           <span className="font-bold text-ink-900">Reviewer</span>
         </div>
         <nav className="space-y-1">

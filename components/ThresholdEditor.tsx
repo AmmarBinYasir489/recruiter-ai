@@ -13,11 +13,14 @@ export function ThresholdEditor({ driveId, currentThreshold }: { driveId: string
   const [proposed, setProposed] = useState(currentThreshold);
   const [preview, setPreview] = useState<any>(null);
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState<"preview" | "apply" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function onPreview() {
     setBusy(true);
+    setBusyAction("preview");
     setError(null);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     try {
       const p = await previewThresholdAction(driveId, Number(proposed));
       setPreview(p);
@@ -25,12 +28,15 @@ export function ThresholdEditor({ driveId, currentThreshold }: { driveId: string
       setError(e?.message || "Failed to preview");
     } finally {
       setBusy(false);
+      setBusyAction(null);
     }
   }
 
   async function onApply() {
     setBusy(true);
+    setBusyAction("apply");
     setError(null);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     try {
       const r = await applyThresholdAction(driveId, Number(proposed), preview.currentThreshold);
       if (r?.error) {
@@ -47,6 +53,7 @@ export function ThresholdEditor({ driveId, currentThreshold }: { driveId: string
       if (e?.message && e.message !== "NEXT_REDIRECT") setError(e?.message || "Failed");
     } finally {
       setBusy(false);
+      setBusyAction(null);
     }
   }
 
@@ -76,7 +83,7 @@ export function ThresholdEditor({ driveId, currentThreshold }: { driveId: string
         </div>
         <p className="text-xs text-slate-400 mt-2">Editing the value alone changes nothing. Preview the impact before applying.</p>
         <div className="mt-3 flex gap-2">
-          <button className="btn-ghost" onClick={onPreview} disabled={busy || !Number.isFinite(proposed) || proposed < 0 || proposed > 100}>Preview impact</button>
+          <button className="btn-ghost" aria-busy={busyAction === "preview"} onClick={onPreview} disabled={busy || !Number.isFinite(proposed) || proposed < 0 || proposed > 100}>{busyAction === "preview" ? "Loading preview…" : "Preview impact"}</button>
           <button className="btn-ghost" onClick={() => { setProposed(currentThreshold); setPreview(null); }}>Cancel</button>
         </div>
       </Card>
@@ -102,8 +109,8 @@ export function ThresholdEditor({ driveId, currentThreshold }: { driveId: string
               </div>
             ))}
           </div>
-          <button className="btn-primary" onClick={onApply} disabled={busy}>
-            Confirm &amp; Apply
+          <button className="btn-primary" aria-busy={busyAction === "apply"} onClick={onApply} disabled={busy}>
+            {busyAction === "apply" ? "Applying…" : "Confirm & Apply"}
           </button>
         </Card>
       )}

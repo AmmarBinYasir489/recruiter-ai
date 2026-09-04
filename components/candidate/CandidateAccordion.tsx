@@ -26,6 +26,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   const [openId, setOpenId] = useState<string | null>(() => initialApplicationId && views.some((view) => view.application.id === initialApplicationId) ? initialApplicationId : null);
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [pendingLabel, setPendingLabel] = useState("");
   const [message, setMessage] = useState("");
   const [bulkFunnelId, setBulkFunnelId] = useState("");
   const [bulkTestMode, setBulkTestMode] = useState<"ONLINE" | "ONSITE">("ONLINE");
@@ -38,6 +39,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   const [detailLoading, setDetailLoading] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<Record<string, string>>({});
   const inFlight = useRef(new Set<string>());
+  const detailControllers = useRef(new Map<string, AbortController>());
 
   const summaryVersion = useMemo(
     () => views.map((view) => [view.application.id, view.application.status, view.application.currentStage, view.application.cvScore, view.application.refreshKey, JSON.stringify(view.application.scores)].join(":" )).join("|"),
@@ -46,19 +48,35 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   const loadDetail = useCallback(async (id: string) => {
     if (inFlight.current.has(id)) return;
     inFlight.current.add(id);
+    const controller = new AbortController();
+    detailControllers.current.set(id, controller);
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
     setDetailLoading(id);
     setDetailError((current) => ({ ...current, [id]: "" }));
     try {
-      const response = await fetch(`/api/recruiter/candidates/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const response = await fetch(`/api/recruiter/candidates/${encodeURIComponent(id)}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (!response.ok) throw new Error(response.status === 404 ? "Candidate is no longer available." : "Could not load candidate details.");
       const data = await response.json();
       setDetailViews((current) => ({ ...current, [id]: data.view }));
     } catch (error) {
-      setDetailError((current) => ({ ...current, [id]: error instanceof Error ? error.message : "Could not load candidate details." }));
+      const message = error instanceof DOMException && error.name === "AbortError"
+        ? "Candidate details took too long to load. Retry the request."
+        : error instanceof Error ? error.message : "Could not load candidate details.";
+      setDetailError((current) => ({ ...current, [id]: message }));
     } finally {
+      window.clearTimeout(timeout);
+      detailControllers.current.delete(id);
       inFlight.current.delete(id);
       setDetailLoading((current) => current === id ? null : current);
     }
+  }, []);
+
+  useEffect(() => () => {
+    detailControllers.current.forEach((controller) => controller.abort());
+    detailControllers.current.clear();
   }, []);
 
   useEffect(() => {
@@ -69,18 +87,20 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     if (initialApplicationId) setOpenId(initialApplicationId);
   }, [initialApplicationId]);
 
-  // Refresh the existing workspace, without unmounting its forms or changing tracks.
+  // Refresh on focus. The list's watermark refresh already reloads details
+  // whenever candidate state changes; a second five-second detail poll doubled
+  // authenticated traffic and could continually restart slow requests.
   useEffect(() => {
     if (!openId) return;
     const refresh = () => {
       if (document.visibilityState === "visible" && !busy) void loadDetail(activeTrackByRow[openId] || openId);
     };
-    const timer = window.setInterval(refresh, 5000);
     window.addEventListener("focus", refresh);
-    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); };
+    return () => window.removeEventListener("focus", refresh);
   }, [openId, activeTrackByRow, busy, loadDetail]);
 
-  const allIds = views.map((v) => v.application.id);
+  const terminalStatuses = new Set(["ARCHIVED", "REJECTED", "OFFERED", "HIRED"]);
+  const allIds = views.filter((view) => !terminalStatuses.has(view.application.status)).map((view) => view.application.id);
   const toggle = (id: string) =>
     setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const toggleAll = () => setSelected((s) => (s.length === allIds.length ? [] : allIds));
@@ -91,7 +111,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     return detailViews[trackId] || views.find((view) => view.application.id === rowId);
   }).filter(Boolean);
   const selectedDriveIds = new Set(selectedViews.map((view) => view.application.driveId));
-  const selectedTracksMutable = selectedTrackViews.length > 0 && selectedTrackViews.every((view) => view.application.status !== "ARCHIVED");
+  const selectedTracksMutable = selectedTrackViews.length > 0 && selectedTrackViews.every((view) => !terminalStatuses.has(view.application.status));
   const canBulkAssign = selectedViews.length > 0 && selectedTracksMutable && selectedDriveIds.size === 1 && selectedViews.every((view) => view.application.cvScore != null && !["PROCESSING", "FAILED"].includes(view.application.cvResult));
   const funnelOptions = canBulkAssign ? (selectedViews[0]?.funnelOptions || []) : [];
   const validBulkFunnel = funnelOptions.some((funnel: AnyObj) => funnel.id === bulkFunnelId);
@@ -101,9 +121,22 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
   const validBulkRetest = bulkTestMode === "ONSITE" || selectedTrackViews.every((view) => view.application.currentStage === bulkTestType);
   const canInviteOnsite = selectedTracksMutable && selectedTrackViews.every((view) => view.application.currentStage === "ONSITE");
 
-  async function runIssue() {
+  async function beginAction(label: string) {
     setBusy(true);
+    setPendingLabel(label);
     setFeedback(null);
+    // Yield one frame so the pending state is painted before the server action
+    // starts serializing and making remote database requests.
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+  }
+
+  function finishAction() {
+    setBusy(false);
+    setPendingLabel("");
+  }
+
+  async function runIssue() {
+    await beginAction(`Passing ${selected.length} candidate${selected.length === 1 ? "" : "s"}…`);
     try {
       const result = await passSelectedAction(selectedApplicationIds);
       if ("error" in result) throw new Error(result.error);
@@ -113,14 +146,28 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not issue the next phase." });
     } finally {
-      setBusy(false);
+      finishAction();
+    }
+  }
+
+  async function runHold() {
+    await beginAction(`Holding ${selected.length} candidate${selected.length === 1 ? "" : "s"}…`);
+    try {
+      const result = await holdSelectedAction(selectedApplicationIds);
+      if ("error" in result) throw new Error(result.error || "Could not save decision.");
+      setFeedback({ kind: "success", message: `${result.count} candidates held.` });
+      setSelected([]);
+      router.refresh();
+    } catch (error) {
+      setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not hold candidates." });
+    } finally {
+      finishAction();
     }
   }
 
   async function runReject() {
     if (!window.confirm(`Reject ${selected.length} selected candidate(s)?`)) return;
-    setBusy(true);
-    setFeedback(null);
+    await beginAction(`Failing ${selected.length} candidate${selected.length === 1 ? "" : "s"}…`);
     try {
       const result = await rejectSelectedAction(selectedApplicationIds);
       if (result && "error" in result) throw new Error(String(result.error || "Could not reject the selected candidates."));
@@ -130,14 +177,13 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not reject the selected candidates." });
     } finally {
-      setBusy(false);
+      finishAction();
     }
   }
 
   async function runOffer() {
     if (!window.confirm(`Mark ${selected.length} selected candidate(s) as offered?`)) return;
-    setBusy(true);
-    setFeedback(null);
+    await beginAction(`Marking ${selected.length} candidate${selected.length === 1 ? "" : "s"} as offered…`);
     try {
       const result = await offerSelectedAction(selectedApplicationIds);
       if (result && "error" in result) throw new Error(String(result.error || "Could not update the selected candidates."));
@@ -147,14 +193,14 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not update the selected candidates." });
     } finally {
-      setBusy(false);
+      finishAction();
     }
   }
 
   async function runRetest() {
     if (bulkTestMode === "ONSITE") {
       if (!validBulkFunnel) return;
-      setBusy(true);
+      await beginAction(`Assigning ${selected.length} onsite funnel${selected.length === 1 ? "" : "s"}…`);
       try {
         const result = await assignOnsiteFunnelAction(selectedApplicationIds, bulkFunnelId);
         if ("error" in result) throw new Error(result.error);
@@ -163,12 +209,11 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
         router.refresh();
       } catch (error) {
         setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not assign onsite sessions." });
-      } finally { setBusy(false); }
+      } finally { finishAction(); }
       return;
     }
     if (!window.confirm(`Issue ${bulkTestType} in ${bulkTestMode.toLowerCase()} mode for ${selected.length} selected candidate(s)? Previous results are preserved. The new submission will wait for a staff decision.`)) return;
-    setBusy(true);
-    setFeedback(null);
+    await beginAction(`Preparing ${selected.length} ${bulkTestType} test${selected.length === 1 ? "" : "s"}…`);
     try {
       const result = await requestRetestsAction(selectedApplicationIds, bulkTestType, bulkTestMode);
       if ("error" in result) throw new Error(String(result.error || "Could not reissue the selected tests."));
@@ -178,14 +223,13 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not reissue the selected tests." });
     } finally {
-      setBusy(false);
+      finishAction();
     }
   }
 
   async function runNotify() {
     if (!message.trim()) return;
-    setBusy(true);
-    setFeedback(null);
+    await beginAction(`Sending ${selected.length} notification${selected.length === 1 ? "" : "s"}…`);
     try {
       const result = await sendBulkNotificationAction(selectedApplicationIds, message);
       if ("error" in result) throw new Error(String(result.error || "Could not send the notification."));
@@ -196,14 +240,13 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not send the notification." });
     } finally {
-      setBusy(false);
+      finishAction();
     }
   }
 
   async function runAssignFunnel(mode: "ADD" | "MOVE") {
     if (!validBulkFunnel) return;
-    setBusy(true);
-    setFeedback(null);
+    await beginAction(`${mode === "MOVE" ? "Moving" : "Assigning"} ${selected.length} candidate${selected.length === 1 ? "" : "s"}…`);
     try {
       const result = await assignSelectedFunnelAction(selectedApplicationIds, bulkFunnelId, mode);
       if ("error" in result) throw new Error(result.error);
@@ -219,14 +262,13 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not assign the selected candidates." });
     } finally {
-      setBusy(false);
+      finishAction();
     }
   }
 
   async function runOnsiteInvites() {
     if (!onsiteDate) return;
-    setBusy(true);
-    setFeedback(null);
+    await beginAction(`Preparing ${selected.length} onsite invitation${selected.length === 1 ? "" : "s"}…`);
     try {
       const result = await sendOnsiteInvitesAction(selectedApplicationIds, { scheduledAt: new Date(onsiteDate).toISOString(), location: onsiteLocation });
       if ("error" in result) throw new Error(result.error);
@@ -239,7 +281,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
     } catch (error) {
       setFeedback({ kind: "error", message: error instanceof Error ? error.message : "Could not send onsite invitations." });
     } finally {
-      setBusy(false);
+      finishAction();
     }
   }
 
@@ -276,6 +318,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
               const open = openId === id;
               const scores = v.application.scores || {};
               const isSel = selected.includes(id);
+              const isTerminal = terminalStatuses.has(v.application.status);
               return (
                 <Fragment key={id}>
                   <tr className={`border-b border-slate-50 hover:bg-slate-50 ${open ? "bg-slate-50" : ""} ${isSel ? "bg-brand-50/60" : ""}`}>
@@ -283,9 +326,10 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
                       <input
                         type="checkbox"
                         aria-label={`Select ${v.candidate.name}`}
-                        disabled={!ready || busy}
+                        disabled={!ready || busy || isTerminal}
                         checked={isSel}
                         onChange={() => toggle(id)}
+                        title={isTerminal ? "Terminal applications cannot be changed with bulk actions." : undefined}
                       />
                     </td>
                     <td className="p-3">
@@ -309,7 +353,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
                     <td data-label="CCAT" className="p-3">{scores.CCAT ?? "—"}</td>
                     <td data-label="MTT" className="p-3">{scores.MTT ?? "—"}</td>
                     <td data-label="Total" className="p-3"><span className="font-semibold">{v.application.overall?.total ?? 0}/100</span><p className="text-xs text-slate-500">{v.application.overall?.gradedCount ?? 0}/{v.application.overall?.assessmentCount ?? 0} graded{!v.application.overall?.complete ? " · provisional" : ""}</p></td>
-                    <td data-label="Status" className="p-3">{statusBadge(v.application.status)}</td>
+                    <td data-label="Status" className="p-3">{busy && isSel ? <span className="badge-info">Updating…</span> : statusBadge(v.application.status)}</td>
                   </tr>
                   {open && (
                     <tr>
@@ -346,6 +390,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
       {selected.length > 0 && (
         <div className="md:sticky md:bottom-4 z-10 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-white p-3 shadow-lg" aria-label="Bulk candidate actions">
           <span className="text-sm font-semibold text-ink-900">{selected.length} selected</span>
+          {busy && <span role="status" aria-live="polite" className="badge-info">{pendingLabel || "Processing…"}</span>}
           {!selectedTracksMutable && <span className="text-xs font-medium text-amber-700">Historical funnel tracks are read-only. Select an active track to use bulk actions.</span>}
           {canBulkAssign && <>
             <select className="input min-w-52" aria-label="Funnel for selected applicants" value={bulkFunnelId} onChange={(event) => setBulkFunnelId(event.target.value)}>
@@ -363,8 +408,8 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
           </>}
           {canBulkAssign && funnelOptions.length === 0 && <span className="text-xs text-amber-700">Create and publish a funnel for this drive before assigning applicants.</span>}
           {selectedViews.length > 0 && !canBulkAssign && <span className="text-xs text-amber-700">Funnel assignment requires screened applicants from the same drive.</span>}
-          <button className="btn-ghost whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={async () => { setBusy(true); try { const result = await holdSelectedAction(selectedApplicationIds); setFeedback("error" in result ? { kind: "error", message: result.error || "Could not save decision." } : { kind: "success", message: `${result.count} candidates held.` }); router.refresh(); } catch { setFeedback({ kind: "error", message: "Could not hold candidates." }); } finally { setBusy(false); } }}>Hold</button>
-          <button className="btn-primary whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runIssue}>Pass</button>
+          <button className="btn-ghost whitespace-nowrap" aria-busy={busy && pendingLabel.startsWith("Holding")} disabled={busy || !selectedTracksMutable} onClick={runHold}>{busy && pendingLabel.startsWith("Holding") ? "Holding…" : "Hold"}</button>
+          <button className="btn-primary whitespace-nowrap" aria-busy={busy && pendingLabel.startsWith("Passing")} disabled={busy || !selectedTracksMutable} onClick={runIssue}>{busy && pendingLabel.startsWith("Passing") ? "Passing…" : "Pass"}</button>
           {canInviteOnsite && <>
             <input type="datetime-local" className="input min-w-52" aria-label="Onsite screening date and time" value={onsiteDate} onChange={(event) => setOnsiteDate(event.target.value)} />
             <input className="input min-w-48" aria-label="Onsite screening location" placeholder="Onsite location" value={onsiteLocation} onChange={(event) => setOnsiteLocation(event.target.value)} />
@@ -390,7 +435,7 @@ export function CandidateAccordion({ views, initialApplicationId }: { views: Any
             {bulkTestMode === "ONSITE" && <p className="w-full text-sm text-slate-600">Choose the funnel above. A separate onsite session runs every enabled test in order, then waits for staff review. Existing online progress and scores are preserved.</p>}
             {!validBulkRetest && <span className="text-xs text-amber-700">Online reissue must match every selected track’s current stage.</span>}
           </>}
-          <button className="btn-danger whitespace-nowrap" disabled={busy || !selectedTracksMutable} onClick={runReject}>Fail</button>
+          <button className="btn-danger whitespace-nowrap" aria-busy={busy && pendingLabel.startsWith("Failing")} disabled={busy || !selectedTracksMutable} onClick={runReject}>{busy && pendingLabel.startsWith("Failing") ? "Failing…" : "Fail"}</button>
           <input className="input min-w-52 flex-1" value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Message selected candidates" aria-label="Bulk notification message" disabled={!selectedTracksMutable} />
           <button className="btn-outline whitespace-nowrap" disabled={busy || !selectedTracksMutable || !message.trim()} onClick={runNotify}>Send notification</button>
           <button className="btn-ghost whitespace-nowrap" disabled={busy} onClick={() => setSelected([])}>Clear</button>

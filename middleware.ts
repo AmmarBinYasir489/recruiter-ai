@@ -23,8 +23,10 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
-  // Validates and refreshes the token; never authorize from getSession().
-  await supabase.auth.getUser();
+  // Verify the token without trusting cookie-backed session.user. With modern
+  // asymmetric Supabase signing keys this uses cached JWKS and is materially
+  // faster than an Auth-server round trip on every navigation.
+  await supabase.auth.getClaims();
   return response;
 }
 

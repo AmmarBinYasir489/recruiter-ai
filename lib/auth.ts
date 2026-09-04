@@ -5,7 +5,7 @@ import { prisma } from "./db";
 import { getSupabaseAuth } from "./supabase/authServer";
 import { useSupabaseAuth } from "./supabase/authConfig";
 import { redirect } from "next/navigation";
-import { hasStaffMfa, staffMfaRequired } from "./staffMfa";
+import { staffMfaRequired } from "./staffMfa";
 
 const SESSION_COOKIE = "rp_session";
 const SESSION_DAYS = 7;
@@ -63,16 +63,20 @@ export async function destroySession() {
 export async function getCurrentUser(options: { allowMfaSetup?: boolean } = {}): Promise<SessionUser | null> {
   if (useSupabaseAuth()) {
     const supabase = await getSupabaseAuth();
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return null;
+    // Verified JWT claims are safe for authorization and, with asymmetric
+    // signing keys, avoid a full Auth-server round trip on every page/API hit.
+    // This also gives us the current MFA assurance level in the same call.
+    const { data, error } = await supabase.auth.getClaims();
+    const authId = data?.claims?.sub;
+    if (error || !authId) return null;
     // Never link by email or trust user-editable JWT metadata for staff access.
     const user = await prisma.user.findUnique({
-      where: { authId: data.user.id },
+      where: { authId },
       select: { id: true, email: true, name: true, role: true },
     });
     // Central enforcement protects both page reads and action/API writes.
     // Only the dedicated MFA setup actions/page may use the setup exception.
-    if (user && !options.allowMfaSetup && staffMfaRequired(user.role) && !(await hasStaffMfa())) redirect("/security/mfa");
+    if (user && !options.allowMfaSetup && staffMfaRequired(user.role) && data.claims.aal !== "aal2") redirect("/security/mfa");
     return user;
   }
   const token = (await cookies()).get(SESSION_COOKIE)?.value;

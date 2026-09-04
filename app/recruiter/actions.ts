@@ -40,7 +40,9 @@ const MANUAL_GRADING_TYPES = new Set(["CODING", "ESSAY", "PROMPT", "RAT", "ENGLI
 // so the recruiter UI and the candidate-facing page reflect the change immediately.
 function revalidateCandidateRoutes() {
   try {
-    revalidatePath("/admin", "layout");
+    revalidatePath("/admin");
+    revalidatePath("/admin/candidates");
+    revalidatePath("/admin/audit");
     revalidatePath("/candidate", "layout");
     revalidatePath("/recruiter/candidates");
     revalidatePath("/recruiter/candidates/[id]", "page");
@@ -220,13 +222,24 @@ export async function assignCandidateFunnelAction(applicationId: string, formDat
 export async function assignSelectedFunnelAction(applicationIds: string[], funnelId: string, mode: FunnelAssignmentMode = "ADD") {
   const user = await requireRole("recruiter", "admin");
   const ids = await managedApplicationIds(user, applicationIds);
-  let count = 0;
-  const errors: string[] = [];
-  for (const id of ids) {
-    const result = await assignApplicationToFunnel(user, id, funnelId, mode);
-    if ("error" in result) errors.push(`${id.slice(0, 8)}: ${result.error}`);
-    else count += 1;
+  if (!ids.length) return { error: "Select at least one applicant you can manage.", count: 0 };
+
+  // Independent candidate tracks can be prepared concurrently. The previous
+  // serial loop made a three-row action visibly land one row at a time on a
+  // remote Supabase database. Small batches keep latency low without flooding
+  // the connection pool when a whole page is selected.
+  const results: Awaited<ReturnType<typeof assignApplicationToFunnel>>[] = [];
+  const batchSize = 5;
+  for (let offset = 0; offset < ids.length; offset += batchSize) {
+    results.push(...await Promise.all(
+      ids.slice(offset, offset + batchSize).map((id) => assignApplicationToFunnel(user, id, funnelId, mode)),
+    ));
   }
+  const count = results.filter((result) => !("error" in result)).length;
+  const errors: string[] = [];
+  results.forEach((result, index) => {
+    if ("error" in result) errors.push(`${ids[index].slice(0, 8)}: ${result.error}`);
+  });
   revalidateCandidateRoutes();
   return errors.length ? { error: `${count} assigned. ${errors.join(" ")}`, count } : { ok: true, count };
 }
@@ -360,14 +373,18 @@ export async function holdApplicationAction(applicationId: string, expectedStage
 export async function decideSelectedAction(applicationIds: string[], decision: StaffDecision, expectedStage?: string) {
   const user = await requireRole("recruiter", "admin");
   const ids = await managedApplicationIds(user, applicationIds);
-  let count = 0;
-  const errors: string[] = [];
-  for (const id of ids) {
-    const result = await decideCandidateAction(id, decision, expectedStage);
-    if ("error" in result) errors.push(result.error);
-    else count++;
+  if (!ids.length) return { ok: true, count: 0 };
+  try {
+    // One authenticated, atomic transaction prevents a bulk decision from
+    // becoming partially visible while the remaining candidates are updated.
+    await prisma.$transaction(async (tx) => {
+      for (const id of ids) await decideApplication(tx, id, user.id, decision, expectedStage);
+    }, { timeout: 30000 });
+    revalidateCandidateRoutes();
+    return { ok: true, count: ids.length };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not save the bulk decision.", count: 0 };
   }
-  return errors.length ? { error: `${count} updated. ${errors.join(" ")}`, count } : { ok: true, count };
 }
 export async function passSelectedAction(applicationIds: string[], expectedStage?: string) { return decideSelectedAction(applicationIds, "PASS", expectedStage); }
 export async function holdSelectedAction(applicationIds: string[], expectedStage?: string) { return decideSelectedAction(applicationIds, "HOLD", expectedStage); }

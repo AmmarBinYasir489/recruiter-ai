@@ -31,6 +31,7 @@ export function CohortView({
   const router = useRouter();
   const [selected, setSelected] = useState<string[]>(initialSelected ?? []);
   const [busy, setBusy] = useState(false);
+  const [pendingLabel, setPendingLabel] = useState("");
   const [feedback, setFeedback] = useState<ActionFeedback | null>(null);
 
   function toggle(id: string) {
@@ -40,7 +41,9 @@ export function CohortView({
 
   async function run(fn: () => Promise<any>, label: string) {
     setBusy(true);
+    setPendingLabel(label);
     setFeedback(null);
+    await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
     try {
       const r = await fn();
       if (r && "error" in r) throw new Error(String(r.error || "Action failed."));
@@ -51,6 +54,7 @@ export function CohortView({
       setFeedback({ kind: "error", message: e?.message || "Action failed." });
     } finally {
       setBusy(false);
+      setPendingLabel("");
     }
   }
 
@@ -58,11 +62,12 @@ export function CohortView({
     <div className="mt-3">
       {feedback && <ActionFeedbackDialog feedback={feedback} onClose={() => setFeedback(null)} />}
       <div className="flex flex-wrap items-center gap-2 mb-2">
-        <button className="btn-ghost" disabled={busy || !selected.length} onClick={() => run(() => holdSelectedAction(selected, phaseType), "Held")}>Hold selected</button>
-        <button className="btn-primary" disabled={busy || !selected.length} onClick={() => run(() => passSelectedAction(selected, phaseType), "Passed; next assessment approved")}>Pass selected</button>
+        {busy && <span role="status" aria-live="polite" className="badge-info">{pendingLabel}…</span>}
+        <button className="btn-ghost" aria-busy={busy && pendingLabel === "Held"} disabled={busy || !selected.length} onClick={() => run(() => holdSelectedAction(selected, phaseType), "Held")}>{busy && pendingLabel === "Held" ? "Holding…" : "Hold selected"}</button>
+        <button className="btn-primary" aria-busy={busy && pendingLabel.startsWith("Passed")} disabled={busy || !selected.length} onClick={() => run(() => passSelectedAction(selected, phaseType), "Passed; next assessment approved")}>{busy && pendingLabel.startsWith("Passed") ? "Passing…" : "Pass selected"}</button>
         <button className="btn-danger" disabled={busy || !selected.length} onClick={() => {
           if (window.confirm("Fail the selected candidates and stop their current assessment path?")) run(() => decideSelectedAction(selected, "FAIL", phaseType), "Failed");
-        }}>Fail selected</button>
+        }}>{busy && pendingLabel === "Failed" ? "Failing…" : "Fail selected"}</button>
         <p className="w-full text-xs text-slate-500">Scoring does not release tests. Pass approves the next configured phase; below-threshold candidates stay on Hold.</p>
       </div>
       <div className="overflow-x-auto">
@@ -84,7 +89,7 @@ export function CohortView({
                 <td className="p-2"><input type="checkbox" aria-label={`Select ${r.candidateName}`} checked={selected.includes(r.id)} onChange={() => toggle(r.id)} /></td>
                 <td className="p-2 font-semibold">{r.candidateName}</td>
                 <td className="p-2">{r.score}</td>
-                <td className="p-2">{decisionBadge(r.result)}</td>
+                <td className="p-2">{busy && selected.includes(r.id) ? <span className="badge-info">Updating…</span> : decisionBadge(r.result)}</td>
               </tr>
             ))}
           </tbody>

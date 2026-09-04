@@ -4,6 +4,7 @@ import { Card, LinkButton, StatCard, decisionBadge } from "@/components/ui";
 import { getCurrentUser } from "@/lib/auth";
 import { driveApplicationError, formatDriveDeadline } from "@/lib/driveApplications";
 import { publicApplyPath } from "@/lib/publicApplications";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function HomePage() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-6xl px-4 py-4 flex flex-wrap gap-3 items-center justify-between sm:px-6">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 grid place-items-center rounded-xl bg-brand-600 text-white font-black">R</div>
+            <BrandLogo priority />
             <span className="font-bold text-ink-900">Recruitment Portal</span>
           </div>
           <div className="flex items-center gap-2">

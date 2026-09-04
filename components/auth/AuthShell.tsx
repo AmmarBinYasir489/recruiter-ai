@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export function AuthShell({ children, mode }: { children: React.ReactNode; mode: "login" | "signup" }) {
   return <main className="auth-shell">
     <section className="auth-story" aria-label="Recruitment Portal">
-      <Link href="/" className="auth-brand"><span aria-hidden="true" className="auth-brand-mark">r<span>.</span></span><span>Recruitment<span className="auth-brand-sub">PORTAL</span></span></Link>
+      <Link href="/" className="auth-brand" aria-label="NEODYM recruitment portal home"><BrandLogo framed={false} priority className="h-10" /></Link>
       <div className="auth-story-copy">
         <span className="auth-eyebrow">PEOPLE. POTENTIAL. POSSIBILITY.</span>
         <h2>{mode === "signup" ? <>Your next<br />chapter<br /><span>starts here.</span></> : <>Good people.<br />Great teams.<br /><span>Better futures.</span></>}</h2>

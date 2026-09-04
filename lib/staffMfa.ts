@@ -7,6 +7,10 @@ export function staffMfaRequired(role: string) {
 
 export async function hasStaffMfa() {
   const auth = await getSupabaseAuth();
-  const { data, error } = await auth.auth.mfa.getAuthenticatorAssuranceLevel();
-  return !error && data?.currentLevel === "aal2";
+  // getAuthenticatorAssuranceLevel() without a JWT reads session.user from
+  // cookie storage internally. Supabase deliberately warns that this user
+  // object is not authenticated. getClaims() verifies the token first (using
+  // the project's JWKS when available) and exposes the current AAL directly.
+  const { data, error } = await auth.auth.getClaims();
+  return !error && data?.claims?.aal === "aal2";
 }
